@@ -1050,6 +1050,7 @@ dependencies = [
 name = "rust_erc20_payment"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "secp256k1",
  "sha3 0.10.6",
  "tokio",
