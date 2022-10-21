@@ -3,7 +3,7 @@ use crate::Web3TransactionDao;
 use secp256k1::SecretKey;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, CallRequest, TransactionParameters, U256, U64};
+use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
 
 pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> CallRequest {
@@ -94,7 +94,7 @@ pub async fn sign_transaction(
 
     let slice: Vec<u8> = signed.raw_transaction.0;
     web3_tx_dao.signed_raw_data = Some(format!("{}", hex::encode(slice)));
-
+    web3_tx_dao.signed_date = Some(chrono::Utc::now());
     web3_tx_dao.tx_hash = Some(format!("{:#x}", signed.transaction_hash));
     Ok(())
 }
@@ -106,12 +106,31 @@ pub async fn send_transaction(
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
         let bytes = hex::decode(&signed_raw_data)?;
         let result = web3.eth().send_raw_transaction(web3::types::Bytes(bytes)).await;
+        web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
             println!("Error sending transaction: {:?}", e);
         }
-
     } else {
         return Err("No signed raw data".into());
     }
     Ok(())
+}
+
+pub async fn find_tx(
+    web3: &Web3<Http>,
+    web3_tx_dao: &mut Web3TransactionDao,
+) -> Result<bool, Box<dyn error::Error>>  {
+    if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
+        let tx_hash = web3::types::H256::from_str(tx_hash)?;
+        let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await?;
+        if let Some(tx) = tx {
+            web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64());
+            return Ok(true);
+        } else {
+            return Ok(false);
+        }
+    }
+    else {
+        return Err("No tx hash".into());
+    }
 }

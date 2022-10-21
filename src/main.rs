@@ -6,10 +6,11 @@ use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 use std::{env, error, fmt};
+use std::time::Duration;
 
 use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::{check_transaction, send_transaction, sign_transaction};
+use crate::transaction::{check_transaction, find_tx, send_transaction, sign_transaction};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -167,7 +168,13 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         nonce: nonce,
         data: None,
         signed_raw_data: None,
-        tx_hash: None
+        created_date: chrono::Utc::now(),
+        signed_date: None,
+        broadcast_date: None,
+        tx_hash: None,
+        confirmed_date: None,
+        block_number: None,
+        chain_status: None
     };
 
     println!("web3_tx_dao: {:?}", web3_tx_dao);
@@ -178,8 +185,23 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     sign_transaction(&web3, &mut web3_tx_dao, &secret_key).await?;
 
     println!("web3_tx_dao after sign_transaction: {:?}", web3_tx_dao);
-
     send_transaction(&web3, &mut web3_tx_dao).await?;
+
+    println!("web3_tx_dao after send_transaction: {:?}", web3_tx_dao);
+    loop {
+        let res = find_tx(&web3, &mut web3_tx_dao).await?;
+        if !res {
+            println!("not found on chain resend: {:?}", web3_tx_dao.tx_hash);
+            send_transaction(&web3, &mut web3_tx_dao).await?;
+        }
+        if web3_tx_dao.block_number.is_some() {
+            println!("found on chain: {:?}", web3_tx_dao.tx_hash);
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+
 
     //println!("Transaction hash: {:?}", signed.transaction_hash);
     //println!("Transaction payload: {:?}", signed.raw_transaction);
