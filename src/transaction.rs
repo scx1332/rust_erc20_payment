@@ -1,3 +1,4 @@
+use std::error;
 use crate::Web3TransactionDao;
 use secp256k1::SecretKey;
 use std::str::FromStr;
@@ -71,8 +72,9 @@ pub async fn check_transaction(
 
     let add_gas_safety_margin: U256 = U256::from(20000);
     let gas_limit = gas_est + U256::from(add_gas_safety_margin);
-
     println!("Set gas limit basing on gas estimation: {gas_est}. Setting {gas_limit} increased by {add_gas_safety_margin} for safe execution.");
+    web3_tx_dao.gas_limit = gas_limit.as_u64();
+
     Ok(())
 }
 
@@ -89,17 +91,27 @@ pub async fn sign_transaction(
         .accounts()
         .sign_transaction(tx_object, secret_key)
         .await?;
-    web3_tx_dao.signed_raw_data = Some(format!("{:#x?}", signed.raw_transaction));
+
+    let slice: Vec<u8> = signed.raw_transaction.0;
+    web3_tx_dao.signed_raw_data = Some(format!("{}", hex::encode(slice)));
+
+    web3_tx_dao.tx_hash = Some(format!("{:#x}", signed.transaction_hash));
     Ok(())
 }
 
 pub async fn send_transaction(
-    _web3: &Web3<Http>,
-    _web3_tx_dao: &mut Web3TransactionDao,
-) -> Result<(), web3::Error> {
-    /*let result = web3
-    .eth()
-    .send_raw_transaction(web3_tx_dao.signed_tx.clone())
-    .await?;*/
+    web3: &Web3<Http>,
+    web3_tx_dao: &mut Web3TransactionDao,
+) -> Result<(), Box<dyn error::Error>> {
+    if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
+        let bytes = hex::decode(&signed_raw_data)?;
+        let result = web3.eth().send_raw_transaction(web3::types::Bytes(bytes)).await;
+        if let Err(e) = result {
+            println!("Error sending transaction: {:?}", e);
+        }
+
+    } else {
+        return Err("No signed raw data".into());
+    }
     Ok(())
 }

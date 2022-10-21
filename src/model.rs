@@ -9,5 +9,6 @@ pub struct Web3TransactionDao {
     pub value: String,
     pub data: Option<String>,
     pub nonce: u64,
+    pub tx_hash: Option<String>,
     pub signed_raw_data: Option<String>,
 }

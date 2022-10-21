@@ -4,7 +4,6 @@ mod transaction;
 
 use secp256k1::{PublicKey, SecretKey};
 
-
 use std::str::FromStr;
 use std::{env, error, fmt};
 
@@ -16,10 +15,7 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use web3::{
-    ethabi::ethereum_types::U256,
-    types::{Address}, Web3,
-};
+use web3::{ethabi::ethereum_types::U256, types::Address, Web3};
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -128,7 +124,7 @@ fn prepare_erc20_multi_contract(
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
-async fn main() -> web3::Result {
+async fn main() -> Result<(), Box<dyn error::Error>> {
     let _encoded_balance_of = contract_encode(
         &ERC20_CONTRACT_TEMPLATE,
         "balance_of",
@@ -167,17 +163,21 @@ async fn main() -> web3::Result {
         gas_limit: 1000,
         total_fee: U256::from(1000_000_000_000_u64).to_string(),
         priority_fee: priority_fee.to_string(),
-        value: "1000000000000000000000000000".to_string(),
+        value: "1".to_string(),
         nonce: nonce,
         data: None,
         signed_raw_data: None,
+        tx_hash: None
     };
 
     println!("web3_tx_dao: {:?}", web3_tx_dao);
 
     check_transaction(&web3, &mut web3_tx_dao).await?;
 
+    println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
     sign_transaction(&web3, &mut web3_tx_dao, &secret_key).await?;
+
+    println!("web3_tx_dao after sign_transaction: {:?}", web3_tx_dao);
 
     send_transaction(&web3, &mut web3_tx_dao).await?;
 
