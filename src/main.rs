@@ -3,23 +3,22 @@ mod model;
 mod transaction;
 
 use secp256k1::{PublicKey, SecretKey};
-use std::fmt::Display;
-use std::ops::Add;
+
+
 use std::str::FromStr;
 use std::{env, error, fmt};
 
-use crate::contracts::{contract_encode, prepare_contract_template, ERC20_CONTRACT_TEMPLATE};
+use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
 use crate::transaction::{check_transaction, send_transaction};
 use sha3::{Digest, Keccak256};
-use web3::contract::tokens::Tokenize;
+
 use web3::contract::Contract;
 use web3::transports::Http;
-use web3::types::{CallRequest, U64};
+
 use web3::{
     ethabi::ethereum_types::U256,
-    types::{Address, TransactionParameters},
-    Error, Transport, Web3,
+    types::{Address}, Web3,
 };
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -130,7 +129,7 @@ fn prepare_erc20_multi_contract(
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
 async fn main() -> web3::Result {
-    let encoded_balance_of = contract_encode(
+    let _encoded_balance_of = contract_encode(
         &ERC20_CONTRACT_TEMPLATE,
         "balance_of",
         ("0x0000000000000000000000000000000000000000".to_string(),),

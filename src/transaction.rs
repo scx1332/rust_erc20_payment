@@ -6,15 +6,15 @@ use web3::types::{Address, CallRequest, TransactionParameters, U256, U64};
 use web3::Web3;
 
 pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> CallRequest {
-    let from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
+    let _from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
     let to = Address::from_str(&web3_tx_dao.to[2..]).unwrap();
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
-    let chain_id = web3_tx_dao.chain_id;
+    let _chain_id = web3_tx_dao.chain_id;
     let gas_limit = web3_tx_dao.gas_limit;
     let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee).unwrap();
     let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee).unwrap();
     let value = U256::from_dec_str(&web3_tx_dao.value).unwrap();
-    let nonce = web3_tx_dao.nonce;
+    let _nonce = web3_tx_dao.nonce;
 
     // Build the tx object
     let call_request = CallRequest {
@@ -33,7 +33,7 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> CallRequest {
 }
 
 pub fn dao_to_transaction(web3_tx_dao: &Web3TransactionDao) -> TransactionParameters {
-    let from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
+    let _from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
     let to = Address::from_str(&web3_tx_dao.to[2..]).unwrap();
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
     let chain_id = web3_tx_dao.chain_id;
@@ -94,8 +94,8 @@ pub async fn sign_transaction(
 }
 
 pub async fn send_transaction(
-    web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    _web3: &Web3<Http>,
+    _web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), web3::Error> {
     /*let result = web3
     .eth()
