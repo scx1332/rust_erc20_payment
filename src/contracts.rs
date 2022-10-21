@@ -13,7 +13,7 @@ lazy_static! {
         Web3::new(transport)
     };
     pub static ref ERC20_CONTRACT_TEMPLATE: Contract<Http> =
-        { prepare_contract_template(include_bytes!("../contracts/ierc20.json")).unwrap() };
+        prepare_contract_template(include_bytes!("../contracts/ierc20.json")).unwrap();
     pub static ref ERC20_MULTI_CONTRACT_TEMPLATE: Contract<Http> = {
         prepare_contract_template(include_bytes!("../contracts/multi_transfer_erc20.json")).unwrap()
     };

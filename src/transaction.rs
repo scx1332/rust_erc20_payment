@@ -1,6 +1,6 @@
 use crate::Web3TransactionDao;
-use std::str::FromStr;
 use secp256k1::SecretKey;
+use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, CallRequest, TransactionParameters, U256, U64};
 use web3::Web3;
@@ -96,11 +96,10 @@ pub async fn sign_transaction(
 pub async fn send_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
-    secret_key: &str,
 ) -> Result<(), web3::Error> {
     /*let result = web3
-        .eth()
-        .send_raw_transaction(web3_tx_dao.signed_tx.clone())
-        .await?;*/
+    .eth()
+    .send_raw_transaction(web3_tx_dao.signed_tx.clone())
+    .await?;*/
     Ok(())
 }

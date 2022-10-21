@@ -10,7 +10,7 @@ use std::{env, error, fmt};
 
 use crate::contracts::{contract_encode, prepare_contract_template, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::check_transaction;
+use crate::transaction::{check_transaction, send_transaction};
 use sha3::{Digest, Keccak256};
 use web3::contract::tokens::Tokenize;
 use web3::contract::Contract;
@@ -176,7 +176,9 @@ async fn main() -> web3::Result {
 
     println!("web3_tx_dao: {:?}", web3_tx_dao);
 
-    check_transaction(&web3, &mut web3_tx_dao).await;
+    check_transaction(&web3, &mut web3_tx_dao).await?;
+
+    send_transaction(&web3, &mut web3_tx_dao).await?;
 
     //println!("Transaction hash: {:?}", signed.transaction_hash);
     //println!("Transaction payload: {:?}", signed.raw_transaction);
