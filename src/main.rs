@@ -10,7 +10,7 @@ use std::{env, error, fmt};
 
 use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::{check_transaction, send_transaction};
+use crate::transaction::{check_transaction, send_transaction, sign_transaction};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -32,7 +32,7 @@ struct ERC20Payment {
 }
 */
 
-struct Web3ChainConfig {
+struct _Web3ChainConfig {
     glm_token: Address,
     chain_id: u64,
     erc20_contract: Contract<Http>,
@@ -176,6 +176,8 @@ async fn main() -> web3::Result {
     println!("web3_tx_dao: {:?}", web3_tx_dao);
 
     check_transaction(&web3, &mut web3_tx_dao).await?;
+
+    sign_transaction(&web3, &mut web3_tx_dao, &secret_key).await?;
 
     send_transaction(&web3, &mut web3_tx_dao).await?;
 
