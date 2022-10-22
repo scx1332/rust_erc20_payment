@@ -9,60 +9,36 @@ use web3::Web3;
 pub fn dao_to_call_request(
     web3_tx_dao: &Web3TransactionDao,
 ) -> Result<CallRequest, Box<dyn error::Error>> {
-    let _from = Address::from_str(&web3_tx_dao.from[2..])?;
-    let to = Address::from_str(&web3_tx_dao.to[2..])?;
-    // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
-    let _chain_id = web3_tx_dao.chain_id;
-    let gas_limit = web3_tx_dao.gas_limit;
-    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee)?;
-    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee)?;
-    let value = U256::from_dec_str(&web3_tx_dao.value)?;
-    let _nonce = web3_tx_dao.nonce;
-
-    // Build the tx object
-    let call_request = CallRequest {
-        from: None,
-        to: Some(to),
-        gas: Some(U256::from(gas_limit)),
+    Ok(CallRequest {
+        from: Some(Address::from_str(&web3_tx_dao.from)?),
+        to: Some(Address::from_str(&web3_tx_dao.to)?),
+        gas: Some(U256::from(web3_tx_dao.gas_limit)),
         gas_price: None,
-        value: Some(value),
+        value: Some(U256::from_dec_str(&web3_tx_dao.value)?),
         data: Default::default(),
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(total_fee),
-        max_priority_fee_per_gas: Some(priority_fee),
-    };
-    Ok(call_request)
+        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
+        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee)?),
+    })
 }
 
 pub fn dao_to_transaction(
     web3_tx_dao: &Web3TransactionDao,
 ) -> Result<TransactionParameters, Box<dyn error::Error>> {
-    let _from = Address::from_str(&web3_tx_dao.from[2..])?;
-    let to = Address::from_str(&web3_tx_dao.to[2..])?;
-    // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
-    let chain_id = web3_tx_dao.chain_id;
-    let gas_limit = web3_tx_dao.gas_limit;
-    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee)?;
-    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee)?;
-    //let amount = U256::from_dec_str(&web3_tx_dao).unwrap();
-    let nonce = web3_tx_dao.nonce.ok_or("Missing nonce")?;
-
-    // Build the tx object
-    let tx_object = TransactionParameters {
-        nonce: Some(U256::from(nonce)),
-        to: Some(to),
-        gas: U256::from(gas_limit),
+    Ok(TransactionParameters {
+        nonce: Some(U256::from(web3_tx_dao.nonce.ok_or("Missing nonce")?)),
+        to: Some(Address::from_str(&web3_tx_dao.to)?),
+        gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
-        value: U256::from(0),
+        value: U256::from_dec_str(&web3_tx_dao.value)?,
         data: Default::default(),
-        chain_id: Some(chain_id),
+        chain_id: Some(web3_tx_dao.chain_id),
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(total_fee),
-        max_priority_fee_per_gas: Some(priority_fee),
-    };
-    Ok(tx_object)
+        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
+        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee)?),
+    })
 }
 
 pub fn create_eth_transfer(
@@ -70,16 +46,16 @@ pub fn create_eth_transfer(
     to: Address,
     chain_id: u64,
     gas_limit: u64,
-    total_fee: U256,
+    max_fee_per_gas: U256,
     priority_fee: U256,
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        from: format!("{from:#x}"),
-        to: format!("{to:#x}"),
-        chain_id: chain_id,
-        gas_limit: gas_limit,
-        total_fee: total_fee.to_string(),
+        from: format!("{:#x}", from),
+        to: format!("{:#x}", to),
+        chain_id,
+        gas_limit,
+        max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
         value: amount.to_string(),
         nonce: None,

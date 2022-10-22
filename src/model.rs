@@ -6,7 +6,7 @@ pub struct Web3TransactionDao {
     pub to: String,
     pub chain_id: u64,
     pub gas_limit: u64,
-    pub total_fee: String,
+    pub max_fee_per_gas: String,
     pub priority_fee: String,
     pub value: String,
     pub data: Option<String>,

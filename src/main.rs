@@ -150,9 +150,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);
-    let to = from_addr;
+    let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
-    let (total_fee, priority_fee) = if chain_id == 5 {
+    let (max_fee_per_gas, priority_fee) = if chain_id == 5 {
         (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?)
     } else {
         panic!("Chain ID not supported");
@@ -163,12 +163,13 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         to,
         chain_id,
         0,
-        total_fee,
+        max_fee_per_gas,
         priority_fee,
         U256::from(1),
     );
     let mut web3_tx_dao2 = web3_tx_dao.clone();
     let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key);
+    web3_tx_dao2.value = "2".to_string();
     let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key);
 
     let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
