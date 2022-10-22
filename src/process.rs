@@ -15,7 +15,6 @@ use crate::{
 pub enum ProcessTransactionResult {
     Confirmed,
     NeedRetry,
-    Unknown,
 }
 
 pub async fn process_transaction(

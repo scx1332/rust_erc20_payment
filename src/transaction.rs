@@ -155,6 +155,9 @@ pub async fn send_transaction(
     Ok(())
 }
 
+// it seems that this function is not needed at all for checking the transaction status
+// instead use nonce and transaction receipt
+#[allow(unused)]
 pub async fn find_tx(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
