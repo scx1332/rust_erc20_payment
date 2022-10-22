@@ -1,22 +1,26 @@
 mod contracts;
 mod model;
 mod transaction;
+mod utils;
+mod process;
 
 use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
-use std::{env, error, fmt};
 use std::time::Duration;
+use std::{env, error, fmt};
 
 use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::{check_transaction, find_tx, send_transaction, sign_transaction};
+use crate::transaction::{check_transaction, create_eth_transfer, find_receipt, find_tx, send_transaction, sign_transaction};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
+use crate::utils::gwei_to_u256;
 use web3::{ethabi::ethereum_types::U256, types::Address, Web3};
+use crate::process::process_transaction;
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -138,70 +142,36 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     let chain_id = web3.eth().chain_id().await?.as_u64();
     // Insert the 20-byte "to" address in hex format (prefix with 0x)
-    let to = Address::from_str("0xc596aee002ebe98345ce3f967631aaf79cfbdf41").unwrap();
 
     // Insert the 32-byte private key in hex format (do NOT prefix with 0x)
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
 
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);
+    let to = from_addr;
 
-    let nonce = get_transaction_count(from_addr, &web3, false)
-        .await
-        .unwrap();
-    println!("nonce: {}", nonce);
-
-    let priority_fee = if chain_id == 5 {
-        1_100_000_000_u64
+    let (total_fee, priority_fee) = if chain_id == 5 {
+        (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?)
     } else {
         panic!("Chain ID not supported");
     };
 
-    let mut web3_tx_dao = Web3TransactionDao {
-        from: format!("{from_addr:#x}"),
-        to: format!("{to:#x}"),
-        chain_id: chain_id,
-        gas_limit: 1000,
-        total_fee: U256::from(1000_000_000_000_u64).to_string(),
-        priority_fee: priority_fee.to_string(),
-        value: "1".to_string(),
-        nonce: nonce,
-        data: None,
-        signed_raw_data: None,
-        created_date: chrono::Utc::now(),
-        signed_date: None,
-        broadcast_date: None,
-        tx_hash: None,
-        confirmed_date: None,
-        block_number: None,
-        chain_status: None
-    };
+    let mut web3_tx_dao = create_eth_transfer(
+        from_addr,
+        to,
+        chain_id,
+        0,
+        total_fee,
+        priority_fee,
+        U256::from(1),
+    );
+    let mut web3_tx_dao2 = web3_tx_dao.clone();
+    let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key);
+    let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key);
 
-    println!("web3_tx_dao: {:?}", web3_tx_dao);
-
-    check_transaction(&web3, &mut web3_tx_dao).await?;
-
-    println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-    sign_transaction(&web3, &mut web3_tx_dao, &secret_key).await?;
-
-    println!("web3_tx_dao after sign_transaction: {:?}", web3_tx_dao);
-    send_transaction(&web3, &mut web3_tx_dao).await?;
-
-    println!("web3_tx_dao after send_transaction: {:?}", web3_tx_dao);
-    loop {
-        let res = find_tx(&web3, &mut web3_tx_dao).await?;
-        if !res {
-            println!("not found on chain resend: {:?}", web3_tx_dao.tx_hash);
-            send_transaction(&web3, &mut web3_tx_dao).await?;
-        }
-        if web3_tx_dao.block_number.is_some() {
-            println!("found on chain: {:?}", web3_tx_dao.tx_hash);
-            break;
-        }
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
-
-
+    let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
+    println!("Transaction 1: {:?}", res1?);
+    println!("Transaction 2: {:?}", res2?);
 
     //println!("Transaction hash: {:?}", signed.transaction_hash);
     //println!("Transaction payload: {:?}", signed.raw_transaction);

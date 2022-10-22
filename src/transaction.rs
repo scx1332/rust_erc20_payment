@@ -1,20 +1,22 @@
-use std::error;
 use crate::Web3TransactionDao;
 use secp256k1::SecretKey;
+use std::error;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64};
+use web3::types::{Address, CallRequest, Res, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
+use crate::utils::ConversionError;
 
-pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> CallRequest {
-    let _from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
-    let to = Address::from_str(&web3_tx_dao.to[2..]).unwrap();
+pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) ->
+                                                             Result<CallRequest, Box<dyn error::Error>> {
+    let _from = Address::from_str(&web3_tx_dao.from[2..])?;
+    let to = Address::from_str(&web3_tx_dao.to[2..])?;
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
     let _chain_id = web3_tx_dao.chain_id;
     let gas_limit = web3_tx_dao.gas_limit;
-    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee).unwrap();
-    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee).unwrap();
-    let value = U256::from_dec_str(&web3_tx_dao.value).unwrap();
+    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee)?;
+    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee)?;
+    let value = U256::from_dec_str(&web3_tx_dao.value)?;
     let _nonce = web3_tx_dao.nonce;
 
     // Build the tx object
@@ -30,19 +32,20 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> CallRequest {
         max_fee_per_gas: Some(total_fee),
         max_priority_fee_per_gas: Some(priority_fee),
     };
-    call_request
+    Ok(call_request)
 }
 
-pub fn dao_to_transaction(web3_tx_dao: &Web3TransactionDao) -> TransactionParameters {
-    let _from = Address::from_str(&web3_tx_dao.from[2..]).unwrap();
-    let to = Address::from_str(&web3_tx_dao.to[2..]).unwrap();
+pub fn dao_to_transaction(web3_tx_dao: &Web3TransactionDao) ->
+                                                            Result<TransactionParameters, Box<dyn error::Error>> {
+    let _from = Address::from_str(&web3_tx_dao.from[2..])?;
+    let to = Address::from_str(&web3_tx_dao.to[2..])?;
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
     let chain_id = web3_tx_dao.chain_id;
     let gas_limit = web3_tx_dao.gas_limit;
-    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee).unwrap();
-    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee).unwrap();
+    let total_fee = U256::from_dec_str(&web3_tx_dao.total_fee)?;
+    let priority_fee = U256::from_dec_str(&web3_tx_dao.priority_fee)?;
     //let amount = U256::from_dec_str(&web3_tx_dao).unwrap();
-    let nonce = web3_tx_dao.nonce;
+    let nonce = web3_tx_dao.nonce.ok_or("Missing nonce")?;
 
     // Build the tx object
     let tx_object = TransactionParameters {
@@ -58,16 +61,48 @@ pub fn dao_to_transaction(web3_tx_dao: &Web3TransactionDao) -> TransactionParame
         max_fee_per_gas: Some(total_fee),
         max_priority_fee_per_gas: Some(priority_fee),
     };
-    tx_object
+    Ok(tx_object)
+}
+
+pub fn create_eth_transfer(
+    from: Address,
+    to: Address,
+    chain_id: u64,
+    gas_limit: u64,
+    total_fee: U256,
+    priority_fee: U256,
+    amount: U256,
+) -> Web3TransactionDao {
+    let web3_tx_dao = Web3TransactionDao {
+        from: format!("{from:#x}"),
+        to: format!("{to:#x}"),
+        chain_id: chain_id,
+        gas_limit: gas_limit,
+        total_fee: total_fee.to_string(),
+        priority_fee: priority_fee.to_string(),
+        value: amount.to_string(),
+        nonce: None,
+        data: None,
+        signed_raw_data: None,
+        created_date: chrono::Utc::now(),
+        signed_date: None,
+        broadcast_date: None,
+        tx_hash: None,
+        confirmed_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+    };
+    web3_tx_dao
 }
 
 pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
-) -> Result<(), web3::Error> {
+) -> Result<(), Box<dyn error::Error>> {
     let gas_est = web3
         .eth()
-        .estimate_gas(dao_to_call_request(&web3_tx_dao), None)
+        .estimate_gas(dao_to_call_request(&web3_tx_dao)?, None)
         .await?;
 
     let add_gas_safety_margin: U256 = U256::from(20000);
@@ -82,8 +117,8 @@ pub async fn sign_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
     secret_key: &SecretKey,
-) -> Result<(), web3::Error> {
-    let tx_object = dao_to_transaction(&web3_tx_dao);
+) -> Result<(), Box<dyn error::Error>> {
+    let tx_object = dao_to_transaction(&web3_tx_dao)?;
     println!("tx_object: {:?}", tx_object);
 
     // Sign the tx (can be done offline)
@@ -105,7 +140,10 @@ pub async fn send_transaction(
 ) -> Result<(), Box<dyn error::Error>> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
         let bytes = hex::decode(&signed_raw_data)?;
-        let result = web3.eth().send_raw_transaction(web3::types::Bytes(bytes)).await;
+        let result = web3
+            .eth()
+            .send_raw_transaction(web3::types::Bytes(bytes))
+            .await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
             println!("Error sending transaction: {:?}", e);
@@ -119,7 +157,7 @@ pub async fn send_transaction(
 pub async fn find_tx(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
-) -> Result<bool, Box<dyn error::Error>>  {
+) -> Result<bool, Box<dyn error::Error>> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)?;
         let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await?;
@@ -129,8 +167,31 @@ pub async fn find_tx(
         } else {
             return Ok(false);
         }
-    }
-    else {
+    } else {
         return Err("No tx hash".into());
     }
 }
+
+pub async fn find_receipt(
+    web3: &Web3<Http>,
+    web3_tx_dao: &mut Web3TransactionDao,
+) -> Result<bool, Box<dyn error::Error>> {
+    if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
+        let tx_hash = web3::types::H256::from_str(tx_hash)?;
+        let receipt = web3.eth().transaction_receipt(tx_hash).await?;
+        if let Some(receipt) = receipt {
+            web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64());
+            web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64());
+            web3_tx_dao.fee_paid = Some((receipt.cumulative_gas_used * receipt.effective_gas_price.ok_or("Effective gas price expected")?).to_string());
+            return Ok(true);
+        } else {
+            web3_tx_dao.block_number = None;
+            web3_tx_dao.chain_status = None;
+            web3_tx_dao.fee_paid = None;
+            return Ok(false);
+        }
+    } else {
+        return Err("No tx hash".into());
+    }
+}
+

@@ -10,7 +10,7 @@ pub struct Web3TransactionDao {
     pub priority_fee: String,
     pub value: String,
     pub data: Option<String>,
-    pub nonce: u64,
+    pub nonce: Option<u64>,
     pub tx_hash: Option<String>,
     pub signed_raw_data: Option<String>,
     pub created_date: DateTime<Utc>,
@@ -18,5 +18,6 @@ pub struct Web3TransactionDao {
     pub broadcast_date: Option<DateTime<Utc>>,
     pub confirmed_date: Option<DateTime<Utc>>,
     pub block_number: Option<u64>,
-    pub chain_status: Option<u64>
+    pub chain_status: Option<u64>,
+    pub fee_paid: Option<String>,
 }
