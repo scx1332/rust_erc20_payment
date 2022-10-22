@@ -1,26 +1,28 @@
 mod contracts;
 mod model;
+mod process;
 mod transaction;
 mod utils;
-mod process;
 
 use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
-use std::time::Duration;
+
 use std::{env, error, fmt};
 
 use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::{check_transaction, create_eth_transfer, find_receipt, find_tx, send_transaction, sign_transaction};
+use crate::transaction::{
+    check_transaction, create_eth_transfer, find_receipt, send_transaction, sign_transaction,
+};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
+use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
 use web3::{ethabi::ethereum_types::U256, types::Address, Web3};
-use crate::process::process_transaction;
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 

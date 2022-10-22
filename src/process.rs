@@ -1,31 +1,36 @@
+use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
 use std::time::Duration;
-use secp256k1::SecretKey;
-use web3::types::Address;
 use web3::transports::Http;
+use web3::types::Address;
 use web3::Web3;
 
-use crate::{check_transaction, find_receipt, get_transaction_count, gwei_to_u256, send_transaction, sign_transaction, Web3TransactionDao};
+use crate::{
+    check_transaction, find_receipt, get_transaction_count, send_transaction, sign_transaction,
+    Web3TransactionDao,
+};
 
 #[derive(Debug)]
 pub enum ProcessTransactionResult {
     Confirmed,
     NeedRetry,
-    Unknown
+    Unknown,
 }
 
-pub async fn process_transaction(web3_tx_dao: &mut Web3TransactionDao, web3: &Web3<Http>, secret_key: &SecretKey)
-    -> Result<ProcessTransactionResult, Box<dyn error::Error>> {
+pub async fn process_transaction(
+    web3_tx_dao: &mut Web3TransactionDao,
+    web3: &Web3<Http>,
+    secret_key: &SecretKey,
+) -> Result<ProcessTransactionResult, Box<dyn error::Error>> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
     const CONFIRMED_BLOCKS: u64 = 0;
 
-    let chain_id = web3_tx_dao.chain_id;
+    let _chain_id = web3_tx_dao.chain_id;
     let from_addr = Address::from_str(&web3_tx_dao.from)?;
     let nonce = get_transaction_count(from_addr, &web3, false).await?;
 
     println!("nonce: {}", nonce);
-
 
     println!("web3_tx_dao: {:?}", web3_tx_dao);
 
@@ -43,7 +48,10 @@ pub async fn process_transaction(web3_tx_dao: &mut Web3TransactionDao, web3: &We
     loop {
         let pending_nonce = get_transaction_count(from_addr, &web3, true).await?;
         if pending_nonce <= web3_tx_dao.nonce.ok_or("Nonce not found")? {
-            println!("Resend because pending nonce too low: {:?}", web3_tx_dao.tx_hash);
+            println!(
+                "Resend because pending nonce too low: {:?}",
+                web3_tx_dao.tx_hash
+            );
             send_transaction(&web3, web3_tx_dao).await?;
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;

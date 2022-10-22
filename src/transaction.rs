@@ -3,12 +3,12 @@ use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, CallRequest, Res, TransactionId, TransactionParameters, U256, U64};
+use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::utils::ConversionError;
 
-pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) ->
-                                                             Result<CallRequest, Box<dyn error::Error>> {
+pub fn dao_to_call_request(
+    web3_tx_dao: &Web3TransactionDao,
+) -> Result<CallRequest, Box<dyn error::Error>> {
     let _from = Address::from_str(&web3_tx_dao.from[2..])?;
     let to = Address::from_str(&web3_tx_dao.to[2..])?;
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
@@ -35,8 +35,9 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) ->
     Ok(call_request)
 }
 
-pub fn dao_to_transaction(web3_tx_dao: &Web3TransactionDao) ->
-                                                            Result<TransactionParameters, Box<dyn error::Error>> {
+pub fn dao_to_transaction(
+    web3_tx_dao: &Web3TransactionDao,
+) -> Result<TransactionParameters, Box<dyn error::Error>> {
     let _from = Address::from_str(&web3_tx_dao.from[2..])?;
     let to = Address::from_str(&web3_tx_dao.to[2..])?;
     // let token = Address::from_str(&web3_tx_dao.token[2..]).unwrap();
@@ -182,7 +183,13 @@ pub async fn find_receipt(
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64());
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64());
-            web3_tx_dao.fee_paid = Some((receipt.cumulative_gas_used * receipt.effective_gas_price.ok_or("Effective gas price expected")?).to_string());
+            web3_tx_dao.fee_paid = Some(
+                (receipt.cumulative_gas_used
+                    * receipt
+                        .effective_gas_price
+                        .ok_or("Effective gas price expected")?)
+                .to_string(),
+            );
             return Ok(true);
         } else {
             web3_tx_dao.block_number = None;
@@ -194,4 +201,3 @@ pub async fn find_receipt(
         return Err("No tx hash".into());
     }
 }
-
