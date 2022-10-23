@@ -1,10 +1,21 @@
-use crate::Web3TransactionDao;
+use crate::{Web3TransactionDao};
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64};
+use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64, Bytes};
 use web3::Web3;
+use crate::contracts::get_erc20_transfer;
+
+fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, Box<dyn error::Error>> {
+    Ok(if let Some(data) = &web3_tx_dao.data {
+        let hex_data = hex::decode(data)?;
+        Bytes(hex_data)
+    } else {
+        Bytes::default()
+    })
+}
+
 
 pub fn dao_to_call_request(
     web3_tx_dao: &Web3TransactionDao,
@@ -15,7 +26,7 @@ pub fn dao_to_call_request(
         gas: Some(U256::from(web3_tx_dao.gas_limit)),
         gas_price: None,
         value: Some(U256::from_dec_str(&web3_tx_dao.value)?),
-        data: Default::default(),
+        data: Some(decode_data_to_bytes(web3_tx_dao)?),
         transaction_type: Some(U64::from(2)),
         access_list: None,
         max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
@@ -32,7 +43,7 @@ pub fn dao_to_transaction(
         gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
         value: U256::from_dec_str(&web3_tx_dao.value)?,
-        data: Default::default(),
+        data: decode_data_to_bytes(web3_tx_dao)?,
         chain_id: Some(web3_tx_dao.chain_id),
         transaction_type: Some(U64::from(2)),
         access_list: None,
@@ -71,6 +82,39 @@ pub fn create_eth_transfer(
         fee_paid: None,
     };
     web3_tx_dao
+}
+
+
+pub fn create_erc20_transfer(
+    from: Address,
+    token: Address,
+    erc20_to: Address,
+    erc20_amount: U256,
+    chain_id: u64,
+    gas_limit: u64,
+    max_fee_per_gas: U256,
+    priority_fee: U256,
+) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
+    Ok(Web3TransactionDao {
+        from: format!("{:#x}", from),
+        to: format!("{:#x}", token),
+        chain_id,
+        gas_limit,
+        max_fee_per_gas: max_fee_per_gas.to_string(),
+        priority_fee: priority_fee.to_string(),
+        value: "0".to_string(),
+        nonce: None,
+        data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount)?)),
+        signed_raw_data: None,
+        created_date: chrono::Utc::now(),
+        signed_date: None,
+        broadcast_date: None,
+        tx_hash: None,
+        confirmed_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+    })
 }
 
 pub async fn check_transaction(
@@ -116,10 +160,10 @@ pub async fn send_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), Box<dyn error::Error>> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
-        let bytes = hex::decode(&signed_raw_data)?;
+        let bytes = Bytes(hex::decode(&signed_raw_data)?);
         let result = web3
             .eth()
-            .send_raw_transaction(web3::types::Bytes(bytes))
+            .send_raw_transaction(bytes)
             .await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {

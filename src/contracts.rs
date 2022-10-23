@@ -4,7 +4,7 @@ use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::contract::Contract;
 use web3::transports::Http;
-use web3::types::Address;
+use web3::types::{Address, U256};
 use web3::{Transport, Web3};
 
 lazy_static! {
@@ -42,4 +42,20 @@ where
         .abi()
         .function(func)
         .and_then(|function| function.encode_input(&params.into_tokens()))
+}
+
+pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
+    contract_encode(
+        &ERC20_CONTRACT_TEMPLATE,
+        "balance_of",
+        (address.to_string(),),
+    )
+}
+
+pub fn get_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+    contract_encode(
+        &ERC20_CONTRACT_TEMPLATE,
+        "transfer",
+        (address, amount),
+    )
 }

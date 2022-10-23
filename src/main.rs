@@ -12,9 +12,7 @@ use std::{env, error, fmt};
 
 use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
 use crate::model::Web3TransactionDao;
-use crate::transaction::{
-    check_transaction, create_eth_transfer, find_receipt, send_transaction, sign_transaction,
-};
+use crate::transaction::{check_transaction, create_erc20_transfer, create_eth_transfer, find_receipt, send_transaction, sign_transaction};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -132,11 +130,7 @@ fn prepare_erc20_multi_contract(
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn error::Error>> {
-    let _encoded_balance_of = contract_encode(
-        &ERC20_CONTRACT_TEMPLATE,
-        "balance_of",
-        ("0x0000000000000000000000000000000000000000".to_string(),),
-    );
+    env_logger::init();
 
     let prov_url = env::var("PROVIDER_URL").unwrap();
     let transport = web3::transports::Http::new(&prov_url)?;
@@ -158,6 +152,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         panic!("Chain ID not supported");
     };
 
+    /*
     let mut web3_tx_dao = create_eth_transfer(
         from_addr,
         to,
@@ -166,10 +161,23 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         max_fee_per_gas,
         priority_fee,
         U256::from(1),
-    );
+    );*/
+    let mut web3_tx_dao = create_erc20_transfer(
+        from_addr,
+        Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap(),
+        to,
+        U256::from(1),
+        chain_id,
+        1000,
+        max_fee_per_gas,
+        priority_fee,
+    )?;
+
+
+
     let mut web3_tx_dao2 = web3_tx_dao.clone();
     let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key);
-    web3_tx_dao2.value = "2".to_string();
+    //web3_tx_dao2.value = "2".to_string();
     let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key);
 
     let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
