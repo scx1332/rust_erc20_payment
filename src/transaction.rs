@@ -1,4 +1,4 @@
-use crate::{Web3TransactionDao};
+use crate::model::Web3TransactionDao;
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
@@ -69,6 +69,39 @@ pub fn create_eth_transfer(
         max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
         value: amount.to_string(),
+        nonce: None,
+        data: None,
+        signed_raw_data: None,
+        created_date: chrono::Utc::now(),
+        signed_date: None,
+        broadcast_date: None,
+        tx_hash: None,
+        confirmed_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+    };
+    web3_tx_dao
+}
+
+
+pub fn create_eth_transfer_str(
+    from: String,
+    to: String,
+    chain_id: u64,
+    gas_limit: u64,
+    max_fee_per_gas: String,
+    priority_fee: String,
+    amount: String,
+) -> Web3TransactionDao {
+    let web3_tx_dao = Web3TransactionDao {
+        from,
+        to,
+        chain_id,
+        gas_limit,
+        max_fee_per_gas,
+        priority_fee,
+        value: amount,
         nonce: None,
         data: None,
         signed_raw_data: None,

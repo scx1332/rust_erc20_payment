@@ -6,15 +6,24 @@ use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
 
-use crate::{
-    check_transaction, find_receipt, get_transaction_count, send_transaction, sign_transaction,
-    Web3TransactionDao,
-};
+use crate::transaction::check_transaction;
+use crate::transaction::find_receipt;
+use crate::transaction::send_transaction;
+use crate::transaction::sign_transaction;
+use crate::model::Web3TransactionDao;
+use crate::eth::get_transaction_count;
 
 #[derive(Debug)]
 pub enum ProcessTransactionResult {
     Confirmed,
     NeedRetry,
+}
+
+pub async fn get_provider(url: &str) -> Result<Web3<Http>, Box<dyn error::Error>> {
+    let prov_url = url;
+    let transport = web3::transports::Http::new(&prov_url)?;
+    let web3 = web3::Web3::new(transport);
+    Ok(web3)
 }
 
 pub async fn process_transaction(

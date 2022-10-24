@@ -1,6 +1,6 @@
-use crate::U256;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use web3::types::U256;
 
 #[derive(Debug, Clone)]
 pub struct ConversionError {
