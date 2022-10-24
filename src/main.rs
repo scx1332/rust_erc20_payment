@@ -1,9 +1,9 @@
 mod contracts;
+mod eth;
 mod model;
 mod process;
 mod transaction;
 mod utils;
-mod eth;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -11,9 +11,7 @@ use std::str::FromStr;
 
 use std::{env, error, fmt};
 
-use crate::contracts::{contract_encode, ERC20_CONTRACT_TEMPLATE};
-use crate::model::Web3TransactionDao;
-use crate::transaction::{check_transaction, create_erc20_transfer, create_eth_transfer, find_receipt, send_transaction, sign_transaction};
+use crate::transaction::create_erc20_transfer;
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -21,7 +19,7 @@ use web3::transports::Http;
 
 use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
-use web3::{ethabi::ethereum_types::U256, types::Address, Web3};
+use web3::{ethabi::ethereum_types::U256, types::Address};
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -39,8 +37,6 @@ struct _Web3ChainConfig {
     chain_id: u64,
     erc20_contract: Contract<Http>,
 }
-
-
 
 pub fn get_eth_addr_from_secret(secret_key: &SecretKey) -> Address {
     Address::from_slice(
@@ -159,8 +155,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         max_fee_per_gas,
         priority_fee,
     )?;
-
-
 
     let mut web3_tx_dao2 = web3_tx_dao.clone();
     let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key);

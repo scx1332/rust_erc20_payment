@@ -53,9 +53,5 @@ pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::E
 }
 
 pub fn get_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
-    contract_encode(
-        &ERC20_CONTRACT_TEMPLATE,
-        "transfer",
-        (address, amount),
-    )
+    contract_encode(&ERC20_CONTRACT_TEMPLATE, "transfer", (address, amount))
 }

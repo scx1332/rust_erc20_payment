@@ -1,11 +1,11 @@
+use crate::contracts::get_erc20_transfer;
 use crate::model::Web3TransactionDao;
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, CallRequest, TransactionId, TransactionParameters, U256, U64, Bytes};
+use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::contracts::get_erc20_transfer;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, Box<dyn error::Error>> {
     Ok(if let Some(data) = &web3_tx_dao.data {
@@ -15,7 +15,6 @@ fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, Box<d
         Bytes::default()
     })
 }
-
 
 pub fn dao_to_call_request(
     web3_tx_dao: &Web3TransactionDao,
@@ -84,7 +83,6 @@ pub fn create_eth_transfer(
     web3_tx_dao
 }
 
-
 pub fn create_eth_transfer_str(
     from: String,
     to: String,
@@ -116,7 +114,6 @@ pub fn create_eth_transfer_str(
     };
     web3_tx_dao
 }
-
 
 pub fn create_erc20_transfer(
     from: Address,
@@ -194,10 +191,7 @@ pub async fn send_transaction(
 ) -> Result<(), Box<dyn error::Error>> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
         let bytes = Bytes(hex::decode(&signed_raw_data)?);
-        let result = web3
-            .eth()
-            .send_raw_transaction(bytes)
-            .await;
+        let result = web3.eth().send_raw_transaction(bytes).await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
             println!("Error sending transaction: {:?}", e);

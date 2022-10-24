@@ -6,12 +6,12 @@ use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
 
+use crate::eth::get_transaction_count;
+use crate::model::Web3TransactionDao;
 use crate::transaction::check_transaction;
 use crate::transaction::find_receipt;
 use crate::transaction::send_transaction;
 use crate::transaction::sign_transaction;
-use crate::model::Web3TransactionDao;
-use crate::eth::get_transaction_count;
 
 #[derive(Debug)]
 pub enum ProcessTransactionResult {
