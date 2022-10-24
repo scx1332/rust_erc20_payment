@@ -17,6 +17,7 @@ use crate::transaction::sign_transaction;
 pub enum ProcessTransactionResult {
     Confirmed,
     NeedRetry,
+    Unknown,
 }
 
 pub async fn get_provider(url: &str) -> Result<Web3<Http>, Box<dyn error::Error>> {
@@ -30,6 +31,7 @@ pub async fn process_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
     web3: &Web3<Http>,
     secret_key: &SecretKey,
+    wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, Box<dyn error::Error>> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
     const CONFIRMED_BLOCKS: u64 = 0;
@@ -87,6 +89,9 @@ pub async fn process_transaction(
                     return Ok(ProcessTransactionResult::NeedRetry);
                 }
             }
+        }
+        if !wait_for_confirmation {
+            return Ok(ProcessTransactionResult::Unknown)
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
