@@ -36,22 +36,25 @@ pub async fn process_transaction(
 
     let _chain_id = web3_tx_dao.chain_id;
     let from_addr = Address::from_str(&web3_tx_dao.from)?;
-    let nonce = get_transaction_count(from_addr, &web3, false).await?;
+    if web3_tx_dao.nonce.is_none() {
+        let nonce = get_transaction_count(from_addr, &web3, false).await?;
+        web3_tx_dao.nonce = Some(nonce);
+    }
+    if web3_tx_dao.signed_raw_data.is_none() {
+        check_transaction(&web3, web3_tx_dao).await?;
 
-    println!("nonce: {}", nonce);
+        println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
+        sign_transaction(&web3, web3_tx_dao, &secret_key).await?;
+    }
 
-    println!("web3_tx_dao: {:?}", web3_tx_dao);
+    if web3_tx_dao.broadcast_date.is_none() {
+        send_transaction(&web3, web3_tx_dao).await?;
+    }
 
-    web3_tx_dao.nonce = Some(nonce);
-    check_transaction(&web3, web3_tx_dao).await?;
+    if web3_tx_dao.confirmed_date.is_some() {
+        return Ok(ProcessTransactionResult::Confirmed);
+    }
 
-    println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-    sign_transaction(&web3, web3_tx_dao, &secret_key).await?;
-
-    println!("web3_tx_dao after sign_transaction: {:?}", web3_tx_dao);
-    send_transaction(&web3, web3_tx_dao).await?;
-
-    println!("web3_tx_dao after send_transaction: {:?}", web3_tx_dao);
     let mut tx_not_found_count = 0;
     loop {
         let pending_nonce = get_transaction_count(from_addr, &web3, true).await?;
