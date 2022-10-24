@@ -157,9 +157,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     )?;
 
     let mut web3_tx_dao2 = web3_tx_dao.clone();
-    let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key);
+    let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, true);
     //web3_tx_dao2.value = "2".to_string();
-    let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key);
+    let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key, true);
 
     let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
     println!("Transaction 1: {:?}", res1?);

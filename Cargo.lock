@@ -1241,6 +1241,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "log",
+ "rand",
  "secp256k1",
  "sha3 0.10.6",
  "tokio",

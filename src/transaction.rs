@@ -3,6 +3,7 @@ use crate::model::Web3TransactionDao;
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
+use rand::distributions::{Alphanumeric, DistString};
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
@@ -51,6 +52,11 @@ pub fn dao_to_transaction(
     })
 }
 
+pub fn get_unique_id() -> String {
+    let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+    string
+}
+
 pub fn create_eth_transfer(
     from: Address,
     to: Address,
@@ -61,6 +67,7 @@ pub fn create_eth_transfer(
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
+        id: get_unique_id(),
         from: format!("{:#x}", from),
         to: format!("{:#x}", to),
         chain_id,
@@ -93,6 +100,7 @@ pub fn create_eth_transfer_str(
     amount: String,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
+        id: get_unique_id(),
         from,
         to,
         chain_id,
@@ -126,6 +134,7 @@ pub fn create_erc20_transfer(
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
     Ok(Web3TransactionDao {
+        id: get_unique_id(),
         from: format!("{:#x}", from),
         to: format!("{:#x}", token),
         chain_id,

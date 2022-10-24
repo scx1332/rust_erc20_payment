@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub struct Web3TransactionDao {
+    pub id: String,
     pub from: String,
     pub to: String,
     pub chain_id: u64,
