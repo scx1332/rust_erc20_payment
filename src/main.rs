@@ -4,6 +4,8 @@ mod model;
 mod process;
 mod transaction;
 mod utils;
+use sqlx::sqlite::{SqliteConnectOptions};
+use sqlx::ConnectOptions;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -115,6 +117,10 @@ fn prepare_erc20_multi_contract(
 async fn main() -> Result<(), Box<dyn error::Error>> {
     env_logger::init();
 
+    let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
+
+    
+
     let prov_url = env::var("PROVIDER_URL").unwrap();
     let transport = web3::transports::Http::new(&prov_url)?;
     let web3 = web3::Web3::new(transport);
@@ -169,6 +175,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     //println!("Transaction payload: {:?}", signed.raw_transaction);
 
     //println!("Tx succeeded with hash: {:#x}", result);
+
 
     Ok(())
 }
