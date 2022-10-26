@@ -1,16 +1,16 @@
 use std::error::Error;
 use sqlx::SqliteConnection;
+use web3::Transport;
 use web3::types::Res;
-use crate::model::TokenTransfer;
+use crate::model::{TokenTransfer, Web3TransactionDao};
 
 
 pub async fn insert_token_transfer(conn: &mut SqliteConnection, token_transfer: &TokenTransfer) -> Result<TokenTransfer, Box<dyn Error>>{
-
-    let token_transfer = sqlx::query_as::<_, TokenTransfer>(
-        r"INSERT INTO token_transfer
+    let res = sqlx::query(
+        r"INSERT OR REPLACE INTO token_transfer
 (id, from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING *",
+",
     )
         .bind(&token_transfer.id)
         .bind(&token_transfer.from_addr)
@@ -20,7 +20,44 @@ RETURNING *",
         .bind( &token_transfer.token_amount)
         .bind( &token_transfer.tx_id)
         .bind( &token_transfer.fee_paid)
-        .fetch_one(conn)
+        .execute(conn)
         .await?;
-    Ok(token_transfer)
+    Ok(token_transfer.clone())
+}
+
+pub async fn get_all_token_transfers(conn: &mut SqliteConnection) -> Result<Vec<TokenTransfer>, Box<dyn Error>> {
+    let rows = sqlx::query_as::<_, TokenTransfer>(
+        r"SELECT * FROM token_transfer").fetch_all(conn).await?;
+    Ok(rows)
+}
+
+pub async fn insert_tx(conn: &mut SqliteConnection, tx: &Web3TransactionDao) -> Result<Web3TransactionDao, Box<dyn Error>>{
+    let res = sqlx::query(
+        r"INSERT OR REPLACE INTO tx
+(id, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+",
+    )
+        .bind(&tx.id)
+        .bind(&tx.from_addr)
+        .bind(&tx.to_addr)
+        .bind( &tx.chain_id)
+        .bind( &tx.gas_limit)
+        .bind( &tx.max_fee_per_gas)
+        .bind( &tx.priority_fee)
+        .bind( &tx.val)
+        .bind( &tx.nonce)
+        .bind( &tx.call_data)
+        .bind( &tx.created_date)
+        .bind( &tx.tx_hash)
+        .bind( &tx.signed_raw_data)
+        .bind( &tx.signed_date)
+        .bind( &tx.broadcast_date)
+        .bind( &tx.confirmed_date)
+        .bind( &tx.block_number)
+        .bind( &tx.chain_status)
+        .bind( &tx.fee_paid)
+        .execute(conn)
+        .await?;
+    Ok(tx.clone())
 }

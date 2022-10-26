@@ -7,6 +7,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
+use crate::model::TokenTransfer;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, Box<dyn error::Error>> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -52,9 +53,29 @@ pub fn dao_to_transaction(
     })
 }
 
-pub fn get_id() -> String {
+pub fn get_rand_id() -> String {
     let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
     string
+}
+
+// token_addr NULL means standard (non ERC20) transfer of main chain currency (i.e ETH)
+pub fn create_token_transfer(
+    from: Address,
+    receiver: Address,
+    chain_id: u64,
+    token_addr: Option<Address>,
+    token_amount: U256
+) -> TokenTransfer {
+    TokenTransfer {
+        id: get_rand_id(),
+        from_addr: format!("{:#x}", from),
+        receiver_addr: format!("{:#x}", receiver),
+        chain_id: chain_id as i64,
+        token_addr: token_addr.map(|addr| format!("{:#x}", addr)),
+        token_amount: token_amount.to_string(),
+        tx_id: None,
+        fee_paid: None
+    }
 }
 
 pub fn create_eth_transfer(
@@ -67,7 +88,7 @@ pub fn create_eth_transfer(
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_id(),
+        id: get_rand_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", to),
         chain_id: chain_id as i64,
@@ -100,7 +121,7 @@ pub fn create_eth_transfer_str(
     amount: String,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_id(),
+        id: get_rand_id(),
         from_addr,
         to_addr,
         chain_id: chain_id as i64,
@@ -123,6 +144,8 @@ pub fn create_eth_transfer_str(
     web3_tx_dao
 }
 
+
+
 pub fn create_erc20_transfer(
     from: Address,
     token: Address,
@@ -134,7 +157,7 @@ pub fn create_erc20_transfer(
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
     Ok(Web3TransactionDao {
-        id: get_id(),
+        id: get_rand_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,

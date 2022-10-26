@@ -7,7 +7,7 @@ pub struct TokenTransfer {
     pub from_addr: String,
     pub receiver_addr: String,
     pub chain_id: i64,
-    pub token_addr: String,
+    pub token_addr: Option<String>,
     pub token_amount: String,
     pub tx_id: Option<String>,
     pub fee_paid: Option<String>,

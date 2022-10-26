@@ -6,7 +6,7 @@ mod transaction;
 mod utils;
 mod db;
 use sqlx::sqlite::{SqliteConnectOptions};
-use sqlx::ConnectOptions;
+use sqlx::{Connection, ConnectOptions};
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -14,7 +14,7 @@ use std::str::FromStr;
 
 use std::{env, error, fmt};
 
-use crate::transaction::create_erc20_transfer;
+use crate::transaction::{create_erc20_transfer, create_eth_transfer_str, create_token_transfer};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -22,10 +22,10 @@ use web3::transports::Http;
 
 use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
-use web3::{ethabi::ethereum_types::U256, types::Address};
+use web3::{types::{Address, U256}};
 use crate::model::TokenTransfer;
 use crate::db::create_sqlite_connection;
-use crate::db::operations::insert_token_transfer;
+use crate::db::operations::{get_all_token_transfers, insert_token_transfer, insert_tx};
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -125,17 +125,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     let mut conn = create_sqlite_connection(2).await?;
 
-    let token_transfer = TokenTransfer {
-        id: "3".to_string(),
-        from_addr: "3".to_string(),
-        receiver_addr: "3".to_string(),
-        chain_id: 0,
-        token_addr: "3".to_string(),
-        token_amount: "4".to_string(),
-        tx_id: None,
-        fee_paid: None
-    };
-    let f = insert_token_transfer(&mut conn, &token_transfer).await?;
 
 
 
@@ -159,6 +148,41 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         panic!("Chain ID not supported");
     };
 
+
+    let token_transfer = create_token_transfer(
+        from_addr,
+        to,
+        chain_id,
+        Some(Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap()),
+        U256::from(1)
+    );
+    let token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+
+    for mut token_transfer in get_all_token_transfers(&mut conn).await? {
+        if token_transfer.tx_id.is_none() {
+            let mut web3_tx_dao = create_erc20_transfer(
+                Address::from_str(&token_transfer.from_addr).unwrap(),
+                Address::from_str(&token_transfer.token_addr.as_ref().unwrap()).unwrap(),
+                Address::from_str(&token_transfer.receiver_addr).unwrap(),
+                U256::from_dec_str(&token_transfer.token_amount).unwrap(),
+                token_transfer.chain_id as u64,
+                1000,
+                max_fee_per_gas,
+                priority_fee,
+            )?;
+            let mut tx = conn.begin().await?;
+            insert_tx(&mut tx, &mut web3_tx_dao).await?;
+            token_transfer.tx_id = Some(web3_tx_dao.id.clone());
+            insert_token_transfer(&mut tx, &token_transfer).await?;
+            tx.commit().await?;
+
+            let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, false).await?;
+            insert_tx(&mut conn, &mut web3_tx_dao).await?;
+        }
+
+
+    }
+
     /*
     let mut web3_tx_dao = create_eth_transfer(
         from_addr,
@@ -169,21 +193,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         priority_fee,
         U256::from(1),
     );*/
-    let mut web3_tx_dao = create_erc20_transfer(
-        from_addr,
-        Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap(),
-        to,
-        U256::from(1),
-        chain_id,
-        1000,
-        max_fee_per_gas,
-        priority_fee,
-    )?;
-
-    let mut web3_tx_dao2 = web3_tx_dao.clone();
-    let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, true);
-    //web3_tx_dao2.value = "2".to_string();
-    let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key, true);
 
     //let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
    //println!("Transaction 1: {:?}", res1?);
