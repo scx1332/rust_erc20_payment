@@ -52,7 +52,7 @@ pub fn dao_to_transaction(
     })
 }
 
-pub fn get_unique_id() -> String {
+pub fn get_id() -> String {
     let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
     string
 }
@@ -67,7 +67,7 @@ pub fn create_eth_transfer(
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        unique_id: get_unique_id(),
+        id: get_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", to),
         chain_id,
@@ -100,7 +100,7 @@ pub fn create_eth_transfer_str(
     amount: String,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        unique_id: get_unique_id(),
+        id: get_id(),
         from_addr,
         to_addr,
         chain_id,
@@ -134,7 +134,7 @@ pub fn create_erc20_transfer(
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
     Ok(Web3TransactionDao {
-        unique_id: get_unique_id(),
+        id: get_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id,

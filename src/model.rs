@@ -1,8 +1,20 @@
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
+pub struct TokenTransfer {
+    id: String,
+    from_addr: String,
+    receiver_addr: String,
+    chain_id: u64,
+    token_addr: String,
+    token_amount: String,
+    tx_id: String,
+    fee_paid: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Web3TransactionDao {
-    pub unique_id: String,
+    pub id: String,
     pub from_addr: String,
     pub to_addr: String,
     pub chain_id: u64,

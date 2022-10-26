@@ -1,6 +1,17 @@
+CREATE TABLE "token_transfer" (
+    id	                TEXT        NOT NULL,
+    from_addr           TEXT        NOT NULL,
+    receiver_addr       TEXT        NOT NULL,
+    chain_id            INT         NOT NULL,
+    token_addr          TEXT        NOT NULL,
+    token_amount        TEXT        NOT NULL,
+    tx_id               INT         NULL,
+    fee_paid            TEXT        NULL
+);
+
 CREATE TABLE "tx" (
-    unique_id	        TEXT,
-    from_addr           TEXT,
+    id	                TEXT        NOT NULL,
+    from_addr           TEXT        NOT NULL,
     to_addr             TEXT        NOT NULL,
     chain_id            INT         NOT NULL,
     gas_limit           INT         NOT NULL,
@@ -19,3 +30,4 @@ CREATE TABLE "tx" (
     chain_status        INT         NULL,
     fee_paid            TEXT        NULL
 );
+
