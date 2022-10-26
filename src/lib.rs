@@ -4,4 +4,4 @@ pub mod model;
 pub mod process;
 pub mod transaction;
 pub mod utils;
-mod db_connection;
+pub mod db;

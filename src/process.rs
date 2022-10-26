@@ -40,7 +40,7 @@ pub async fn process_transaction(
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
-        web3_tx_dao.nonce = Some(nonce);
+        web3_tx_dao.nonce = Some(nonce as i64);
     }
     if web3_tx_dao.signed_raw_data.is_none() {
         check_transaction(&web3, web3_tx_dao).await?;
@@ -60,7 +60,7 @@ pub async fn process_transaction(
     let mut tx_not_found_count = 0;
     loop {
         let pending_nonce = get_transaction_count(from_addr, &web3, true).await?;
-        if pending_nonce <= web3_tx_dao.nonce.ok_or("Nonce not found")? {
+        if pending_nonce <= web3_tx_dao.nonce.map(|n| n as u64).ok_or("Nonce not found")? {
             println!(
                 "Resend because pending nonce too low: {:?}",
                 web3_tx_dao.tx_hash
@@ -71,10 +71,10 @@ pub async fn process_transaction(
         }
         let latest_nonce = get_transaction_count(from_addr, &web3, false).await?;
         let current_block_number = web3.eth().block_number().await?.as_u64();
-        if latest_nonce > web3_tx_dao.nonce.ok_or("Nonce not found")? {
+        if latest_nonce > web3_tx_dao.nonce.map(|n| n as u64).ok_or("Nonce not found")? {
             let res = find_receipt(&web3, web3_tx_dao).await?;
             if res {
-                if let Some(block_number) = web3_tx_dao.block_number {
+                if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
                     println!("Receipt found: {:?}", web3_tx_dao.tx_hash);
                     if block_number + CONFIRMED_BLOCKS <= current_block_number {
                         web3_tx_dao.confirmed_date = Some(chrono::Utc::now());

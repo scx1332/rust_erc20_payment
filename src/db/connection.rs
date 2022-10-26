@@ -1,5 +1,5 @@
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{QueryBuilder, Sqlite, SqliteConnection, SqlitePool};
+use sqlx::{SqliteConnection};
 use sqlx::{Pool, Postgres};
 use std::env;
 use std::error::Error;

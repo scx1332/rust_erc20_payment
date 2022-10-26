@@ -4,7 +4,7 @@ mod model;
 mod process;
 mod transaction;
 mod utils;
-mod db_connection;
+mod db;
 use sqlx::sqlite::{SqliteConnectOptions};
 use sqlx::ConnectOptions;
 
@@ -23,7 +23,9 @@ use web3::transports::Http;
 use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
 use web3::{ethabi::ethereum_types::U256, types::Address};
-use crate::db_connection::create_sqlite_connection;
+use crate::model::TokenTransfer;
+use crate::db::create_sqlite_connection;
+use crate::db::operations::insert_token_transfer;
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -121,8 +123,21 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
-    let pool = create_sqlite_connection(2).await?;
-    
+    let mut conn = create_sqlite_connection(2).await?;
+
+    let token_transfer = TokenTransfer {
+        id: "3".to_string(),
+        from_addr: "3".to_string(),
+        receiver_addr: "3".to_string(),
+        chain_id: 0,
+        token_addr: "3".to_string(),
+        token_amount: "4".to_string(),
+        tx_id: None,
+        fee_paid: None
+    };
+    let f = insert_token_transfer(&mut conn, &token_transfer).await?;
+
+
 
     let prov_url = env::var("PROVIDER_URL").unwrap();
     let transport = web3::transports::Http::new(&prov_url)?;

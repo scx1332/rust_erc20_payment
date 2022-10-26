@@ -44,7 +44,7 @@ pub fn dao_to_transaction(
         gas_price: None,
         value: U256::from_dec_str(&web3_tx_dao.val)?,
         data: decode_data_to_bytes(web3_tx_dao)?,
-        chain_id: Some(web3_tx_dao.chain_id),
+        chain_id: Some(web3_tx_dao.chain_id as u64),
         transaction_type: Some(U64::from(2)),
         access_list: None,
         max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
@@ -70,8 +70,8 @@ pub fn create_eth_transfer(
         id: get_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", to),
-        chain_id,
-        gas_limit,
+        chain_id: chain_id as i64,
+        gas_limit: gas_limit as i64,
         max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
         val: amount.to_string(),
@@ -103,8 +103,8 @@ pub fn create_eth_transfer_str(
         id: get_id(),
         from_addr,
         to_addr,
-        chain_id,
-        gas_limit,
+        chain_id: chain_id as i64,
+        gas_limit: gas_limit as i64,
         max_fee_per_gas,
         priority_fee,
         val: amount,
@@ -137,8 +137,8 @@ pub fn create_erc20_transfer(
         id: get_id(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
-        chain_id,
-        gas_limit,
+        chain_id: chain_id as i64,
+        gas_limit: gas_limit as i64,
         max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
         val: "0".to_string(),
@@ -168,7 +168,7 @@ pub async fn check_transaction(
     let add_gas_safety_margin: U256 = U256::from(20000);
     let gas_limit = gas_est + U256::from(add_gas_safety_margin);
     println!("Set gas limit basing on gas estimation: {gas_est}. Setting {gas_limit} increased by {add_gas_safety_margin} for safe execution.");
-    web3_tx_dao.gas_limit = gas_limit.as_u64();
+    web3_tx_dao.gas_limit = gas_limit.as_u64() as i64;
 
     Ok(())
 }
@@ -222,7 +222,7 @@ pub async fn find_tx(
         let tx_hash = web3::types::H256::from_str(tx_hash)?;
         let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await?;
         if let Some(tx) = tx {
-            web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64());
+            web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64() as i64);
             return Ok(true);
         } else {
             return Ok(false);
@@ -240,8 +240,8 @@ pub async fn find_receipt(
         let tx_hash = web3::types::H256::from_str(tx_hash)?;
         let receipt = web3.eth().transaction_receipt(tx_hash).await?;
         if let Some(receipt) = receipt {
-            web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64());
-            web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64());
+            web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
+            web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
             web3_tx_dao.fee_paid = Some(
                 (receipt.cumulative_gas_used
                     * receipt
