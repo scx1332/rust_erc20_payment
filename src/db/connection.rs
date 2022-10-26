@@ -1,17 +1,19 @@
+use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{SqliteConnection};
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::ConnectOptions;
+use sqlx::SqliteConnection;
 use sqlx::{Pool, Postgres};
 use std::env;
 use std::error::Error;
 use std::str::FromStr;
-use sqlx::migrate::Migrator;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::ConnectOptions;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
-pub async fn create_postgres_connection(max_connections: u32) -> Result<Pool<Postgres>, Box<dyn Error>> {
-    let db_type = env::var("DB_TYPE").unwrap_or_else(|_| "sqlite".to_string());
+pub async fn _create_postgres_connection(
+    max_connections: u32,
+) -> Result<Pool<Postgres>, Box<dyn Error>> {
+    let _db_type = env::var("DB_TYPE").unwrap_or_else(|_| "sqlite".to_string());
 
     let username = env::var("DB_USER").unwrap_or_else(|_| String::from("postgres"));
     let password = env::var("DB_PASS").unwrap_or_else(|_| String::from("postgres"));
@@ -35,12 +37,17 @@ pub async fn create_postgres_connection(max_connections: u32) -> Result<Pool<Pos
     Ok(pool)
 }
 
-pub async fn create_sqlite_connection(max_connections: u32) -> Result<SqliteConnection, Box<dyn Error>> {
+pub async fn create_sqlite_connection(
+    _max_connections: u32,
+) -> Result<SqliteConnection, Box<dyn Error>> {
     let url = format!("sqlite://db.sqlite");
 
     log::info!("connecting to db using url {}", url);
 
-    let mut conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
+    let mut conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?
+        .create_if_missing(true)
+        .connect()
+        .await?;
 
     MIGRATOR.run(&mut conn).await?;
 

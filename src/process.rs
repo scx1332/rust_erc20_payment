@@ -20,6 +20,7 @@ pub enum ProcessTransactionResult {
     Unknown,
 }
 
+#[allow(dead_code)]
 pub async fn get_provider(url: &str) -> Result<Web3<Http>, Box<dyn error::Error>> {
     let prov_url = url;
     let transport = web3::transports::Http::new(&prov_url)?;
@@ -60,7 +61,12 @@ pub async fn process_transaction(
     let mut tx_not_found_count = 0;
     loop {
         let pending_nonce = get_transaction_count(from_addr, &web3, true).await?;
-        if pending_nonce <= web3_tx_dao.nonce.map(|n| n as u64).ok_or("Nonce not found")? {
+        if pending_nonce
+            <= web3_tx_dao
+                .nonce
+                .map(|n| n as u64)
+                .ok_or("Nonce not found")?
+        {
             println!(
                 "Resend because pending nonce too low: {:?}",
                 web3_tx_dao.tx_hash
@@ -71,7 +77,12 @@ pub async fn process_transaction(
         }
         let latest_nonce = get_transaction_count(from_addr, &web3, false).await?;
         let current_block_number = web3.eth().block_number().await?.as_u64();
-        if latest_nonce > web3_tx_dao.nonce.map(|n| n as u64).ok_or("Nonce not found")? {
+        if latest_nonce
+            > web3_tx_dao
+                .nonce
+                .map(|n| n as u64)
+                .ok_or("Nonce not found")?
+        {
             let res = find_receipt(&web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
@@ -91,7 +102,7 @@ pub async fn process_transaction(
             }
         }
         if !wait_for_confirmation {
-            return Ok(ProcessTransactionResult::Unknown)
+            return Ok(ProcessTransactionResult::Unknown);
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

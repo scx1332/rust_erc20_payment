@@ -1,12 +1,12 @@
 mod contracts;
+mod db;
 mod eth;
 mod model;
 mod process;
 mod transaction;
 mod utils;
-mod db;
-use sqlx::sqlite::{SqliteConnectOptions};
-use sqlx::{Connection, ConnectOptions};
+
+use sqlx::Connection;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -14,7 +14,7 @@ use std::str::FromStr;
 
 use std::{env, error, fmt};
 
-use crate::transaction::{create_erc20_transfer, create_eth_transfer_str, create_token_transfer};
+use crate::transaction::{create_erc20_transfer, create_token_transfer};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
@@ -22,13 +22,12 @@ use web3::transports::Http;
 
 use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
-use web3::{types::{Address, U256}};
-use crate::model::TokenTransfer;
+use web3::types::{Address, U256};
+
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
-
-type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
-
+use crate::db::operations::{
+    get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx,
+};
 /*
 struct ERC20Payment {
     from: Address,
@@ -125,9 +124,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     let mut conn = create_sqlite_connection(2).await?;
 
-
-
-
     let prov_url = env::var("PROVIDER_URL").unwrap();
     let transport = web3::transports::Http::new(&prov_url)?;
     let web3 = web3::Web3::new(transport);
@@ -148,15 +144,14 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         panic!("Chain ID not supported");
     };
 
-
     let token_transfer = create_token_transfer(
         from_addr,
         to,
         chain_id,
         Some(Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap()),
-        U256::from(1)
+        U256::from(1),
     );
-    let token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
 
     for mut token_transfer in get_all_token_transfers(&mut conn).await? {
         if token_transfer.tx_id.is_none() {
@@ -176,11 +171,10 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             update_token_transfer(&mut tx, &token_transfer).await?;
             tx.commit().await?;
 
-            let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, false).await?;
+            let _process_t_res =
+                process_transaction(&mut web3_tx_dao, &web3, &secret_key, false).await?;
             update_tx(&mut conn, &mut web3_tx_dao).await?;
         }
-
-
     }
 
     /*
@@ -195,14 +189,13 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     );*/
 
     //let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
-   //println!("Transaction 1: {:?}", res1?);
-   // println!("Transaction 2: {:?}", res2?);
+    //println!("Transaction 1: {:?}", res1?);
+    // println!("Transaction 2: {:?}", res2?);
 
     //println!("Transaction hash: {:?}", signed.transaction_hash);
     //println!("Transaction payload: {:?}", signed.raw_transaction);
 
     //println!("Tx succeeded with hash: {:#x}", result);
-
 
     Ok(())
 }

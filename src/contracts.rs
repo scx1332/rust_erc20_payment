@@ -44,6 +44,7 @@ where
         .and_then(|function| function.encode_input(&params.into_tokens()))
 }
 
+#[allow(dead_code)]
 pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(
         &ERC20_CONTRACT_TEMPLATE,
