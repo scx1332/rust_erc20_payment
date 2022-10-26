@@ -37,7 +37,7 @@ pub async fn process_transaction(
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let _chain_id = web3_tx_dao.chain_id;
-    let from_addr = Address::from_str(&web3_tx_dao.from)?;
+    let from_addr = Address::from_str(&web3_tx_dao.from_addr)?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce);

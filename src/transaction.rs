@@ -9,7 +9,7 @@ use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParamet
 use web3::Web3;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, Box<dyn error::Error>> {
-    Ok(if let Some(data) = &web3_tx_dao.data {
+    Ok(if let Some(data) = &web3_tx_dao.call_data {
         let hex_data = hex::decode(data)?;
         Bytes(hex_data)
     } else {
@@ -21,11 +21,11 @@ pub fn dao_to_call_request(
     web3_tx_dao: &Web3TransactionDao,
 ) -> Result<CallRequest, Box<dyn error::Error>> {
     Ok(CallRequest {
-        from: Some(Address::from_str(&web3_tx_dao.from)?),
-        to: Some(Address::from_str(&web3_tx_dao.to)?),
+        from: Some(Address::from_str(&web3_tx_dao.from_addr)?),
+        to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
         gas: Some(U256::from(web3_tx_dao.gas_limit)),
         gas_price: None,
-        value: Some(U256::from_dec_str(&web3_tx_dao.value)?),
+        value: Some(U256::from_dec_str(&web3_tx_dao.val)?),
         data: Some(decode_data_to_bytes(web3_tx_dao)?),
         transaction_type: Some(U64::from(2)),
         access_list: None,
@@ -39,10 +39,10 @@ pub fn dao_to_transaction(
 ) -> Result<TransactionParameters, Box<dyn error::Error>> {
     Ok(TransactionParameters {
         nonce: Some(U256::from(web3_tx_dao.nonce.ok_or("Missing nonce")?)),
-        to: Some(Address::from_str(&web3_tx_dao.to)?),
+        to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
         gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
-        value: U256::from_dec_str(&web3_tx_dao.value)?,
+        value: U256::from_dec_str(&web3_tx_dao.val)?,
         data: decode_data_to_bytes(web3_tx_dao)?,
         chain_id: Some(web3_tx_dao.chain_id),
         transaction_type: Some(U64::from(2)),
@@ -67,16 +67,16 @@ pub fn create_eth_transfer(
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_unique_id(),
-        from: format!("{:#x}", from),
-        to: format!("{:#x}", to),
+        unique_id: get_unique_id(),
+        from_addr: format!("{:#x}", from),
+        to_addr: format!("{:#x}", to),
         chain_id,
         gas_limit,
         max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
-        value: amount.to_string(),
+        val: amount.to_string(),
         nonce: None,
-        data: None,
+        call_data: None,
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,
@@ -91,8 +91,8 @@ pub fn create_eth_transfer(
 }
 
 pub fn create_eth_transfer_str(
-    from: String,
-    to: String,
+    from_addr: String,
+    to_addr: String,
     chain_id: u64,
     gas_limit: u64,
     max_fee_per_gas: String,
@@ -100,16 +100,16 @@ pub fn create_eth_transfer_str(
     amount: String,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_unique_id(),
-        from,
-        to,
+        unique_id: get_unique_id(),
+        from_addr,
+        to_addr,
         chain_id,
         gas_limit,
         max_fee_per_gas,
         priority_fee,
-        value: amount,
+        val: amount,
         nonce: None,
-        data: None,
+        call_data: None,
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,
@@ -134,16 +134,16 @@ pub fn create_erc20_transfer(
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
     Ok(Web3TransactionDao {
-        id: get_unique_id(),
-        from: format!("{:#x}", from),
-        to: format!("{:#x}", token),
+        unique_id: get_unique_id(),
+        from_addr: format!("{:#x}", from),
+        to_addr: format!("{:#x}", token),
         chain_id,
         gas_limit,
         max_fee_per_gas: max_fee_per_gas.to_string(),
         priority_fee: priority_fee.to_string(),
-        value: "0".to_string(),
+        val: "0".to_string(),
         nonce: None,
-        data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount)?)),
+        call_data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount)?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,

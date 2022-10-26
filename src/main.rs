@@ -4,6 +4,7 @@ mod model;
 mod process;
 mod transaction;
 mod utils;
+mod db_connection;
 use sqlx::sqlite::{SqliteConnectOptions};
 use sqlx::ConnectOptions;
 
@@ -22,6 +23,7 @@ use web3::transports::Http;
 use crate::process::process_transaction;
 use crate::utils::gwei_to_u256;
 use web3::{ethabi::ethereum_types::U256, types::Address};
+use crate::db_connection::create_sqlite_connection;
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -117,8 +119,9 @@ fn prepare_erc20_multi_contract(
 async fn main() -> Result<(), Box<dyn error::Error>> {
     env_logger::init();
 
-    let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
+    // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
+    let pool = create_sqlite_connection(2).await?;
     
 
     let prov_url = env::var("PROVIDER_URL").unwrap();
@@ -167,9 +170,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     //web3_tx_dao2.value = "2".to_string();
     let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key, true);
 
-    let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
-    println!("Transaction 1: {:?}", res1?);
-    println!("Transaction 2: {:?}", res2?);
+    //let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
+   //println!("Transaction 1: {:?}", res1?);
+   // println!("Transaction 2: {:?}", res2?);
 
     //println!("Transaction hash: {:?}", signed.transaction_hash);
     //println!("Transaction payload: {:?}", signed.raw_transaction);
