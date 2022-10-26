@@ -25,7 +25,7 @@ use crate::utils::gwei_to_u256;
 use web3::{types::{Address, U256}};
 use crate::model::TokenTransfer;
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{get_all_token_transfers, insert_token_transfer, insert_tx};
+use crate::db::operations::{get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
 
 type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -173,11 +173,11 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             let mut tx = conn.begin().await?;
             insert_tx(&mut tx, &mut web3_tx_dao).await?;
             token_transfer.tx_id = Some(web3_tx_dao.id.clone());
-            insert_token_transfer(&mut tx, &token_transfer).await?;
+            update_token_transfer(&mut tx, &token_transfer).await?;
             tx.commit().await?;
 
             let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, false).await?;
-            insert_tx(&mut conn, &mut web3_tx_dao).await?;
+            update_tx(&mut conn, &mut web3_tx_dao).await?;
         }
 
 
