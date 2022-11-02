@@ -64,10 +64,22 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
+pub async fn get_token_transfers_by_tx(
+    conn: &mut SqliteConnection,
+    tx_id: i64,
+) -> Result<Vec<TokenTransfer>, Box<dyn Error>> {
+    let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
+        .bind(tx_id)
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
+
 pub async fn get_all_processed_transactions(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Web3TransactionDao>, Box<dyn Error>> {
-    let rows = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE processing>0")
+    let rows = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC")
         .fetch_all(conn)
         .await?;
     Ok(rows)

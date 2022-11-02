@@ -263,8 +263,9 @@ pub async fn find_receipt(
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
+            log::warn!("receipt: {:?}", receipt);
             web3_tx_dao.fee_paid = Some(
-                (receipt.cumulative_gas_used
+                (receipt.gas_used
                     * receipt
                         .effective_gas_price
                         .ok_or("Effective gas price expected")?)

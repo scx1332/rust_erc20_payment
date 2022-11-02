@@ -20,12 +20,12 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use crate::process::process_transaction;
+use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::utils::gwei_to_u256;
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{get_all_processed_transactions, get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
+use crate::db::operations::{get_all_processed_transactions, get_all_token_transfers, get_token_transfers_by_tx, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
 /*
 struct ERC20Payment {
     from: Address,
@@ -118,13 +118,57 @@ pub async fn process_transactions(
     secret_key: &SecretKey,
 ) -> Result<(), Box<dyn error::Error>>
 {
-    let mut transactions = get_all_processed_transactions(conn).await?;
+    loop {
+        let mut transactions = get_all_processed_transactions(conn).await?;
 
-    for mut tx in transactions {
-        let _process_t_res =
-            process_transaction(&mut tx, web3, secret_key, false).await?;
-        update_tx(conn, &mut tx).await?;
+        for tx in &mut transactions {
+            let process_t_res =
+                process_transaction(tx, web3, secret_key, false).await?;
+            match process_t_res {
+                ProcessTransactionResult::Confirmed => {
+                    tx.processing = 0;
 
+                    let mut db_transaction = conn.begin().await?;
+                    let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+                    let token_transfers_count = U256::from(token_transfers.len() as u64);
+                    for mut token_transfer in token_transfers {
+                        if let Some(fee_paid) = tx.fee_paid.clone() {
+                            let val = U256::from_dec_str(&fee_paid)?;
+                            let val2 = val / token_transfers_count;
+                            token_transfer.fee_paid = Some(val2.to_string());
+                        } else {
+                            token_transfer.fee_paid = None;
+                        }
+                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
+                    }
+                    update_tx(&mut db_transaction, tx).await?;
+                    db_transaction.commit().await?;
+                }
+                ProcessTransactionResult::NeedRetry => {
+                    tx.processing = 0;
+
+                    let mut db_transaction = conn.begin().await?;
+                    let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+                    for mut token_transfer in token_transfers {
+                        token_transfer.fee_paid = Some("0".to_string());
+                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
+                    }
+                    update_tx(&mut db_transaction, tx).await?;
+                    db_transaction.commit().await?;
+                }
+                ProcessTransactionResult::Unknown => {
+                    tx.processing = 1;
+                    update_tx(conn, tx).await?;
+                }
+            }
+            //process only one transaction at once
+            break;
+
+        };
+        if transactions.is_empty() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
     Ok(())
 }
