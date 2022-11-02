@@ -264,13 +264,12 @@ pub async fn find_receipt(
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
             log::warn!("receipt: {:?}", receipt);
-            web3_tx_dao.fee_paid = Some(
-                (receipt.gas_used
-                    * receipt
-                        .effective_gas_price
-                        .ok_or("Effective gas price expected")?)
-                .to_string(),
-            );
+
+            let gas_used = receipt.gas_used.ok_or("Gas used expected")?;
+            let effective_gas_price = receipt
+                .effective_gas_price
+                .ok_or("Effective gas price expected")?;
+            web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
             return Ok(true);
         } else {
             web3_tx_dao.block_number = None;

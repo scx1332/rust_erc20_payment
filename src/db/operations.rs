@@ -1,6 +1,6 @@
+use chrono::SecondsFormat::__NonExhaustive;
 use sqlx::SqliteConnection;
 use std::error::Error;
-use chrono::SecondsFormat::__NonExhaustive;
 
 use crate::model::{TokenTransfer, Web3TransactionDao};
 
@@ -23,7 +23,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     .bind(&token_transfer.fee_paid)
     .fetch_one(conn)
     .await?;
- Ok(res)
+    Ok(res)
 }
 
 pub async fn update_token_transfer(
@@ -75,16 +75,16 @@ pub async fn get_token_transfers_by_tx(
     Ok(rows)
 }
 
-
 pub async fn get_all_processed_transactions(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Web3TransactionDao>, Box<dyn Error>> {
-    let rows = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC")
-        .fetch_all(conn)
-        .await?;
+    let rows = sqlx::query_as::<_, Web3TransactionDao>(
+        r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC",
+    )
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
-
 
 pub async fn insert_tx(
     conn: &mut SqliteConnection,

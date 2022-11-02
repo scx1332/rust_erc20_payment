@@ -25,7 +25,10 @@ use crate::utils::gwei_to_u256;
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{get_all_processed_transactions, get_all_token_transfers, get_token_transfers_by_tx, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
+use crate::db::operations::{
+    get_all_processed_transactions, get_all_token_transfers, get_token_transfers_by_tx,
+    insert_token_transfer, insert_tx, update_token_transfer, update_tx,
+};
 /*
 struct ERC20Payment {
     from: Address,
@@ -116,20 +119,19 @@ pub async fn process_transactions(
     conn: &mut SqliteConnection,
     web3: &web3::Web3<web3::transports::Http>,
     secret_key: &SecretKey,
-) -> Result<(), Box<dyn error::Error>>
-{
+) -> Result<(), Box<dyn error::Error>> {
     loop {
         let mut transactions = get_all_processed_transactions(conn).await?;
 
         for tx in &mut transactions {
-            let process_t_res =
-                process_transaction(tx, web3, secret_key, false).await?;
+            let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
             match process_t_res {
                 ProcessTransactionResult::Confirmed => {
                     tx.processing = 0;
 
                     let mut db_transaction = conn.begin().await?;
-                    let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+                    let token_transfers =
+                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
                     let token_transfers_count = U256::from(token_transfers.len() as u64);
                     for mut token_transfer in token_transfers {
                         if let Some(fee_paid) = tx.fee_paid.clone() {
@@ -148,7 +150,8 @@ pub async fn process_transactions(
                     tx.processing = 0;
 
                     let mut db_transaction = conn.begin().await?;
-                    let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+                    let token_transfers =
+                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
                     for mut token_transfer in token_transfers {
                         token_transfer.fee_paid = Some("0".to_string());
                         update_token_transfer(&mut db_transaction, &token_transfer).await?;
@@ -163,8 +166,7 @@ pub async fn process_transactions(
             }
             //process only one transaction at once
             break;
-
-        };
+        }
         if transactions.is_empty() {
             break;
         }
@@ -172,8 +174,6 @@ pub async fn process_transactions(
     }
     Ok(())
 }
-
-
 
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
@@ -200,22 +200,23 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
     let (max_fee_per_gas, priority_fee, token_addr) = if chain_id == 5 {
-        (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?, Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap())
+        (
+            gwei_to_u256(1000.0)?,
+            gwei_to_u256(1.111)?,
+            Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap(),
+        )
     } else if chain_id == 80001 {
-        (gwei_to_u256(1000.0)?, gwei_to_u256(1.51)?, Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap())
+        (
+            gwei_to_u256(1000.0)?,
+            gwei_to_u256(1.51)?,
+            Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap(),
+        )
     } else {
         panic!("Chain ID not supported");
     };
 
-
-
-    let token_transfer = create_token_transfer(
-        from_addr,
-        to,
-        chain_id,
-        Some(token_addr),
-        U256::from(1),
-    );
+    let token_transfer =
+        create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1));
     let token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
 
     for mut token_transfer in get_all_token_transfers(&mut conn).await? {
