@@ -64,15 +64,24 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
+pub async fn get_all_processed_transactions(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<Web3TransactionDao>, Box<dyn Error>> {
+    let rows = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE processing>0")
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
+
 pub async fn insert_tx(
     conn: &mut SqliteConnection,
     tx: &Web3TransactionDao,
 ) -> Result<Web3TransactionDao, Box<dyn Error>> {
     let res = sqlx::query_as::<_, Web3TransactionDao>(
         r"INSERT INTO tx
-(from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-RETURNING *;
+(from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *;
 ",
     )
         .bind(&tx.from_addr)
@@ -83,6 +92,7 @@ RETURNING *;
         .bind( &tx.priority_fee)
         .bind( &tx.val)
         .bind( &tx.nonce)
+        .bind( &tx.processing)
         .bind( &tx.call_data)
         .bind( &tx.created_date)
         .bind( &tx.tx_hash)
@@ -112,16 +122,17 @@ max_fee_per_gas = $6,
 priority_fee = $7,
 val = $8,
 nonce = $9,
-call_data = $10,
-created_date = $11,
-tx_hash = $12,
-signed_raw_data = $13,
-signed_date = $14,
-broadcast_date = $15,
-confirmed_date = $16,
-block_number = $17,
-chain_status = $18,
-fee_paid = $19
+processing = $10,
+call_data = $11,
+created_date = $12,
+tx_hash = $13,
+signed_raw_data = $14,
+signed_date = $15,
+broadcast_date = $16,
+confirmed_date = $17,
+block_number = $18,
+chain_status = $19,
+fee_paid = $20
 WHERE id = $1
 ",
     )
@@ -134,6 +145,7 @@ WHERE id = $1
     .bind(&tx.priority_fee)
     .bind(&tx.val)
     .bind(&tx.nonce)
+    .bind(&tx.processing)
     .bind(&tx.call_data)
     .bind(&tx.created_date)
     .bind(&tx.tx_hash)

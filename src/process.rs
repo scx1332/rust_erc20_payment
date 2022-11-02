@@ -5,6 +5,7 @@ use std::time::Duration;
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
+use crate::db::operations::get_all_processed_transactions;
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;

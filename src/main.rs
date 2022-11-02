@@ -6,7 +6,7 @@ mod process;
 mod transaction;
 mod utils;
 
-use sqlx::Connection;
+use sqlx::{Connection, SqliteConnection};
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -25,9 +25,7 @@ use crate::utils::gwei_to_u256;
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{
-    get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx,
-};
+use crate::db::operations::{get_all_processed_transactions, get_all_token_transfers, insert_token_transfer, insert_tx, update_token_transfer, update_tx};
 /*
 struct ERC20Payment {
     from: Address,
@@ -114,6 +112,25 @@ fn prepare_erc20_multi_contract(
     )
 }*/
 
+pub async fn process_transactions(
+    conn: &mut SqliteConnection,
+    web3: &web3::Web3<web3::transports::Http>,
+    secret_key: &SecretKey,
+) -> Result<(), Box<dyn error::Error>>
+{
+    let mut transactions = get_all_processed_transactions(conn).await?;
+
+    for mut tx in transactions {
+        let _process_t_res =
+            process_transaction(&mut tx, web3, secret_key, false).await?;
+        update_tx(conn, &mut tx).await?;
+
+    }
+    Ok(())
+}
+
+
+
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
@@ -175,12 +192,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             token_transfer.tx_id = Some(web3_tx_dao.id);
             update_token_transfer(&mut tx, &token_transfer).await?;
             tx.commit().await?;
-
-            let _process_t_res =
-                process_transaction(&mut web3_tx_dao, &web3, &secret_key, true).await?;
-            update_tx(&mut conn, &mut web3_tx_dao).await?;
         }
     }
+    process_transactions(&mut conn, &web3, &secret_key).await?;
 
     /*
     let mut web3_tx_dao = create_eth_transfer(

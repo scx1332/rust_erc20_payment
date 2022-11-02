@@ -23,6 +23,7 @@ pub struct Web3TransactionDao {
     pub priority_fee: String,
     pub val: String,
     pub nonce: Option<i64>,
+    pub processing: i64,
     pub call_data: Option<String>,
     pub created_date: DateTime<Utc>,
     pub tx_hash: Option<String>,
