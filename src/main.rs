@@ -215,9 +215,11 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         panic!("Chain ID not supported");
     };
 
-    let token_transfer =
-        create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1));
-    let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    for transaction_no in 0..2 {
+        let token_transfer =
+            create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1 + transaction_no as i32));
+        let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    };
 
     for mut token_transfer in get_all_token_transfers(&mut conn).await? {
         if token_transfer.tx_id.is_none() {
