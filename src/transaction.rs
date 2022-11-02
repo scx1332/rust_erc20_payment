@@ -1,7 +1,7 @@
 use crate::contracts::get_erc20_transfer;
 use crate::model::TokenTransfer;
 use crate::model::Web3TransactionDao;
-use rand::distributions::{Alphanumeric, DistString};
+
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;

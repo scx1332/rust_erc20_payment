@@ -217,7 +217,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 
     let token_transfer =
         create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1));
-    let token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
 
     for mut token_transfer in get_all_token_transfers(&mut conn).await? {
         if token_transfer.tx_id.is_none() {
@@ -233,7 +233,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                 priority_fee,
             )?;
             let mut tx = conn.begin().await?;
-            let mut web3_tx_dao = insert_tx(&mut tx, &web3_tx_dao).await?;
+            let web3_tx_dao = insert_tx(&mut tx, &web3_tx_dao).await?;
             token_transfer.tx_id = Some(web3_tx_dao.id);
             update_token_transfer(&mut tx, &token_transfer).await?;
             tx.commit().await?;

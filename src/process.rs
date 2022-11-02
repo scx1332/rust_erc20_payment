@@ -1,4 +1,4 @@
-use crate::db::operations::get_all_processed_transactions;
+
 use secp256k1::SecretKey;
 use std::error;
 use std::str::FromStr;
