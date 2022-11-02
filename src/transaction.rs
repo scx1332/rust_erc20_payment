@@ -53,11 +53,6 @@ pub fn dao_to_transaction(
     })
 }
 
-pub fn get_rand_id() -> String {
-    let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
-    string
-}
-
 // token_addr NULL means standard (non ERC20) transfer of main chain currency (i.e ETH)
 pub fn create_token_transfer(
     from: Address,
@@ -67,7 +62,7 @@ pub fn create_token_transfer(
     token_amount: U256,
 ) -> TokenTransfer {
     TokenTransfer {
-        id: get_rand_id(),
+        id: 0,
         from_addr: format!("{:#x}", from),
         receiver_addr: format!("{:#x}", receiver),
         chain_id: chain_id as i64,
@@ -89,7 +84,7 @@ pub fn create_eth_transfer(
     amount: U256,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_rand_id(),
+        id: 0,
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", to),
         chain_id: chain_id as i64,
@@ -123,7 +118,7 @@ pub fn create_eth_transfer_str(
     amount: String,
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
-        id: get_rand_id(),
+        id: 0,
         from_addr,
         to_addr,
         chain_id: chain_id as i64,
@@ -157,7 +152,7 @@ pub fn create_erc20_transfer(
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, Box<dyn error::Error>> {
     Ok(Web3TransactionDao {
-        id: get_rand_id(),
+        id: 0,
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,

@@ -2,19 +2,19 @@ use chrono::{DateTime, Utc};
 
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct TokenTransfer {
-    pub id: String,
+    pub id: i64,
     pub from_addr: String,
     pub receiver_addr: String,
     pub chain_id: i64,
     pub token_addr: Option<String>,
     pub token_amount: String,
-    pub tx_id: Option<String>,
+    pub tx_id: Option<i64>,
     pub fee_paid: Option<String>,
 }
 
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct Web3TransactionDao {
-    pub id: String,
+    pub id: i64,
     pub from_addr: String,
     pub to_addr: String,
     pub chain_id: i64,

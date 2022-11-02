@@ -1,5 +1,6 @@
 use sqlx::SqliteConnection;
 use std::error::Error;
+use chrono::SecondsFormat::__NonExhaustive;
 
 use crate::model::{TokenTransfer, Web3TransactionDao};
 
@@ -7,13 +8,12 @@ pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
     token_transfer: &TokenTransfer,
 ) -> Result<TokenTransfer, Box<dyn Error>> {
-    let _res = sqlx::query(
+    let res = sqlx::query_as::<_, TokenTransfer>(
         r"INSERT INTO token_transfer
-(id, from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+(from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
 ",
     )
-    .bind(&token_transfer.id)
     .bind(&token_transfer.from_addr)
     .bind(&token_transfer.receiver_addr)
     .bind(&token_transfer.chain_id)
@@ -21,9 +21,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     .bind(&token_transfer.token_amount)
     .bind(&token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
-    .execute(conn)
+    .fetch_one(conn)
     .await?;
-    Ok(token_transfer.clone())
+ Ok(res)
 }
 
 pub async fn update_token_transfer(
@@ -31,7 +31,7 @@ pub async fn update_token_transfer(
     token_transfer: &TokenTransfer,
 ) -> Result<TokenTransfer, Box<dyn Error>> {
     let _res = sqlx::query(
-        r"UPDATE tx SET
+        r"UPDATE token_transfer SET
 from_addr = $2,
 receiver_addr = $3,
 chain_id = $4,
@@ -68,13 +68,13 @@ pub async fn insert_tx(
     conn: &mut SqliteConnection,
     tx: &Web3TransactionDao,
 ) -> Result<Web3TransactionDao, Box<dyn Error>> {
-    let _res = sqlx::query(
-        r"INSERT tx
-(id, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    let res = sqlx::query_as::<_, Web3TransactionDao>(
+        r"INSERT INTO tx
+(from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING *;
 ",
     )
-        .bind(&tx.id)
         .bind(&tx.from_addr)
         .bind(&tx.to_addr)
         .bind( &tx.chain_id)
@@ -93,9 +93,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .bind( &tx.block_number)
         .bind( &tx.chain_status)
         .bind( &tx.fee_paid)
-        .execute(conn)
+        .fetch_one(conn)
         .await?;
-    Ok(tx.clone())
+    Ok(res)
 }
 
 pub async fn update_tx(

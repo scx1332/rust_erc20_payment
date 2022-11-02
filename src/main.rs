@@ -138,24 +138,29 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let from_addr = get_eth_addr_from_secret(&secret_key);
     let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
-    let (max_fee_per_gas, priority_fee) = if chain_id == 5 {
-        (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?)
+    let (max_fee_per_gas, priority_fee, token_addr) = if chain_id == 5 {
+        (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?, Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap())
+    } else if chain_id == 80001 {
+        (gwei_to_u256(1000.0)?, gwei_to_u256(1.51)?, Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap())
     } else {
         panic!("Chain ID not supported");
     };
+
+
 
     let token_transfer = create_token_transfer(
         from_addr,
         to,
         chain_id,
-        Some(Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap()),
+        Some(token_addr),
         U256::from(1),
     );
-    let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    let token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
 
     for mut token_transfer in get_all_token_transfers(&mut conn).await? {
         if token_transfer.tx_id.is_none() {
-            let mut web3_tx_dao = create_erc20_transfer(
+            log::debug!("Processing token transfer {:?}", token_transfer);
+            let web3_tx_dao = create_erc20_transfer(
                 Address::from_str(&token_transfer.from_addr).unwrap(),
                 Address::from_str(&token_transfer.token_addr.as_ref().unwrap()).unwrap(),
                 Address::from_str(&token_transfer.receiver_addr).unwrap(),
@@ -166,13 +171,13 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                 priority_fee,
             )?;
             let mut tx = conn.begin().await?;
-            insert_tx(&mut tx, &mut web3_tx_dao).await?;
-            token_transfer.tx_id = Some(web3_tx_dao.id.clone());
+            let mut web3_tx_dao = insert_tx(&mut tx, &web3_tx_dao).await?;
+            token_transfer.tx_id = Some(web3_tx_dao.id);
             update_token_transfer(&mut tx, &token_transfer).await?;
             tx.commit().await?;
 
             let _process_t_res =
-                process_transaction(&mut web3_tx_dao, &web3, &secret_key, false).await?;
+                process_transaction(&mut web3_tx_dao, &web3, &secret_key, true).await?;
             update_tx(&mut conn, &mut web3_tx_dao).await?;
         }
     }
