@@ -1,12 +1,12 @@
 use lazy_static::lazy_static;
 
+use crate::error::PaymentError;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::contract::Contract;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::{Transport, Web3};
-use crate::error::PaymentError;
 
 lazy_static! {
     pub static ref DUMMY_RPC_PROVIDER: Web3<Http> = {
@@ -31,7 +31,8 @@ pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, Paym
         DUMMY_RPC_PROVIDER.eth(),
         Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
         json_abi,
-    ).map_err(|_err| PaymentError::OtherError("Failed to create contract".into()))?;
+    )
+    .map_err(|_err| PaymentError::OtherError("Failed to create contract".into()))?;
 
     Ok(contract)
 }

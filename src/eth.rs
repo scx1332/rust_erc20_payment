@@ -1,8 +1,6 @@
-
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
-
 
 pub async fn get_transaction_count(
     address: Address,

@@ -1,6 +1,4 @@
-
 use sqlx::SqliteConnection;
-
 
 use crate::model::{TokenTransfer, Web3TransactionDao};
 

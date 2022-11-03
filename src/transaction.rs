@@ -4,25 +4,24 @@ use crate::model::Web3TransactionDao;
 
 use secp256k1::SecretKey;
 
+use crate::error::PaymentError;
+use crate::utils::ConversionError;
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::error::PaymentError;
-use crate::utils::ConversionError;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
-        let hex_data = hex::decode(data).map_err(|_err|ConversionError::from("Failed to convert data from hex".into()))?;
+        let hex_data = hex::decode(data)
+            .map_err(|_err| ConversionError::from("Failed to convert data from hex".into()))?;
         Bytes(hex_data)
     } else {
         Bytes::default()
     })
 }
 
-pub fn dao_to_call_request(
-    web3_tx_dao: &Web3TransactionDao,
-) -> Result<CallRequest, PaymentError> {
+pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallRequest, PaymentError> {
     Ok(CallRequest {
         from: Some(Address::from_str(&web3_tx_dao.from_addr)?),
         to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
@@ -41,7 +40,11 @@ pub fn dao_to_transaction(
     web3_tx_dao: &Web3TransactionDao,
 ) -> Result<TransactionParameters, PaymentError> {
     Ok(TransactionParameters {
-        nonce: Some(U256::from(web3_tx_dao.nonce.ok_or(PaymentError::OtherError("Missing nonce".into()))?)),
+        nonce: Some(U256::from(
+            web3_tx_dao
+                .nonce
+                .ok_or(PaymentError::OtherError("Missing nonce".into()))?,
+        )),
         to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
         gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
@@ -222,9 +225,10 @@ pub async fn send_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
-        let bytes = Bytes(hex::decode(&signed_raw_data).map_err(|_err|
-            ConversionError::from("cannot decode signed_raw_data".to_string())
-        )?);
+        let bytes =
+            Bytes(hex::decode(&signed_raw_data).map_err(|_err| {
+                ConversionError::from("cannot decode signed_raw_data".to_string())
+            })?);
         let result = web3.eth().send_raw_transaction(bytes).await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
@@ -244,7 +248,8 @@ pub async fn find_tx(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
-        let tx_hash = web3::types::H256::from_str(tx_hash).map_err(|err|ConversionError::from("Failed to convert tx hash".into()))?;
+        let tx_hash = web3::types::H256::from_str(tx_hash)
+            .map_err(|err| ConversionError::from("Failed to convert tx hash".into()))?;
         let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await?;
         if let Some(tx) = tx {
             web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64() as i64);
@@ -262,17 +267,20 @@ pub async fn find_receipt(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
-        let tx_hash = web3::types::H256::from_str(tx_hash).map_err(|_err|ConversionError::from("Cannot parse tx_hash".to_string()))?;
+        let tx_hash = web3::types::H256::from_str(tx_hash)
+            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))?;
         let receipt = web3.eth().transaction_receipt(tx_hash).await?;
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
             log::warn!("receipt: {:?}", receipt);
 
-            let gas_used = receipt.gas_used.ok_or(PaymentError::OtherError("Gas used expected".into()))?;
-            let effective_gas_price = receipt
-                .effective_gas_price
-                .ok_or(PaymentError::OtherError("Effective gas price expected".into()))?;
+            let gas_used = receipt
+                .gas_used
+                .ok_or(PaymentError::OtherError("Gas used expected".into()))?;
+            let effective_gas_price = receipt.effective_gas_price.ok_or(
+                PaymentError::OtherError("Effective gas price expected".into()),
+            )?;
             web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
             return Ok(true);
         } else {

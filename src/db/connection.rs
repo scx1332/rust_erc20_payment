@@ -1,3 +1,4 @@
+use crate::error::PaymentError;
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::sqlite::SqliteConnectOptions;
@@ -7,7 +8,6 @@ use sqlx::{Pool, Postgres};
 use std::env;
 use std::error::Error;
 use std::str::FromStr;
-use crate::error::PaymentError;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -50,7 +50,10 @@ pub async fn create_sqlite_connection(
         .connect()
         .await?;
 
-    MIGRATOR.run(&mut conn).await.map_err(|err| PaymentError::OtherError(format!("Err: {:?}", err)))?;
+    MIGRATOR
+        .run(&mut conn)
+        .await
+        .map_err(|err| PaymentError::OtherError(format!("Err: {:?}", err)))?;
 
     Ok(conn)
 }

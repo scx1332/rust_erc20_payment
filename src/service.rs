@@ -1,17 +1,16 @@
-
 use std::str::FromStr;
 
-use secp256k1::SecretKey;
-use sqlx::{Connection, SqliteConnection};
-use web3::types::{Address, U256};
-use crate::db::operations::{get_all_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_tx, update_token_transfer, update_tx};
+use crate::db::operations::{
+    get_all_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed,
+    insert_tx, update_token_transfer, update_tx,
+};
 use crate::error::PaymentError;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::create_erc20_transfer;
-use crate::utils::{ConversionError, gwei_to_u256};
-
-
-
+use crate::utils::{gwei_to_u256, ConversionError};
+use secp256k1::SecretKey;
+use sqlx::{Connection, SqliteConnection};
+use web3::types::{Address, U256};
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
@@ -20,7 +19,6 @@ pub async fn gather_transactions(
     let mut inserted_tx_count = 0;
     for mut token_transfer in get_all_token_transfers(conn).await? {
         if token_transfer.tx_id.is_none() {
-
             let (max_fee_per_gas, priority_fee, _token_addr) = if token_transfer.chain_id == 5 {
                 (
                     gwei_to_u256(1000.0)?,
@@ -78,7 +76,9 @@ pub async fn process_transactions(
                     let token_transfers_count = U256::from(token_transfers.len() as u64);
                     for mut token_transfer in token_transfers {
                         if let Some(fee_paid) = tx.fee_paid.clone() {
-                            let val = U256::from_dec_str(&fee_paid).map_err(|_err|ConversionError::from("failed to parse fee paid".into()))?;
+                            let val = U256::from_dec_str(&fee_paid).map_err(|_err| {
+                                ConversionError::from("failed to parse fee paid".into())
+                            })?;
                             let val2 = val / token_transfers_count;
                             token_transfer.fee_paid = Some(val2.to_string());
                         } else {
@@ -136,7 +136,10 @@ pub async fn service_loop(
             last_update_time1 = current_time;
         }
 
-        if process_tx_needed && current_time > last_update_time1 + chrono::Duration::seconds(process_transactions_interval) {
+        if process_tx_needed
+            && current_time
+                > last_update_time1 + chrono::Duration::seconds(process_transactions_interval)
+        {
             log::debug!("Processing transactions...");
             match process_transactions(conn, web3, secret_key).await {
                 Ok(_) => {
@@ -150,7 +153,9 @@ pub async fn service_loop(
             last_update_time1 = current_time;
         }
 
-        if current_time > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval) {
+        if current_time
+            > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
+        {
             log::debug!("Gathering transfers...");
             match gather_transactions(conn, web3).await {
                 Ok(count) => {
@@ -167,9 +172,6 @@ pub async fn service_loop(
             last_update_time2 = current_time;
         }
 
-
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
-
-
 }

@@ -1,38 +1,32 @@
 mod contracts;
 mod db;
+mod error;
 mod eth;
 mod model;
 mod process;
+mod service;
 mod transaction;
 mod utils;
-mod service;
-mod error;
-
-
 
 use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
-use std::{env, fmt};
 use std::time::Duration;
+use std::{env, fmt};
 
-use crate::transaction::{create_token_transfer};
+use crate::transaction::create_token_transfer;
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
-
-
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
-use crate::db::operations::{
-    insert_token_transfer,
-};
+use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
-use crate::service::{service_loop};
+use crate::service::service_loop;
 /*
 struct ERC20Payment {
     from: Address,
@@ -119,8 +113,6 @@ fn prepare_erc20_multi_contract(
     )
 }*/
 
-
-
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
@@ -154,13 +146,18 @@ async fn main() -> Result<(), PaymentError> {
     };
 
     for transaction_no in 0..2 {
-        let token_transfer =
-            create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1 + transaction_no as i32));
+        let token_transfer = create_token_transfer(
+            from_addr,
+            to,
+            chain_id,
+            Some(token_addr),
+            U256::from(1 + transaction_no as i32),
+        );
         let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
-    };
+    }
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    tokio::spawn(async move {service_loop(&mut conn, &web3, &secret_key).await});
+    tokio::spawn(async move { service_loop(&mut conn, &web3, &secret_key).await });
 
     loop {
         //wait

@@ -1,13 +1,11 @@
-
 use secp256k1::SecretKey;
 
+use crate::error::PaymentError;
 use std::str::FromStr;
 use std::time::Duration;
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
-use crate::error::PaymentError;
-
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;
@@ -41,7 +39,8 @@ pub async fn process_transaction(
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let _chain_id = web3_tx_dao.chain_id;
-    let from_addr = Address::from_str(&web3_tx_dao.from_addr).map_err(|_e|PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
+    let from_addr = Address::from_str(&web3_tx_dao.from_addr)
+        .map_err(|_e| PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
