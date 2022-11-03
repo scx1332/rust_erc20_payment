@@ -4,7 +4,13 @@ use web3::types::U256;
 
 #[derive(Debug, Clone)]
 pub struct ConversionError {
-    msg: String,
+    pub msg: String,
+}
+
+impl ConversionError {
+    pub fn from(msg: String) -> Self {
+        Self { msg }
+    }
 }
 
 impl Display for ConversionError {

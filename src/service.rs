@@ -5,15 +5,18 @@ use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
 use crate::db::operations::{get_all_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_tx, update_token_transfer, update_tx};
+use crate::error::PaymentError;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::create_erc20_transfer;
-use crate::utils::gwei_to_u256;
+use crate::utils::{ConversionError, gwei_to_u256};
+
+
 
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
     web3: &web3::Web3<web3::transports::Http>,
-) -> Result<u32, Box<dyn error::Error>> {
+) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
     for mut token_transfer in get_all_token_transfers(conn).await? {
         if token_transfer.tx_id.is_none() {
@@ -59,7 +62,7 @@ pub async fn process_transactions(
     conn: &mut SqliteConnection,
     web3: &web3::Web3<web3::transports::Http>,
     secret_key: &SecretKey,
-) -> Result<(), Box<dyn error::Error>> {
+) -> Result<(), PaymentError> {
     loop {
         let mut transactions = get_transactions_being_processed(conn).await?;
 
@@ -75,7 +78,7 @@ pub async fn process_transactions(
                     let token_transfers_count = U256::from(token_transfers.len() as u64);
                     for mut token_transfer in token_transfers {
                         if let Some(fee_paid) = tx.fee_paid.clone() {
-                            let val = U256::from_dec_str(&fee_paid)?;
+                            let val = U256::from_dec_str(&fee_paid).map_err(|err|ConversionError::from("failed to parse fee paid".into()))?;
                             let val2 = val / token_transfers_count;
                             token_transfer.fee_paid = Some(val2.to_string());
                         } else {

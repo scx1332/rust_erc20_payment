@@ -7,7 +7,7 @@ use crate::model::{TokenTransfer, Web3TransactionDao};
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
     token_transfer: &TokenTransfer,
-) -> Result<TokenTransfer, Box<dyn Error>> {
+) -> Result<TokenTransfer, sqlx::Error> {
     let res = sqlx::query_as::<_, TokenTransfer>(
         r"INSERT INTO token_transfer
 (from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid)
@@ -29,7 +29,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
     token_transfer: &TokenTransfer,
-) -> Result<TokenTransfer, Box<dyn Error>> {
+) -> Result<TokenTransfer, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE token_transfer SET
 from_addr = $2,
@@ -57,7 +57,7 @@ WHERE id = $1
 
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
-) -> Result<Vec<TokenTransfer>, Box<dyn Error>> {
+) -> Result<Vec<TokenTransfer>, sqlx::Error> {
     let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer")
         .fetch_all(conn)
         .await?;
@@ -67,7 +67,7 @@ pub async fn get_all_token_transfers(
 pub async fn get_token_transfers_by_tx(
     conn: &mut SqliteConnection,
     tx_id: i64,
-) -> Result<Vec<TokenTransfer>, Box<dyn Error>> {
+) -> Result<Vec<TokenTransfer>, sqlx::Error> {
     let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
         .bind(tx_id)
         .fetch_all(conn)
@@ -77,7 +77,7 @@ pub async fn get_token_transfers_by_tx(
 
 pub async fn get_transactions_being_processed(
     conn: &mut SqliteConnection,
-) -> Result<Vec<Web3TransactionDao>, Box<dyn Error>> {
+) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
     let rows = sqlx::query_as::<_, Web3TransactionDao>(
         r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC",
     )
@@ -89,7 +89,7 @@ pub async fn get_transactions_being_processed(
 pub async fn insert_tx(
     conn: &mut SqliteConnection,
     tx: &Web3TransactionDao,
-) -> Result<Web3TransactionDao, Box<dyn Error>> {
+) -> Result<Web3TransactionDao, sqlx::Error> {
     let res = sqlx::query_as::<_, Web3TransactionDao>(
         r"INSERT INTO tx
 (from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirmed_date, block_number, chain_status, fee_paid)
@@ -123,7 +123,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 pub async fn update_tx(
     conn: &mut SqliteConnection,
     tx: &Web3TransactionDao,
-) -> Result<Web3TransactionDao, Box<dyn Error>> {
+) -> Result<Web3TransactionDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE tx SET
 from_addr = $2,

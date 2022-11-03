@@ -6,6 +6,8 @@ use std::time::Duration;
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
+use crate::error::PaymentError;
+use crate::error::PaymentError::ConversionError;
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;
@@ -22,7 +24,7 @@ pub enum ProcessTransactionResult {
 }
 
 #[allow(dead_code)]
-pub async fn get_provider(url: &str) -> Result<Web3<Http>, Box<dyn error::Error>> {
+pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
     let prov_url = url;
     let transport = web3::transports::Http::new(&prov_url)?;
     let web3 = web3::Web3::new(transport);
@@ -34,12 +36,12 @@ pub async fn process_transaction(
     web3: &Web3<Http>,
     secret_key: &SecretKey,
     wait_for_confirmation: bool,
-) -> Result<ProcessTransactionResult, Box<dyn error::Error>> {
+) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let _chain_id = web3_tx_dao.chain_id;
-    let from_addr = Address::from_str(&web3_tx_dao.from_addr)?;
+    let from_addr = Address::from_str(&web3_tx_dao.from_addr).map_err(|e|PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
@@ -66,7 +68,7 @@ pub async fn process_transaction(
             <= web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or("Nonce not found")?
+                .ok_or(PaymentError::OtherError("Nonce not found".to_string()))?
         {
             println!(
                 "Resend because pending nonce too low: {:?}",
@@ -82,7 +84,7 @@ pub async fn process_transaction(
             > web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or("Nonce not found")?
+                .ok_or(PaymentError::OtherError("Nonce not found".to_string()))?
         {
             let res = find_receipt(&web3, web3_tx_dao).await?;
             if res {

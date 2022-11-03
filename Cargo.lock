@@ -1474,9 +1474,11 @@ dependencies = [
  "lazy_static",
  "log",
  "rand",
+ "rustc-hex",
  "secp256k1",
  "sha3 0.10.6",
  "sqlx",
+ "thiserror",
  "tokio",
  "web3",
 ]

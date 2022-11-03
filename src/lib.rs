@@ -6,3 +6,4 @@ pub mod process;
 pub mod transaction;
 pub mod utils;
 pub mod service;
+pub mod error;

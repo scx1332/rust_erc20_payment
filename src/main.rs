@@ -6,6 +6,7 @@ mod process;
 mod transaction;
 mod utils;
 mod service;
+mod error;
 
 use sqlx::{Connection, SqliteConnection};
 
@@ -13,7 +14,7 @@ use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
-use std::{env, error, fmt};
+use std::{env, fmt};
 
 use crate::transaction::{create_erc20_transfer, create_token_transfer};
 use sha3::{Digest, Keccak256};
@@ -30,6 +31,7 @@ use crate::db::operations::{
     get_transactions_being_processed, get_all_token_transfers, get_token_transfers_by_tx,
     insert_token_transfer, insert_tx, update_token_transfer, update_tx,
 };
+use crate::error::PaymentError;
 use crate::service::{process_transactions, service_loop};
 /*
 struct ERC20Payment {
@@ -122,7 +124,7 @@ fn prepare_erc20_multi_contract(
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn error::Error>> {
+async fn main() -> Result<(), PaymentError> {
     env_logger::init();
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;

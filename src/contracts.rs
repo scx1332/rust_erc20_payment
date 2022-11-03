@@ -6,6 +6,7 @@ use web3::contract::Contract;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::{Transport, Web3};
+use crate::error::PaymentError;
 
 lazy_static! {
     pub static ref DUMMY_RPC_PROVIDER: Web3<Http> = {
@@ -25,12 +26,12 @@ lazy_static! {
         Address::from_str("0x50100d4faf5f3b09987dea36dc2eddd57a3e561b").unwrap();
 }
 
-pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, Box<dyn error::Error>> {
+pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, PaymentError> {
     let contract = Contract::from_json(
         DUMMY_RPC_PROVIDER.eth(),
         Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
         json_abi,
-    )?;
+    ).map_err(|err| PaymentError::OtherError("Failed to create contract".into()))?;
 
     Ok(contract)
 }

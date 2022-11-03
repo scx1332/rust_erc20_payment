@@ -7,6 +7,7 @@ use sqlx::{Pool, Postgres};
 use std::env;
 use std::error::Error;
 use std::str::FromStr;
+use crate::error::PaymentError;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -39,7 +40,7 @@ pub async fn _create_postgres_connection(
 
 pub async fn create_sqlite_connection(
     _max_connections: u32,
-) -> Result<SqliteConnection, Box<dyn Error>> {
+) -> Result<SqliteConnection, PaymentError> {
     let url = format!("sqlite://db.sqlite");
 
     log::info!("connecting to db using url {}", url);
@@ -49,7 +50,7 @@ pub async fn create_sqlite_connection(
         .connect()
         .await?;
 
-    MIGRATOR.run(&mut conn).await?;
+    MIGRATOR.run(&mut conn).await.map_err(|err| PaymentError::OtherError(format!("Err: {:?}", err)))?;
 
     Ok(conn)
 }
