@@ -8,7 +8,7 @@ mod utils;
 mod service;
 mod error;
 
-use sqlx::{Connection, SqliteConnection};
+
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -16,23 +16,22 @@ use std::str::FromStr;
 
 use std::{env, fmt};
 
-use crate::transaction::{create_erc20_transfer, create_token_transfer};
+use crate::transaction::{create_token_transfer};
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::utils::gwei_to_u256;
+
+
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::{
-    get_transactions_being_processed, get_all_token_transfers, get_token_transfers_by_tx,
-    insert_token_transfer, insert_tx, update_token_transfer, update_tx,
+    insert_token_transfer,
 };
 use crate::error::PaymentError;
-use crate::service::{process_transactions, service_loop};
+use crate::service::{service_loop};
 /*
 struct ERC20Payment {
     from: Address,
@@ -146,13 +145,9 @@ async fn main() -> Result<(), PaymentError> {
     let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
     let token_addr = if chain_id == 5 {
-        (
-            Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
-        )
+        Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
     } else if chain_id == 80001 {
-        (
-            Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
-        )
+        Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
     } else {
         panic!("Chain ID not supported");
     };

@@ -3,7 +3,7 @@ use crate::model::TokenTransfer;
 use crate::model::Web3TransactionDao;
 
 use secp256k1::SecretKey;
-use std::error;
+
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
@@ -13,7 +13,7 @@ use crate::utils::ConversionError;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
-        let hex_data = hex::decode(data).map_err(|err|ConversionError::from("Failed to convert data from hex".into()))?;
+        let hex_data = hex::decode(data).map_err(|_err|ConversionError::from("Failed to convert data from hex".into()))?;
         Bytes(hex_data)
     } else {
         Bytes::default()
@@ -222,7 +222,7 @@ pub async fn send_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
-        let bytes = Bytes(hex::decode(&signed_raw_data).map_err(|err|
+        let bytes = Bytes(hex::decode(&signed_raw_data).map_err(|_err|
             ConversionError::from("cannot decode signed_raw_data".to_string())
         )?);
         let result = web3.eth().send_raw_transaction(bytes).await;
@@ -262,7 +262,7 @@ pub async fn find_receipt(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
-        let tx_hash = web3::types::H256::from_str(tx_hash).map_err(|err|ConversionError::from("Cannot parse tx_hash".to_string()))?;
+        let tx_hash = web3::types::H256::from_str(tx_hash).map_err(|_err|ConversionError::from("Cannot parse tx_hash".to_string()))?;
         let receipt = web3.eth().transaction_receipt(tx_hash).await?;
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);

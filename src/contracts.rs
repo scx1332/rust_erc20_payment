@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use std::error;
+
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::contract::Contract;
@@ -31,7 +31,7 @@ pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, Paym
         DUMMY_RPC_PROVIDER.eth(),
         Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
         json_abi,
-    ).map_err(|err| PaymentError::OtherError("Failed to create contract".into()))?;
+    ).map_err(|_err| PaymentError::OtherError("Failed to create contract".into()))?;
 
     Ok(contract)
 }

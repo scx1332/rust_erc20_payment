@@ -1,6 +1,6 @@
 
 use sqlx::SqliteConnection;
-use std::error::Error;
+
 
 use crate::model::{TokenTransfer, Web3TransactionDao};
 

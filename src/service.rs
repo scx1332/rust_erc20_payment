@@ -1,6 +1,6 @@
-use std::error;
+
 use std::str::FromStr;
-use std::time::Instant;
+
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
@@ -15,13 +15,13 @@ use crate::utils::{ConversionError, gwei_to_u256};
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
-    web3: &web3::Web3<web3::transports::Http>,
+    _web3: &web3::Web3<web3::transports::Http>,
 ) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
     for mut token_transfer in get_all_token_transfers(conn).await? {
         if token_transfer.tx_id.is_none() {
 
-            let (max_fee_per_gas, priority_fee, token_addr) = if token_transfer.chain_id == 5 {
+            let (max_fee_per_gas, priority_fee, _token_addr) = if token_transfer.chain_id == 5 {
                 (
                     gwei_to_u256(1000.0)?,
                     gwei_to_u256(1.111)?,
@@ -78,7 +78,7 @@ pub async fn process_transactions(
                     let token_transfers_count = U256::from(token_transfers.len() as u64);
                     for mut token_transfer in token_transfers {
                         if let Some(fee_paid) = tx.fee_paid.clone() {
-                            let val = U256::from_dec_str(&fee_paid).map_err(|err|ConversionError::from("failed to parse fee paid".into()))?;
+                            let val = U256::from_dec_str(&fee_paid).map_err(|_err|ConversionError::from("failed to parse fee paid".into()))?;
                             let val2 = val / token_transfers_count;
                             token_transfer.fee_paid = Some(val2.to_string());
                         } else {
