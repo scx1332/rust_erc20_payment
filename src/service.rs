@@ -1,56 +1,119 @@
+use std::borrow::Borrow;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
-use crate::db::operations::{
-    get_all_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed,
-    insert_tx, update_token_transfer, update_tx,
-};
+use crate::db::operations::{get_all_token_transfers, get_pending_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_tx, update_token_transfer, update_tx};
 use crate::error::PaymentError;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::create_erc20_transfer;
+use crate::transaction::{create_erc20_transfer, create_eth_transfer};
 use crate::utils::{gwei_to_u256, ConversionError};
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
+use crate::model::TokenTransfer;
+
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
+pub struct TokenTransferKey {
+    pub from_addr: String,
+    pub receiver_addr: String,
+    pub chain_id: i64,
+    pub token_addr: Option<String>
+}
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
     _web3: &web3::Web3<web3::transports::Http>,
 ) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
-    for mut token_transfer in get_all_token_transfers(conn).await? {
-        if token_transfer.tx_id.is_none() {
-            let (max_fee_per_gas, priority_fee, _token_addr) = if token_transfer.chain_id == 5 {
-                (
-                    gwei_to_u256(1000.0)?,
-                    gwei_to_u256(1.111)?,
-                    Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap(),
-                )
-            } else if token_transfer.chain_id == 80001 {
-                (
-                    gwei_to_u256(1000.0)?,
-                    gwei_to_u256(1.51)?,
-                    Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap(),
-                )
-            } else {
-                panic!("Chain ID not supported");
-            };
-            log::debug!("Processing token transfer {:?}", token_transfer);
-            let web3_tx_dao = create_erc20_transfer(
-                Address::from_str(&token_transfer.from_addr).unwrap(),
-                Address::from_str(&token_transfer.token_addr.as_ref().unwrap()).unwrap(),
-                Address::from_str(&token_transfer.receiver_addr).unwrap(),
-                U256::from_dec_str(&token_transfer.token_amount).unwrap(),
+
+
+    let mut hash_map = HashMap::<TokenTransferKey, Vec<TokenTransfer>>::new();
+
+
+    let token_transfers = get_pending_token_transfers(conn).await?;
+
+    for f in token_transfers.iter() {
+        //group transactions
+        let key = TokenTransferKey {
+            from_addr: f.from_addr.clone(),
+            receiver_addr: f.receiver_addr.clone(),
+            chain_id: f.chain_id,
+            token_addr: f.token_addr.clone()
+        };
+        match hash_map.get_mut(&key) {
+            Some(v) => {
+                v.push(f.clone());
+            }
+            None => {
+                hash_map.insert(key, vec![f.clone()]);
+            }
+        }
+    }
+
+    for pair in hash_map.iter_mut() {
+        let token_transfers = pair.1;
+        let token_transfer = pair.0;
+
+        //sum of transfers
+
+        let mut sum = U256::zero();
+        for token_transfer in token_transfers.iter() {
+            sum += U256::from_dec_str(&token_transfer.token_amount)?;
+        }
+
+        let (max_fee_per_gas, priority_fee, _token_addr) = if token_transfer.chain_id == 5 {
+            (
+                gwei_to_u256(1000.0)?,
+                gwei_to_u256(1.111)?,
+                Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap(),
+            )
+        } else if token_transfer.chain_id == 80001 {
+            (
+                gwei_to_u256(1000.0)?,
+                gwei_to_u256(1.51)?,
+                Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap(),
+            )
+        } else {
+            panic!("Chain ID not supported");
+        };
+        log::debug!("Processing token transfer {:?}", token_transfer);
+        let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
+            create_erc20_transfer(
+                Address::from_str(&token_transfer.from_addr)?,
+                Address::from_str(token_addr)?,
+                Address::from_str(&token_transfer.receiver_addr)?,
+                sum,
                 token_transfer.chain_id as u64,
                 1000,
                 max_fee_per_gas,
                 priority_fee,
-            )?;
-            let mut tx = conn.begin().await?;
-            let web3_tx_dao = insert_tx(&mut tx, &web3_tx_dao).await?;
+            )?
+        } else {
+            create_eth_transfer(
+                Address::from_str(&token_transfer.from_addr)?,
+                Address::from_str(&token_transfer.receiver_addr)?,
+                token_transfer.chain_id as u64,
+                1000,
+                max_fee_per_gas,
+                priority_fee,
+                sum
+            )
+        };
+        let mut db_transaction = conn.begin().await?;
+        let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
+        for token_transfer in token_transfers {
             token_transfer.tx_id = Some(web3_tx_dao.id);
-            update_token_transfer(&mut tx, &token_transfer).await?;
-            tx.commit().await?;
-            inserted_tx_count += 1;
+            update_token_transfer(&mut db_transaction, &token_transfer).await?;
+        }
+        db_transaction.commit().await?;
+        inserted_tx_count += 1;
+    }
+
+
+
+    for mut token_transfer in get_all_token_transfers(conn).await? {
+        if token_transfer.tx_id.is_none() {
+
         }
     }
     Ok(inserted_tx_count)

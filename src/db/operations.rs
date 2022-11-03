@@ -62,6 +62,15 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
+pub async fn get_pending_token_transfers(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<TokenTransfer>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer WHERE tx_id is null")
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
 pub async fn get_token_transfers_by_tx(
     conn: &mut SqliteConnection,
     tx_id: i64,
