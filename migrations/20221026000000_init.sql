@@ -10,7 +10,7 @@ CREATE TABLE "tx" (
     val                 TEXT        NOT NULL,
     nonce               INTEGER     NULL,
     processing          INTEGER     NOT NULL,
-    call_data           TEXT        NOT NULL,
+    call_data           TEXT        NULL,
     created_date        DATETIME    NOT NULL,
     tx_hash             TEXT        NULL,
     signed_raw_data     TEXT        NULL,
