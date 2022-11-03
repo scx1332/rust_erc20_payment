@@ -5,6 +5,7 @@ mod model;
 mod process;
 mod transaction;
 mod utils;
+mod service;
 
 use sqlx::{Connection, SqliteConnection};
 
@@ -26,9 +27,10 @@ use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::{
-    get_all_processed_transactions, get_all_token_transfers, get_token_transfers_by_tx,
+    get_transactions_being_processed, get_all_token_transfers, get_token_transfers_by_tx,
     insert_token_transfer, insert_tx, update_token_transfer, update_tx,
 };
+use crate::service::{process_transactions, service_loop};
 /*
 struct ERC20Payment {
     from: Address,
@@ -115,65 +117,7 @@ fn prepare_erc20_multi_contract(
     )
 }*/
 
-pub async fn process_transactions(
-    conn: &mut SqliteConnection,
-    web3: &web3::Web3<web3::transports::Http>,
-    secret_key: &SecretKey,
-) -> Result<(), Box<dyn error::Error>> {
-    loop {
-        let mut transactions = get_all_processed_transactions(conn).await?;
 
-        for tx in &mut transactions {
-            let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
-            match process_t_res {
-                ProcessTransactionResult::Confirmed => {
-                    tx.processing = 0;
-
-                    let mut db_transaction = conn.begin().await?;
-                    let token_transfers =
-                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
-                    let token_transfers_count = U256::from(token_transfers.len() as u64);
-                    for mut token_transfer in token_transfers {
-                        if let Some(fee_paid) = tx.fee_paid.clone() {
-                            let val = U256::from_dec_str(&fee_paid)?;
-                            let val2 = val / token_transfers_count;
-                            token_transfer.fee_paid = Some(val2.to_string());
-                        } else {
-                            token_transfer.fee_paid = None;
-                        }
-                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
-                    }
-                    update_tx(&mut db_transaction, tx).await?;
-                    db_transaction.commit().await?;
-                }
-                ProcessTransactionResult::NeedRetry => {
-                    tx.processing = 0;
-
-                    let mut db_transaction = conn.begin().await?;
-                    let token_transfers =
-                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
-                    for mut token_transfer in token_transfers {
-                        token_transfer.fee_paid = Some("0".to_string());
-                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
-                    }
-                    update_tx(&mut db_transaction, tx).await?;
-                    db_transaction.commit().await?;
-                }
-                ProcessTransactionResult::Unknown => {
-                    tx.processing = 1;
-                    update_tx(conn, tx).await?;
-                }
-            }
-            //process only one transaction at once
-            break;
-        }
-        if transactions.is_empty() {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    }
-    Ok(())
-}
 
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
@@ -199,17 +143,13 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let from_addr = get_eth_addr_from_secret(&secret_key);
     let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
-    let (max_fee_per_gas, priority_fee, token_addr) = if chain_id == 5 {
+    let token_addr = if chain_id == 5 {
         (
-            gwei_to_u256(1000.0)?,
-            gwei_to_u256(1.111)?,
-            Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap(),
+            Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
         )
     } else if chain_id == 80001 {
         (
-            gwei_to_u256(1000.0)?,
-            gwei_to_u256(1.51)?,
-            Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap(),
+            Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
         )
     } else {
         panic!("Chain ID not supported");
@@ -219,27 +159,8 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         create_token_transfer(from_addr, to, chain_id, Some(token_addr), U256::from(1));
     let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
 
-    for mut token_transfer in get_all_token_transfers(&mut conn).await? {
-        if token_transfer.tx_id.is_none() {
-            log::debug!("Processing token transfer {:?}", token_transfer);
-            let web3_tx_dao = create_erc20_transfer(
-                Address::from_str(&token_transfer.from_addr).unwrap(),
-                Address::from_str(&token_transfer.token_addr.as_ref().unwrap()).unwrap(),
-                Address::from_str(&token_transfer.receiver_addr).unwrap(),
-                U256::from_dec_str(&token_transfer.token_amount).unwrap(),
-                token_transfer.chain_id as u64,
-                1000,
-                max_fee_per_gas,
-                priority_fee,
-            )?;
-            let mut tx = conn.begin().await?;
-            let web3_tx_dao = insert_tx(&mut tx, &web3_tx_dao).await?;
-            token_transfer.tx_id = Some(web3_tx_dao.id);
-            update_token_transfer(&mut tx, &token_transfer).await?;
-            tx.commit().await?;
-        }
-    }
-    process_transactions(&mut conn, &web3, &secret_key).await?;
+    service_loop(&mut conn, &web3, &secret_key).await;
+    //tokio::spawn(async move {service_loop(&mut conn, &web3, &secret_key).await});
 
     /*
     let mut web3_tx_dao = create_eth_transfer(

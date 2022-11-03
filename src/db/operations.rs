@@ -75,7 +75,7 @@ pub async fn get_token_transfers_by_tx(
     Ok(rows)
 }
 
-pub async fn get_all_processed_transactions(
+pub async fn get_transactions_being_processed(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Web3TransactionDao>, Box<dyn Error>> {
     let rows = sqlx::query_as::<_, Web3TransactionDao>(
