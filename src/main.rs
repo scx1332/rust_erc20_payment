@@ -15,6 +15,7 @@ use secp256k1::{PublicKey, SecretKey};
 use std::str::FromStr;
 
 use std::{env, fmt};
+use std::time::Duration;
 
 use crate::transaction::{create_token_transfer};
 use sha3::{Digest, Keccak256};
@@ -158,9 +159,13 @@ async fn main() -> Result<(), PaymentError> {
         let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
     };
 
-    service_loop(&mut conn, &web3, &secret_key).await;
-    //tokio::spawn(async move {service_loop(&mut conn, &web3, &secret_key).await});
+    //service_loop(&mut conn, &web3, &secret_key).await;
+    tokio::spawn(async move {service_loop(&mut conn, &web3, &secret_key).await});
 
+    loop {
+        //wait
+        tokio::time::sleep(Duration::from_secs(1));
+    }
     /*
     let mut web3_tx_dao = create_eth_transfer(
         from_addr,

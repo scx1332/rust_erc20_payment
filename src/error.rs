@@ -15,8 +15,6 @@ pub enum PaymentError {
     Web3Error(#[from] web3::Error),
     #[error("hex conversion error: {0}")]
     Web3AbiError(#[from] web3::ethabi::Error),
-    #[error("hex conversion error: {0}")]
-    HexConversionError(hex::FromHexError),
     #[error("Parsing error: {0}")]
     ParsingError(String),
     #[error("Other error: {0}")]
