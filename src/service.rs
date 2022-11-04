@@ -2,7 +2,11 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::contracts::MULTI_ERC20_GOERLI;
-use crate::db::operations::{find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_allowance, insert_tx, update_allowance, update_token_transfer, update_tx};
+use crate::db::operations::{
+    find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
+    get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
+    update_token_transfer, update_tx,
+};
 use crate::error::PaymentError;
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
@@ -86,7 +90,9 @@ pub async fn gather_transactions(
                 &token_transfer.from_addr,
                 token_addr,
                 &format!("{:#x}", *MULTI_ERC20_GOERLI),
-                token_transfer.chain_id).await?;
+                token_transfer.chain_id,
+            )
+            .await?;
 
             let mut allowance = U256::zero();
             if let Some(db_allowance) = db_allowance.as_mut() {
@@ -98,7 +104,8 @@ pub async fn gather_transactions(
                         Address::from_str(&token_transfer.from_addr)?,
                         Address::from_str(token_addr)?,
                         *MULTI_ERC20_GOERLI,
-                    ).await?;
+                    )
+                    .await?;
                     if allowance > minimum_allowance {
                         //allowance is confirmed on web3, update db
                         db_allowance.confirm_date = Some(chrono::Utc::now());
@@ -107,8 +114,7 @@ pub async fn gather_transactions(
                 }
             }
 
-            if allowance < minimum_allowance
-            {
+            if allowance < minimum_allowance {
                 let mut allowance = Allowance {
                     id: 0,
                     owner: token_transfer.from_addr.clone(),
@@ -138,7 +144,6 @@ pub async fn gather_transactions(
 
                 db_transaction.commit().await?;
                 inserted_tx_count += 1;
-
 
                 inserted_tx_count += 1;
 
@@ -185,20 +190,19 @@ pub async fn gather_transactions(
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult) -> Result<(), PaymentError> {
+    process_t_res: ProcessTransactionResult,
+) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await?;
-            let token_transfers =
-                get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
             let token_transfers_count = U256::from(token_transfers.len() as u64);
             for mut token_transfer in token_transfers {
                 if let Some(fee_paid) = tx.fee_paid.clone() {
-                    let val = U256::from_dec_str(&fee_paid).map_err(|_err| {
-                        ConversionError::from("failed to parse fee paid".into())
-                    })?;
+                    let val = U256::from_dec_str(&fee_paid)
+                        .map_err(|_err| ConversionError::from("failed to parse fee paid".into()))?;
                     let val2 = val / token_transfers_count;
                     token_transfer.fee_paid = Some(val2.to_string());
                 } else {
@@ -213,8 +217,7 @@ pub async fn update_token_transfer_result(
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await?;
-            let token_transfers =
-                get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
             for mut token_transfer in token_transfers {
                 token_transfer.fee_paid = Some("0".to_string());
                 token_transfer.error = Some("NeedRetry".to_string());
@@ -234,14 +237,14 @@ pub async fn update_token_transfer_result(
 pub async fn update_approve_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult) -> Result<(), PaymentError> {
+    process_t_res: ProcessTransactionResult,
+) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await?;
-            let mut allowance =
-                get_allowance_by_tx(&mut db_transaction, tx.id).await?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
             allowance.fee_paid = tx.fee_paid.clone();
             update_allowance(&mut db_transaction, &allowance).await?;
             update_tx(&mut db_transaction, tx).await?;
@@ -250,8 +253,7 @@ pub async fn update_approve_result(
         ProcessTransactionResult::NeedRetry => {
             tx.processing = 0;
             let mut db_transaction = conn.begin().await?;
-            let mut allowance =
-                get_allowance_by_tx(&mut db_transaction, tx.id).await?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some("NeedRetry".to_string());
             update_allowance(&mut db_transaction, &allowance).await?;
@@ -313,7 +315,7 @@ pub async fn service_loop(
 
         if process_tx_needed
             && current_time
-            > last_update_time1 + chrono::Duration::seconds(process_transactions_interval)
+                > last_update_time1 + chrono::Duration::seconds(process_transactions_interval)
         {
             log::debug!("Processing transactions...");
             match process_transactions(conn, web3, secret_key).await {

@@ -22,7 +22,6 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;

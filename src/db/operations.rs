@@ -1,4 +1,3 @@
-
 use sqlx::SqliteConnection;
 
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
@@ -46,17 +45,17 @@ error
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 ",
     )
-        .bind(&allowance.owner)
-        .bind(&allowance.token_addr)
-        .bind(&allowance.spender)
-        .bind(&allowance.allowance)
-        .bind(&allowance.chain_id)
-        .bind(&allowance.tx_id)
-        .bind(&allowance.fee_paid)
-        .bind(&allowance.confirm_date)
-        .bind(&allowance.error)
-        .fetch_one(conn)
-        .await?;
+    .bind(&allowance.owner)
+    .bind(&allowance.token_addr)
+    .bind(&allowance.spender)
+    .bind(&allowance.allowance)
+    .bind(&allowance.chain_id)
+    .bind(&allowance.tx_id)
+    .bind(&allowance.fee_paid)
+    .bind(&allowance.confirm_date)
+    .bind(&allowance.error)
+    .fetch_one(conn)
+    .await?;
     Ok(res)
 }
 
@@ -75,18 +74,19 @@ tx_id = $6,
 fee_paid = $7,
 confirm_date = $8,
 error = $9
- ",)
-        .bind(&allowance.owner)
-        .bind(&allowance.token_addr)
-        .bind(&allowance.spender)
-        .bind(&allowance.allowance)
-        .bind(&allowance.chain_id)
-        .bind(&allowance.tx_id)
-        .bind(&allowance.fee_paid)
-        .bind(&allowance.confirm_date)
-        .bind(&allowance.error)
-        .execute(conn)
-        .await?;
+ ",
+    )
+    .bind(&allowance.owner)
+    .bind(&allowance.token_addr)
+    .bind(&allowance.spender)
+    .bind(&allowance.allowance)
+    .bind(&allowance.chain_id)
+    .bind(&allowance.tx_id)
+    .bind(&allowance.fee_paid)
+    .bind(&allowance.confirm_date)
+    .bind(&allowance.error)
+    .execute(conn)
+    .await?;
     Ok(allowance.clone())
 }
 
@@ -117,22 +117,23 @@ pub async fn find_allowance(
     spender: &str,
     chain_id: i64,
 ) -> Result<Option<Allowance>, sqlx::Error> {
-    let row = sqlx::query_as::<_, Allowance>(r"SELECT * FROM allowance
+    let row = sqlx::query_as::<_, Allowance>(
+        r"SELECT * FROM allowance
 WHERE
 owner = $1 AND
 token_addr = $2 AND
 spender = $3 AND
 chain_id = $4
-")
-        .bind(owner)
-        .bind(token_addr)
-        .bind(spender)
-        .bind(chain_id)
-        .fetch_optional(conn)
-        .await?;
+",
+    )
+    .bind(owner)
+    .bind(token_addr)
+    .bind(spender)
+    .bind(chain_id)
+    .fetch_optional(conn)
+    .await?;
     Ok(row)
 }
-
 
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
