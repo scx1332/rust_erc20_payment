@@ -164,7 +164,7 @@ pub fn create_erc20_transfer(
 ) -> Result<Web3TransactionDao, PaymentError> {
     Ok(Web3TransactionDao {
         id: 0,
-        method: "erc20transfer".to_string(),
+        method: "ERC20.transfer".to_string(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,
@@ -198,7 +198,7 @@ pub fn create_erc20_approve(
 ) -> Result<Web3TransactionDao, PaymentError> {
     Ok(Web3TransactionDao {
         id: 0,
-        method: "erc20approve".to_string(),
+        method: "ERC20.approve".to_string(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,

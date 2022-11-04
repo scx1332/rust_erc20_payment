@@ -95,7 +95,31 @@ pub async fn gather_transactions(
             .await?;
 
             let mut allowance = U256::zero();
-            if let Some(db_allowance) = db_allowance.as_mut() {
+            if db_allowance.is_none() {
+                allowance = check_allowance(
+                    web3,
+                    Address::from_str(&token_transfer.from_addr)?,
+                    Address::from_str(token_addr)?,
+                    *MULTI_ERC20_GOERLI,
+                )
+                    .await?;
+                if allowance > minimum_allowance {
+                    let db_allowance = Allowance {
+                        id: 0,
+                        owner: token_transfer.from_addr.clone(),
+                        token_addr: token_addr.clone(),
+                        spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                        chain_id: token_transfer.chain_id,
+                        tx_id: None,
+                        allowance: allowance.to_string(),
+                        confirm_date: Some(chrono::Utc::now()),
+                        fee_paid: None,
+                        error: None
+                    };
+                    //allowance is confirmed on web3, update db
+                    insert_allowance(conn, &db_allowance).await?;
+                }
+            } else if let Some(db_allowance) = db_allowance.as_mut() {
                 allowance = U256::from_dec_str(&db_allowance.allowance)?;
                 if db_allowance.confirm_date.is_none() {
                     //db allowance is not confirmed yet, check on chain
@@ -273,9 +297,9 @@ pub async fn process_transactions(
 
         for tx in &mut transactions {
             let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
-            if tx.method == "erc20transfer" {
+            if tx.method == "ERC20.transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
-            } else if tx.method == "erc20approve" {
+            } else if tx.method == "ERC20.approve" {
                 update_approve_result(conn, tx, process_t_res).await?;
             }
 
