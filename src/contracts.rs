@@ -69,7 +69,7 @@ pub fn get_erc20_allowance(owner: Address, spender: Address) -> Result<Vec<u8>, 
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "allowance", (owner, spender))
 }
 
-pub fn get_erc20_approve(owner: Address, spender: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
-    contract_encode(&ERC20_CONTRACT_TEMPLATE, "approve", (owner, spender))
+pub fn get_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+    contract_encode(&ERC20_CONTRACT_TEMPLATE, "approve", (spender, amount))
 }
 

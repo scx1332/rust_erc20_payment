@@ -31,7 +31,7 @@ pub async fn contract_approve(web3: &Web3<Http>, owner: Address, token: Address,
     Ok(())
 }
 
-pub async fn check_allowance(web3: &Web3<Http>, owner: Address, token: Address, spender: Address) -> Result<(), PaymentError> {
+pub async fn check_allowance(web3: &Web3<Http>, owner: Address, token: Address, spender: Address) -> Result<U256, PaymentError> {
     log::debug!("Checking multi payment contract for allowance...");
     let call_request = CallRequest {
         from: Some(owner),
@@ -52,5 +52,5 @@ pub async fn check_allowance(web3: &Web3<Http>, owner: Address, token: Address, 
     let allowance = U256::from_big_endian(&res.0);
     log::info!("Allowance: owner: {:?}, token: {:?}, contract: {:?}, allowance: {:?}", owner, token, spender, allowance);
 
-    Ok(())
+    Ok(allowance)
 }

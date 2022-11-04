@@ -5,12 +5,14 @@ use std::str::FromStr;
 use crate::db::operations::{get_all_token_transfers, get_pending_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_tx, update_token_transfer, update_tx};
 use crate::error::PaymentError;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{create_erc20_transfer, create_eth_transfer};
+use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
 use crate::utils::{gwei_to_u256, ConversionError};
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
+use crate::multi::check_allowance;
 use crate::model::TokenTransfer;
+use crate::contracts::MULTI_ERC20_GOERLI;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -22,7 +24,7 @@ pub struct TokenTransferKey {
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
-    _web3: &web3::Web3<web3::transports::Http>,
+    web3: &web3::Web3<web3::transports::Http>,
 ) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
 
@@ -54,6 +56,9 @@ pub async fn gather_transactions(
         let token_transfers = pair.1;
         let token_transfer = pair.0;
 
+
+
+
         //sum of transfers
 
         let mut sum = U256::zero();
@@ -78,6 +83,28 @@ pub async fn gather_transactions(
         };
         log::debug!("Processing token transfer {:?}", token_transfer);
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
+            //this is some arbitrary number.
+            let MINIMUM_ALLOWANCE = U256::max_value() / U256::from(2);
+            if check_allowance(web3, Address::from_str(
+                &token_transfer.from_addr)?,
+                               Address::from_str(token_addr)?,
+                               *MULTI_ERC20_GOERLI).await? < MINIMUM_ALLOWANCE {
+                let approve_tx = create_erc20_approve(
+                    Address::from_str(&token_transfer.from_addr)?,
+                    Address::from_str(&token_addr)?,
+                    *MULTI_ERC20_GOERLI,
+                    token_transfer.chain_id as u64,
+                    1000,
+                    max_fee_per_gas,
+                    priority_fee,
+                )?;
+                insert_tx(conn, &approve_tx).await?;
+                inserted_tx_count += 1;
+
+                log::error!("Error in check allowance");
+                return Err(PaymentError::OtherError("Allowance too low to continue".to_string()));
+            }
+
             create_erc20_transfer(
                 Address::from_str(&token_transfer.from_addr)?,
                 Address::from_str(token_addr)?,
@@ -215,6 +242,8 @@ pub async fn service_loop(
             };
             last_update_time1 = current_time;
         }
+
+
 
         if current_time
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)

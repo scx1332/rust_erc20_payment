@@ -203,7 +203,7 @@ pub fn create_erc20_approve(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_erc20_approve(from, contract_to_approve)?)),
+        call_data: Some(hex::encode(get_erc20_approve(contract_to_approve, U256::max_value())?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,
