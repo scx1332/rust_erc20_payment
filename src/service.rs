@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::contracts::MULTI_ERC20_GOERLI;
-use crate::db::operations::{find_allowance, get_all_token_transfers, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_allowance, insert_tx, update_allowance, update_token_transfer, update_tx};
+use crate::db::operations::{find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx, get_transactions_being_processed, insert_allowance, insert_tx, update_allowance, update_token_transfer, update_tx};
 use crate::error::PaymentError;
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
@@ -11,7 +11,7 @@ use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth
 use crate::utils::{gwei_to_u256, ConversionError};
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
-use sqlx::encode::IsNull::No;
+
 use web3::types::{Address, U256};
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]

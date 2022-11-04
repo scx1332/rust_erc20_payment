@@ -22,13 +22,13 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use crate::contracts::MULTI_ERC20_MUMBAI;
+
 use web3::types::{Address, U256};
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
-use crate::multi::check_allowance;
+
 use crate::service::service_loop;
 /*
 struct ERC20Payment {

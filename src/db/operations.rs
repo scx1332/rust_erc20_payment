@@ -1,4 +1,4 @@
-use secp256k1::All;
+
 use sqlx::SqliteConnection;
 
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
