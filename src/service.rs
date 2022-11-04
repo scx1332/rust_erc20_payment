@@ -94,36 +94,32 @@ pub async fn gather_transactions(
             )
             .await?;
 
-            let mut allowance = U256::zero();
-            if db_allowance.is_none() {
-                allowance = check_allowance(
-                    web3,
-                    Address::from_str(&token_transfer.from_addr)?,
-                    Address::from_str(token_addr)?,
-                    *MULTI_ERC20_GOERLI,
-                )
-                    .await?;
-                if allowance > minimum_allowance {
-                    let db_allowance = Allowance {
-                        id: 0,
-                        owner: token_transfer.from_addr.clone(),
-                        token_addr: token_addr.clone(),
-                        spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                        chain_id: token_transfer.chain_id,
-                        tx_id: None,
-                        allowance: allowance.to_string(),
-                        confirm_date: Some(chrono::Utc::now()),
-                        fee_paid: None,
-                        error: None
-                    };
-                    //allowance is confirmed on web3, update db
-                    insert_allowance(conn, &db_allowance).await?;
-                }
-            } else if let Some(db_allowance) = db_allowance.as_mut() {
-                allowance = U256::from_dec_str(&db_allowance.allowance)?;
-                if db_allowance.confirm_date.is_none() {
-                    //db allowance is not confirmed yet, check on chain
-                    allowance = check_allowance(
+            let allowance = match db_allowance.as_mut() {
+                Some(db_allowance) => match db_allowance.confirm_date {
+                    Some(_) => {
+                        log::debug!("Allowance already confirmed from db");
+                        U256::from_dec_str(&db_allowance.allowance)?
+                    }
+                    None => {
+                        log::debug!("Allowance not confirmed in db, check on chain");
+                        let allowance = check_allowance(
+                            web3,
+                            Address::from_str(&token_transfer.from_addr)?,
+                            Address::from_str(token_addr)?,
+                            *MULTI_ERC20_GOERLI,
+                        )
+                        .await?;
+                        if allowance > minimum_allowance {
+                            log::debug!("Allowance found on chain, update db");
+                            db_allowance.confirm_date = Some(chrono::Utc::now());
+                            update_allowance(conn, &db_allowance).await?;
+                        }
+                        allowance
+                    }
+                },
+                None => {
+                    log::debug!("No db entry, check allowance on chain");
+                    let allowance = check_allowance(
                         web3,
                         Address::from_str(&token_transfer.from_addr)?,
                         Address::from_str(token_addr)?,
@@ -131,12 +127,25 @@ pub async fn gather_transactions(
                     )
                     .await?;
                     if allowance > minimum_allowance {
+                        log::debug!("Allowance found on chain, add entry to db");
+                        let db_allowance = Allowance {
+                            id: 0,
+                            owner: token_transfer.from_addr.clone(),
+                            token_addr: token_addr.clone(),
+                            spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                            chain_id: token_transfer.chain_id,
+                            tx_id: None,
+                            allowance: allowance.to_string(),
+                            confirm_date: Some(chrono::Utc::now()),
+                            fee_paid: None,
+                            error: None,
+                        };
                         //allowance is confirmed on web3, update db
-                        db_allowance.confirm_date = Some(chrono::Utc::now());
-                        update_allowance(conn, &db_allowance).await?;
+                        insert_allowance(conn, &db_allowance).await?;
                     }
+                    allowance
                 }
-            }
+            };
 
             if allowance < minimum_allowance {
                 let mut allowance = Allowance {
