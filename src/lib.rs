@@ -7,3 +7,4 @@ pub mod process;
 pub mod service;
 pub mod transaction;
 pub mod utils;
+pub mod multi;

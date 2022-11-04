@@ -7,6 +7,7 @@ mod process;
 mod service;
 mod transaction;
 mod utils;
+mod multi;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -22,10 +23,12 @@ use web3::contract::Contract;
 use web3::transports::Http;
 
 use web3::types::{Address, U256};
+use crate::contracts::{MULTI_ERC20_GOERLI, MULTI_ERC20_MUMBAI};
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
+use crate::multi::check_allowance;
 use crate::service::service_loop;
 /*
 struct ERC20Payment {
@@ -144,6 +147,8 @@ async fn main() -> Result<(), PaymentError> {
     } else {
         panic!("Chain ID not supported");
     };
+
+    check_allowance(&web3, from_addr, token_addr, *MULTI_ERC20_MUMBAI).await?;
 
     for transaction_no in 0..2 {
         let token_transfer = create_token_transfer(
