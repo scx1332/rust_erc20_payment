@@ -148,8 +148,6 @@ async fn main() -> Result<(), PaymentError> {
         panic!("Chain ID not supported");
     };
 
-    check_allowance(&web3, from_addr, token_addr, *MULTI_ERC20_MUMBAI).await?;
-
     for transaction_no in 0..2 {
         let token_transfer = create_token_transfer(
             from_addr,

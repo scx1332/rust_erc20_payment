@@ -82,14 +82,14 @@ pub async fn gather_transactions(
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
             //this is some arbitrary number.
             let MINIMUM_ALLOWANCE = U256::max_value() / U256::from(2);
-            if check_allowance(
+            let allowance = check_allowance(
                 web3,
                 Address::from_str(&token_transfer.from_addr)?,
                 Address::from_str(token_addr)?,
                 *MULTI_ERC20_GOERLI,
             )
-            .await?
-                < MINIMUM_ALLOWANCE
+            .await?;
+            if allowance < MINIMUM_ALLOWANCE
             {
                 let approve_tx = create_erc20_approve(
                     Address::from_str(&token_transfer.from_addr)?,
