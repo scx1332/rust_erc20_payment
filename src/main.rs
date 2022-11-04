@@ -163,27 +163,6 @@ async fn main() -> Result<(), PaymentError> {
 
     loop {
         //wait
-        tokio::time::sleep(Duration::from_secs(1));
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
-    /*
-    let mut web3_tx_dao = create_eth_transfer(
-        from_addr,
-        to,
-        chain_id,
-        0,
-        max_fee_per_gas,
-        priority_fee,
-        U256::from(1),
-    );*/
-
-    //let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
-    //println!("Transaction 1: {:?}", res1?);
-    // println!("Transaction 2: {:?}", res2?);
-
-    //println!("Transaction hash: {:?}", signed.transaction_hash);
-    //println!("Transaction payload: {:?}", signed.raw_transaction);
-
-    //println!("Tx succeeded with hash: {:#x}", result);
-
-    Ok(())
 }

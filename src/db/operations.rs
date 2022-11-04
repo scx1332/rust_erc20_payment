@@ -90,6 +90,7 @@ error = $9
     Ok(allowance.clone())
 }
 
+#[allow(unused)]
 pub async fn get_all_allowances(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Allowance>, sqlx::Error> {
@@ -164,6 +165,7 @@ WHERE id = $1
     Ok(token_transfer.clone())
 }
 
+#[allow(unused)]
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<TokenTransfer>, sqlx::Error> {

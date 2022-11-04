@@ -145,12 +145,7 @@ pub async fn gather_transactions(
                 db_transaction.commit().await?;
                 inserted_tx_count += 1;
 
-                inserted_tx_count += 1;
-
-                log::error!("Error in check allowance");
-                return Err(PaymentError::OtherError(
-                    "Allowance too low to continue".to_string(),
-                ));
+                return Ok(inserted_tx_count);
             }
 
             create_erc20_transfer(
