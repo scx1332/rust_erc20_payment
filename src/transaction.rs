@@ -4,13 +4,13 @@ use crate::model::Web3TransactionDao;
 
 use secp256k1::SecretKey;
 
+use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
 use crate::utils::ConversionError;
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::contracts::get_erc20_approve;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -203,7 +203,10 @@ pub fn create_erc20_approve(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_erc20_approve(contract_to_approve, U256::max_value())?)),
+        call_data: Some(hex::encode(get_erc20_approve(
+            contract_to_approve,
+            U256::max_value(),
+        )?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,
@@ -215,8 +218,6 @@ pub fn create_erc20_approve(
         fee_paid: None,
     })
 }
-
-
 
 pub async fn check_transaction(
     web3: &Web3<Http>,

@@ -3,11 +3,11 @@ mod db;
 mod error;
 mod eth;
 mod model;
+mod multi;
 mod process;
 mod service;
 mod transaction;
 mod utils;
-mod multi;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -22,8 +22,8 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
+use crate::contracts::MULTI_ERC20_MUMBAI;
 use web3::types::{Address, U256};
-use crate::contracts::{MULTI_ERC20_GOERLI, MULTI_ERC20_MUMBAI};
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
