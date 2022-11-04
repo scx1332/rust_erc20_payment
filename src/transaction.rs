@@ -76,6 +76,7 @@ pub fn create_token_transfer(
         token_amount: token_amount.to_string(),
         tx_id: None,
         fee_paid: None,
+        error: None,
     }
 }
 
@@ -91,6 +92,7 @@ pub fn create_eth_transfer(
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
         id: 0,
+        method: "transfer".to_string(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", to),
         chain_id: chain_id as i64,
@@ -106,7 +108,7 @@ pub fn create_eth_transfer(
         signed_date: None,
         broadcast_date: None,
         tx_hash: None,
-        confirmed_date: None,
+        confirm_date: None,
         block_number: None,
         chain_status: None,
         fee_paid: None,
@@ -126,6 +128,7 @@ pub fn create_eth_transfer_str(
 ) -> Web3TransactionDao {
     let web3_tx_dao = Web3TransactionDao {
         id: 0,
+        method: "transfer".to_string(),
         from_addr,
         to_addr,
         chain_id: chain_id as i64,
@@ -141,7 +144,7 @@ pub fn create_eth_transfer_str(
         signed_date: None,
         broadcast_date: None,
         tx_hash: None,
-        confirmed_date: None,
+        confirm_date: None,
         block_number: None,
         chain_status: None,
         fee_paid: None,
@@ -161,6 +164,7 @@ pub fn create_erc20_transfer(
 ) -> Result<Web3TransactionDao, PaymentError> {
     Ok(Web3TransactionDao {
         id: 0,
+        method: "erc20transfer".to_string(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,
@@ -176,7 +180,7 @@ pub fn create_erc20_transfer(
         signed_date: None,
         broadcast_date: None,
         tx_hash: None,
-        confirmed_date: None,
+        confirm_date: None,
         block_number: None,
         chain_status: None,
         fee_paid: None,
@@ -194,6 +198,7 @@ pub fn create_erc20_approve(
 ) -> Result<Web3TransactionDao, PaymentError> {
     Ok(Web3TransactionDao {
         id: 0,
+        method: "erc20approve".to_string(),
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", token),
         chain_id: chain_id as i64,
@@ -212,7 +217,7 @@ pub fn create_erc20_approve(
         signed_date: None,
         broadcast_date: None,
         tx_hash: None,
-        confirmed_date: None,
+        confirm_date: None,
         block_number: None,
         chain_status: None,
         fee_paid: None,
