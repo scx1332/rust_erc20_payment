@@ -109,13 +109,6 @@ pub async fn gather_transactions(
         inserted_tx_count += 1;
     }
 
-
-
-    for mut token_transfer in get_all_token_transfers(conn).await? {
-        if token_transfer.tx_id.is_none() {
-
-        }
-    }
     Ok(inserted_tx_count)
 }
 
