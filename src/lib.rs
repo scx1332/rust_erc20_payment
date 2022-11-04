@@ -3,6 +3,7 @@ pub mod db;
 pub mod error;
 pub mod eth;
 pub mod model;
+pub mod multi;
 pub mod process;
 pub mod service;
 pub mod transaction;

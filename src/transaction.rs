@@ -4,6 +4,7 @@ use crate::model::Web3TransactionDao;
 
 use secp256k1::SecretKey;
 
+use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
 use crate::utils::ConversionError;
 use std::str::FromStr;
@@ -170,6 +171,42 @@ pub fn create_erc20_transfer(
         nonce: None,
         processing: 1,
         call_data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount)?)),
+        signed_raw_data: None,
+        created_date: chrono::Utc::now(),
+        signed_date: None,
+        broadcast_date: None,
+        tx_hash: None,
+        confirmed_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+    })
+}
+
+pub fn create_erc20_approve(
+    from: Address,
+    token: Address,
+    contract_to_approve: Address,
+    chain_id: u64,
+    gas_limit: u64,
+    max_fee_per_gas: U256,
+    priority_fee: U256,
+) -> Result<Web3TransactionDao, PaymentError> {
+    Ok(Web3TransactionDao {
+        id: 0,
+        from_addr: format!("{:#x}", from),
+        to_addr: format!("{:#x}", token),
+        chain_id: chain_id as i64,
+        gas_limit: gas_limit as i64,
+        max_fee_per_gas: max_fee_per_gas.to_string(),
+        priority_fee: priority_fee.to_string(),
+        val: "0".to_string(),
+        nonce: None,
+        processing: 1,
+        call_data: Some(hex::encode(get_erc20_approve(
+            contract_to_approve,
+            U256::max_value(),
+        )?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         signed_date: None,
