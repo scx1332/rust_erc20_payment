@@ -306,12 +306,11 @@ pub async fn process_transactions(
 
         for tx in &mut transactions {
             let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
-            if tx.method == "ERC20.transfer" {
+            if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
                 update_approve_result(conn, tx, process_t_res).await?;
             }
-
             //process only one transaction at once
             break;
         }

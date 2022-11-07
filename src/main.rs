@@ -23,15 +23,15 @@ use sha3::{Digest, Keccak256};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use web3::types::{Address, U256};
+use web3::types::Address;
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
-use crate::multi::check_allowance;
-use crate::options::{validated_cli, CliOptions};
+
+use crate::options::validated_cli;
 use crate::service::service_loop;
-use structopt::StructOpt;
+
 /*
 struct ERC20Payment {
     from: Address,
@@ -123,7 +123,10 @@ fn prepare_erc20_multi_contract(
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
-        return Err(PaymentError::OtherError(format!("No .env file found: {}", err)));
+        return Err(PaymentError::OtherError(format!(
+            "No .env file found: {}",
+            err
+        )));
     }
     env_logger::init();
     let cli = validated_cli()?;
@@ -144,9 +147,8 @@ async fn main() -> Result<(), PaymentError> {
 
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);
-    let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
-    let token_addr = if chain_id == 5 {
+    let _token_addr = if chain_id == 5 {
         Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
     } else if chain_id == 80001 {
         Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
@@ -158,7 +160,7 @@ async fn main() -> Result<(), PaymentError> {
         let receiver = cli.receivers[transaction_no];
         let amount = cli.amounts[transaction_no];
         let token_transfer =
-            create_token_transfer(from_addr, to, cli.chain_id as u64, cli.token_addr, amount);
+            create_token_transfer(from_addr, receiver, cli.chain_id as u64, cli.token_addr, amount);
         let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
     }
 

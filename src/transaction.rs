@@ -247,8 +247,7 @@ pub async fn sign_transaction(
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
     let tx_object = dao_to_transaction(&web3_tx_dao)?;
-    println!("tx_object: {:?}", tx_object);
-
+    log::debug!("Signing transaction: {:#?}", tx_object);
     // Sign the tx (can be done offline)
     let signed = web3
         .accounts()
@@ -259,6 +258,7 @@ pub async fn sign_transaction(
     web3_tx_dao.signed_raw_data = Some(format!("{}", hex::encode(slice)));
     web3_tx_dao.signed_date = Some(chrono::Utc::now());
     web3_tx_dao.tx_hash = Some(format!("{:#x}", signed.transaction_hash));
+    log::debug!("Transaction signed successfully: {:#?}", web3_tx_dao);
     Ok(())
 }
 
@@ -274,7 +274,7 @@ pub async fn send_transaction(
         let result = web3.eth().send_raw_transaction(bytes).await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
-            println!("Error sending transaction: {:?}", e);
+            log::error!("Error sending transaction: {:#?}", e);
         }
     } else {
         return Err(PaymentError::OtherError("No signed raw data".into()));
