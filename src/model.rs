@@ -1,24 +1,53 @@
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone)]
+#[derive(sqlx::FromRow, Debug, Clone)]
+pub struct Allowance {
+    pub id: i64,
+    pub owner: String,
+    pub token_addr: String,
+    pub spender: String,
+    pub allowance: String,
+    pub chain_id: i64,
+    pub tx_id: Option<i64>,
+    pub fee_paid: Option<String>,
+    pub confirm_date: Option<DateTime<Utc>>,
+    pub error: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Debug, Clone)]
+pub struct TokenTransfer {
+    pub id: i64,
+    pub from_addr: String,
+    pub receiver_addr: String,
+    pub chain_id: i64,
+    pub token_addr: Option<String>,
+    pub token_amount: String,
+    pub tx_id: Option<i64>,
+    pub fee_paid: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Debug, Clone)]
 pub struct Web3TransactionDao {
-    pub id: String,
-    pub from: String,
-    pub to: String,
-    pub chain_id: u64,
-    pub gas_limit: u64,
+    pub id: i64,
+    pub method: String,
+    pub from_addr: String,
+    pub to_addr: String,
+    pub chain_id: i64,
+    pub gas_limit: i64,
     pub max_fee_per_gas: String,
     pub priority_fee: String,
-    pub value: String,
-    pub data: Option<String>,
-    pub nonce: Option<u64>,
+    pub val: String,
+    pub nonce: Option<i64>,
+    pub processing: i64,
+    pub call_data: Option<String>,
+    pub created_date: DateTime<Utc>,
     pub tx_hash: Option<String>,
     pub signed_raw_data: Option<String>,
-    pub created_date: DateTime<Utc>,
     pub signed_date: Option<DateTime<Utc>>,
     pub broadcast_date: Option<DateTime<Utc>>,
-    pub confirmed_date: Option<DateTime<Utc>>,
-    pub block_number: Option<u64>,
-    pub chain_status: Option<u64>,
+    pub confirm_date: Option<DateTime<Utc>>,
+    pub block_number: Option<i64>,
+    pub chain_status: Option<i64>,
     pub fee_paid: Option<String>,
 }

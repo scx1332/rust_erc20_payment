@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
-use std::error;
+
+use crate::error::PaymentError;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
 use web3::contract::Contract;
@@ -17,14 +18,21 @@ lazy_static! {
     pub static ref ERC20_MULTI_CONTRACT_TEMPLATE: Contract<Http> = {
         prepare_contract_template(include_bytes!("../contracts/multi_transfer_erc20.json")).unwrap()
     };
+    pub static ref MULTI_ERC20_MUMBAI: Address =
+        Address::from_str("0x800010D7d0d315DCA795110ecCf0127cBd76b89f").unwrap();
+    pub static ref MULTI_ERC20_GOERLI: Address =
+        Address::from_str("0x7777784f803a7bf1d7f115f849d29ce5706da64a").unwrap();
+    pub static ref MULTI_ERC20_POLYGON: Address =
+        Address::from_str("0x50100d4faf5f3b09987dea36dc2eddd57a3e561b").unwrap();
 }
 
-pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, Box<dyn error::Error>> {
+pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, PaymentError> {
     let contract = Contract::from_json(
         DUMMY_RPC_PROVIDER.eth(),
         Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
         json_abi,
-    )?;
+    )
+    .map_err(|_err| PaymentError::OtherError("Failed to create contract".into()))?;
 
     Ok(contract)
 }
@@ -44,6 +52,7 @@ where
         .and_then(|function| function.encode_input(&params.into_tokens()))
 }
 
+#[allow(dead_code)]
 pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(
         &ERC20_CONTRACT_TEMPLATE,
@@ -54,4 +63,15 @@ pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::E
 
 pub fn get_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "transfer", (address, amount))
+}
+
+pub fn get_erc20_allowance(
+    owner: Address,
+    spender: Address,
+) -> Result<Vec<u8>, web3::ethabi::Error> {
+    contract_encode(&ERC20_CONTRACT_TEMPLATE, "allowance", (owner, spender))
+}
+
+pub fn get_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+    contract_encode(&ERC20_CONTRACT_TEMPLATE, "approve", (spender, amount))
 }

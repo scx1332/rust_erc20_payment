@@ -1,28 +1,37 @@
 mod contracts;
+mod db;
+mod error;
 mod eth;
 mod model;
+mod multi;
 mod process;
+mod service;
 mod transaction;
 mod utils;
+mod options;
 
 use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
-use std::{env, error, fmt};
+use std::time::Duration;
+use std::{env, fmt};
 
-use crate::transaction::create_erc20_transfer;
+use crate::transaction::create_token_transfer;
 use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use crate::process::process_transaction;
-use crate::utils::gwei_to_u256;
-use web3::{ethabi::ethereum_types::U256, types::Address};
+use web3::types::{Address, U256};
 
-type Result2<T> = std::result::Result<T, Box<dyn error::Error>>;
-
+use crate::db::create_sqlite_connection;
+use crate::db::operations::insert_token_transfer;
+use crate::error::PaymentError;
+use crate::multi::check_allowance;
+use crate::options::{CliOptions, validated_cli};
+use crate::service::service_loop;
+use structopt::StructOpt;
 /*
 struct ERC20Payment {
     from: Address,
@@ -112,8 +121,14 @@ fn prepare_erc20_multi_contract(
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn error::Error>> {
+async fn main() -> Result<(), PaymentError> {
     env_logger::init();
+
+    let cli = validated_cli();
+
+    // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
+
+    let mut conn = create_sqlite_connection(2).await?;
 
     let prov_url = env::var("PROVIDER_URL").unwrap();
     let transport = web3::transports::Http::new(&prov_url)?;
@@ -129,46 +144,30 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let from_addr = get_eth_addr_from_secret(&secret_key);
     let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
 
-    let (max_fee_per_gas, priority_fee) = if chain_id == 5 {
-        (gwei_to_u256(1000.0)?, gwei_to_u256(1.111)?)
+    let token_addr = if chain_id == 5 {
+        Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
+    } else if chain_id == 80001 {
+        Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
     } else {
         panic!("Chain ID not supported");
     };
 
-    /*
-    let mut web3_tx_dao = create_eth_transfer(
-        from_addr,
-        to,
-        chain_id,
-        0,
-        max_fee_per_gas,
-        priority_fee,
-        U256::from(1),
-    );*/
-    let mut web3_tx_dao = create_erc20_transfer(
-        from_addr,
-        Address::from_str(&env::var("ETH_TOKEN_ADDRESS").unwrap()).unwrap(),
-        to,
-        U256::from(1),
-        chain_id,
-        1000,
-        max_fee_per_gas,
-        priority_fee,
-    )?;
+    for transaction_no in 0..2 {
+        let token_transfer = create_token_transfer(
+            from_addr,
+            to,
+            chain_id,
+            Some(token_addr),
+            U256::from(1 + transaction_no as i32),
+        );
+        let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+    }
 
-    let mut web3_tx_dao2 = web3_tx_dao.clone();
-    let process_t_res = process_transaction(&mut web3_tx_dao, &web3, &secret_key, true);
-    //web3_tx_dao2.value = "2".to_string();
-    let process_t_res2 = process_transaction(&mut web3_tx_dao2, &web3, &secret_key, true);
+    //service_loop(&mut conn, &web3, &secret_key).await;
+    tokio::spawn(async move { service_loop(&mut conn, &web3, &secret_key).await });
 
-    let (res1, res2) = tokio::join!(process_t_res, process_t_res2);
-    println!("Transaction 1: {:?}", res1?);
-    println!("Transaction 2: {:?}", res2?);
-
-    //println!("Transaction hash: {:?}", signed.transaction_hash);
-    //println!("Transaction payload: {:?}", signed.raw_transaction);
-
-    //println!("Tx succeeded with hash: {:#x}", result);
-
-    Ok(())
+    loop {
+        //wait
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }
