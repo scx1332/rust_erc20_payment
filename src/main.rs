@@ -8,6 +8,7 @@ mod process;
 mod service;
 mod transaction;
 mod utils;
+mod options;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -29,7 +30,9 @@ use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
 use crate::multi::check_allowance;
+use crate::options::{CliOptions, validated_cli};
 use crate::service::service_loop;
+use structopt::StructOpt;
 /*
 struct ERC20Payment {
     from: Address,
@@ -121,6 +124,8 @@ fn prepare_erc20_multi_contract(
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
     env_logger::init();
+
+    let cli = validated_cli();
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
