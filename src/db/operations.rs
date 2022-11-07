@@ -213,8 +213,8 @@ pub async fn insert_tx(
 ) -> Result<Web3TransactionDao, sqlx::Error> {
     let res = sqlx::query_as::<_, Web3TransactionDao>(
         r"INSERT INTO tx
-(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirm_date, block_number, chain_status, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING *;
+(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *;
 ",
     )
         .bind(&tx.method)
@@ -233,6 +233,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .bind( &tx.signed_raw_data)
         .bind( &tx.signed_date)
         .bind( &tx.broadcast_date)
+        .bind( &tx.broadcast_count)
         .bind( &tx.confirm_date)
         .bind( &tx.block_number)
         .bind( &tx.chain_status)
@@ -264,10 +265,11 @@ tx_hash = $14,
 signed_raw_data = $15,
 signed_date = $16,
 broadcast_date = $17,
-confirm_date = $18,
-block_number = $19,
-chain_status = $20,
-fee_paid = $21
+broadcast_count = $18,
+confirm_date = $19,
+block_number = $20,
+chain_status = $21,
+fee_paid = $22
 WHERE id = $1
 ",
     )
@@ -288,6 +290,7 @@ WHERE id = $1
     .bind(&tx.signed_raw_data)
     .bind(&tx.signed_date)
     .bind(&tx.broadcast_date)
+        .bind(&tx.broadcast_count)
     .bind(&tx.confirm_date)
     .bind(&tx.block_number)
     .bind(&tx.chain_status)

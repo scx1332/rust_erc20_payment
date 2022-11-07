@@ -17,6 +17,7 @@ CREATE TABLE "tx" (
     signed_raw_data     TEXT        NULL,
     signed_date         DATETIIME   NULL,
     broadcast_date      DATETIIME   NULL,
+    broadcast_count     INTEGER     NOT NULL,
     confirm_date        DATETIIME   NULL,
     block_number        INTEGER     NULL,
     chain_status        INTEGER     NULL,

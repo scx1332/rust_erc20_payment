@@ -58,6 +58,7 @@ pub async fn process_transaction(
 
     if web3_tx_dao.broadcast_date.is_none() {
         send_transaction(&web3, web3_tx_dao).await?;
+        web3_tx_dao.broadcast_count += 1;
         update_tx(conn,web3_tx_dao).await?;
     }
 
@@ -79,6 +80,7 @@ pub async fn process_transaction(
                 web3_tx_dao.tx_hash
             );
             send_transaction(&web3, web3_tx_dao).await?;
+            web3_tx_dao.broadcast_count += 1;
             update_tx(conn,web3_tx_dao).await?;
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;

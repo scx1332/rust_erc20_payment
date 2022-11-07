@@ -46,6 +46,7 @@ pub struct Web3TransactionDao {
     pub signed_raw_data: Option<String>,
     pub signed_date: Option<DateTime<Utc>>,
     pub broadcast_date: Option<DateTime<Utc>>,
+    pub broadcast_count: i64,
     pub confirm_date: Option<DateTime<Utc>>,
     pub block_number: Option<i64>,
     pub chain_status: Option<i64>,
