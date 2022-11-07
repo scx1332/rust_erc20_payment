@@ -49,7 +49,15 @@ pub async fn process_transaction(
         web3_tx_dao.nonce = Some(nonce as i64);
     }
     if web3_tx_dao.signed_raw_data.is_none() {
-        check_transaction(&web3, web3_tx_dao).await?;
+        match check_transaction(&web3, web3_tx_dao).await {
+            Ok(_) => {
+
+            }
+            Err(err) => {
+                log::error!("Error while checking transaction: {}", err);
+                return Err(err);
+            }
+        }
 
         println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
         sign_transaction(&web3, web3_tx_dao, &secret_key).await?;

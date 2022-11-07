@@ -12,13 +12,13 @@ use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
 
-fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Bytes, PaymentError> {
+fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
         let hex_data = hex::decode(data)
             .map_err(|_err| ConversionError::from("Failed to convert data from hex".into()))?;
-        Bytes(hex_data)
+        Some(Bytes(hex_data))
     } else {
-        Bytes::default()
+        None
     })
 }
 
@@ -29,7 +29,7 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallReque
         gas: Some(U256::from(web3_tx_dao.gas_limit)),
         gas_price: None,
         value: Some(U256::from_dec_str(&web3_tx_dao.val)?),
-        data: Some(decode_data_to_bytes(web3_tx_dao)?),
+        data: decode_data_to_bytes(web3_tx_dao)?,
         transaction_type: Some(U64::from(2)),
         access_list: None,
         max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
@@ -50,7 +50,7 @@ pub fn dao_to_transaction(
         gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
         value: U256::from_dec_str(&web3_tx_dao.val)?,
-        data: decode_data_to_bytes(web3_tx_dao)?,
+        data: decode_data_to_bytes(web3_tx_dao)?.unwrap_or(Bytes::default()),
         chain_id: Some(web3_tx_dao.chain_id as u64),
         transaction_type: Some(U64::from(2)),
         access_list: None,
@@ -232,6 +232,7 @@ pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
+    log::error!("check_transaction: {:?}", dao_to_call_request(&web3_tx_dao).unwrap());
     let gas_est = web3
         .eth()
         .estimate_gas(dao_to_call_request(&web3_tx_dao)?, None)

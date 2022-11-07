@@ -36,6 +36,15 @@ struct TransferOptions {
     keep_running: bool,
 }
 
+#[derive(Debug, StructOpt)]
+struct TestOptions {
+    #[structopt(long = "chain-id", default_value = "80001")]
+    chain_id: i64,
+
+    #[structopt(long = "generate-count", default_value = "10")]
+    generate_count: i64,
+}
+
 #[allow(unused)]
 #[derive(Debug, StructOpt)]
 #[structopt(name = "example", about = "An example of StructOpt usage.")]
@@ -46,7 +55,12 @@ enum CliOptions {
     /// Process options
     #[structopt(name = "process")]
     Process {
-    }
+    },
+    /// Test options
+    #[structopt(name = "test")]
+    Test(TestOptions),
+
+
 }
 #[allow(unused)]
 pub struct ValidatedOptions {
@@ -115,6 +129,27 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 memory_db: transfer_options.memory_db,
                 keep_running: transfer_options.keep_running,
             })
+        }
+        CliOptions::Test(test_options) => {
+            let mut receivers = Vec::<Address>::new();
+            let mut amounts = Vec::<U256>::new();
+            for i in 0..test_options.generate_count {
+                let gen_addr_str = &format!("0x{:040x}", i + 0x1000);
+                let receiver = Address::from_str(gen_addr_str).map_err(|_| {
+                    PaymentError::OtherError(format!("Invalid receiver when parsing input: {gen_addr_str}"))
+                })?;
+                receivers.push(receiver);
+                amounts.push(U256::from(i));
+            }
+            Ok(ValidatedOptions {
+                receivers,
+                amounts,
+                chain_id: test_options.chain_id,
+                token_addr: None,
+                memory_db: false,
+                keep_running: false,
+            })
+
         }
         CliOptions::Process {
         } => {
