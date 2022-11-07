@@ -140,21 +140,19 @@ async fn main() -> Result<(), PaymentError> {
     let web3 = web3::Web3::new(transport);
 
     let chain_id = web3.eth().chain_id().await?.as_u64();
-    // Insert the 20-byte "to" address in hex format (prefix with 0x)
 
-    // Insert the 32-byte private key in hex format (do NOT prefix with 0x)
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);
 
+    /*
     let _token_addr = if chain_id == 5 {
         Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
     } else if chain_id == 80001 {
         Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
     } else {
         panic!("Chain ID not supported");
-    };
+    };*/
 
     for transaction_no in 0..cli.receivers.len() {
         let receiver = cli.receivers[transaction_no];
@@ -170,7 +168,9 @@ async fn main() -> Result<(), PaymentError> {
     }
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    tokio::spawn(async move { service_loop(&mut conn, &web3, &secret_key).await });
+    tokio::spawn(
+        async move { service_loop(&mut conn, &web3, &secret_key, !cli.keep_running).await },
+    );
 
     loop {
         //wait

@@ -326,11 +326,14 @@ pub async fn service_loop(
     conn: &mut SqliteConnection,
     web3: &web3::Web3<web3::transports::Http>,
     secret_key: &SecretKey,
+    finish_when_processed: bool,
 ) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
-    let mut last_update_time1 = chrono::Utc::now();
-    let mut last_update_time2 = chrono::Utc::now();
+    let mut last_update_time1 =
+        chrono::Utc::now() - chrono::Duration::seconds(process_transactions_interval);
+    let mut last_update_time2 =
+        chrono::Utc::now() - chrono::Duration::seconds(gather_transactions_interval);
 
     let mut process_tx_needed = true;
     loop {
@@ -374,6 +377,9 @@ pub async fn service_loop(
                 }
             };
             last_update_time2 = current_time;
+            if finish_when_processed && !process_tx_needed {
+                break;
+            }
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
