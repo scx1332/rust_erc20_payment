@@ -159,8 +159,13 @@ async fn main() -> Result<(), PaymentError> {
     for transaction_no in 0..cli.receivers.len() {
         let receiver = cli.receivers[transaction_no];
         let amount = cli.amounts[transaction_no];
-        let token_transfer =
-            create_token_transfer(from_addr, receiver, cli.chain_id as u64, cli.token_addr, amount);
+        let token_transfer = create_token_transfer(
+            from_addr,
+            receiver,
+            cli.chain_id as u64,
+            cli.token_addr,
+            amount,
+        );
         let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
     }
 

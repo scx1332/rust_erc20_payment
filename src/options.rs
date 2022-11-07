@@ -83,7 +83,6 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
         )));
     };
 
-
     let token_addr = if opt.plain_eth {
         None
     } else {

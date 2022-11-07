@@ -290,7 +290,7 @@ WHERE id = $1
     .bind(&tx.signed_raw_data)
     .bind(&tx.signed_date)
     .bind(&tx.broadcast_date)
-        .bind(&tx.broadcast_count)
+    .bind(&tx.broadcast_count)
     .bind(&tx.confirm_date)
     .bind(&tx.block_number)
     .bind(&tx.chain_status)
