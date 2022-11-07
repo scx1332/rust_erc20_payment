@@ -4,11 +4,11 @@ mod error;
 mod eth;
 mod model;
 mod multi;
+mod options;
 mod process;
 mod service;
 mod transaction;
 mod utils;
-mod options;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -29,7 +29,7 @@ use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
 use crate::multi::check_allowance;
-use crate::options::{CliOptions, validated_cli};
+use crate::options::{validated_cli, CliOptions};
 use crate::service::service_loop;
 use structopt::StructOpt;
 /*
@@ -124,7 +124,7 @@ fn prepare_erc20_multi_contract(
 async fn main() -> Result<(), PaymentError> {
     env_logger::init();
 
-    let cli = validated_cli();
+    let cli = validated_cli()?;
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
@@ -152,14 +152,11 @@ async fn main() -> Result<(), PaymentError> {
         panic!("Chain ID not supported");
     };
 
-    for transaction_no in 0..2 {
-        let token_transfer = create_token_transfer(
-            from_addr,
-            to,
-            chain_id,
-            Some(token_addr),
-            U256::from(1 + transaction_no as i32),
-        );
+    for transaction_no in 0..cli.receivers.len() {
+        let receiver = cli.receivers[transaction_no];
+        let amount = cli.amounts[transaction_no];
+        let token_transfer =
+            create_token_transfer(from_addr, to, cli.chain_id as u64, cli.token_addr, amount);
         let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
     }
 
