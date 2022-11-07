@@ -77,6 +77,12 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             "Can't specify both plain-eth and token-addr"
         )));
     };
+    if !opt.plain_eth && opt.token_addr.is_none() {
+        return Err(PaymentError::OtherError(format!(
+            "Specify token-addr or set plain-eth true to plain transfer"
+        )));
+    };
+
 
     let token_addr = if opt.plain_eth {
         None

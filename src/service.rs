@@ -305,7 +305,7 @@ pub async fn process_transactions(
         let mut transactions = get_transactions_being_processed(conn).await?;
 
         for tx in &mut transactions {
-            let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
+            let process_t_res = process_transaction(conn, tx, web3, secret_key, false).await?;
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {

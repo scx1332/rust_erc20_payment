@@ -3,9 +3,11 @@ use secp256k1::SecretKey;
 use crate::error::PaymentError;
 use std::str::FromStr;
 use std::time::Duration;
+use sqlx::SqliteConnection;
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
+use crate::db::operations::update_tx;
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;
@@ -30,6 +32,7 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
 }
 
 pub async fn process_transaction(
+    conn: &mut SqliteConnection,
     web3_tx_dao: &mut Web3TransactionDao,
     web3: &Web3<Http>,
     secret_key: &SecretKey,
@@ -50,10 +53,12 @@ pub async fn process_transaction(
 
         println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
         sign_transaction(&web3, web3_tx_dao, &secret_key).await?;
+        update_tx(conn,web3_tx_dao).await?;
     }
 
     if web3_tx_dao.broadcast_date.is_none() {
         send_transaction(&web3, web3_tx_dao).await?;
+        update_tx(conn,web3_tx_dao).await?;
     }
 
     if web3_tx_dao.confirm_date.is_some() {
@@ -74,6 +79,7 @@ pub async fn process_transaction(
                 web3_tx_dao.tx_hash
             );
             send_transaction(&web3, web3_tx_dao).await?;
+            update_tx(conn,web3_tx_dao).await?;
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
         }
