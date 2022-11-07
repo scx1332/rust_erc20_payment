@@ -122,8 +122,10 @@ fn prepare_erc20_multi_contract(
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
+    if let Err(err) = dotenv::dotenv() {
+        return Err(PaymentError::OtherError(format!("No .env file found: {}", err)));
+    }
     env_logger::init();
-
     let cli = validated_cli()?;
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;

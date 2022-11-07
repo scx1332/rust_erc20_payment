@@ -3,6 +3,7 @@ use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
 
+#[allow(unused)]
 #[derive(Debug, StructOpt)]
 #[structopt(name = "example", about = "An example of StructOpt usage.")]
 pub struct CliOptions {
@@ -31,6 +32,7 @@ pub struct CliOptions {
     memory_db: bool,
 }
 
+#[allow(unused)]
 pub struct ValidatedOptions {
     pub receivers: Vec<Address>,
     pub amounts: Vec<U256>,
@@ -39,6 +41,7 @@ pub struct ValidatedOptions {
     pub memory_db: bool,
 }
 
+#[allow(unused)]
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
     let opt: CliOptions = CliOptions::from_args();
 
