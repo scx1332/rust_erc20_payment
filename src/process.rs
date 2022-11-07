@@ -56,7 +56,7 @@ pub async fn process_transaction(
         send_transaction(&web3, web3_tx_dao).await?;
     }
 
-    if web3_tx_dao.confirmed_date.is_some() {
+    if web3_tx_dao.confirm_date.is_some() {
         return Ok(ProcessTransactionResult::Confirmed);
     }
 
@@ -90,7 +90,7 @@ pub async fn process_transaction(
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
                     println!("Receipt found: {:?}", web3_tx_dao.tx_hash);
                     if block_number + CONFIRMED_BLOCKS <= current_block_number {
-                        web3_tx_dao.confirmed_date = Some(chrono::Utc::now());
+                        web3_tx_dao.confirm_date = Some(chrono::Utc::now());
                         println!("Transaction confirmed: {:?}", web3_tx_dao.tx_hash);
                         break;
                     }

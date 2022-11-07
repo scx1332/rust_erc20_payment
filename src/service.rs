@@ -3,17 +3,19 @@ use std::str::FromStr;
 
 use crate::contracts::MULTI_ERC20_GOERLI;
 use crate::db::operations::{
-    get_all_token_transfers, get_pending_token_transfers, get_token_transfers_by_tx,
-    get_transactions_being_processed, insert_tx, update_token_transfer, update_tx,
+    find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
+    get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
+    update_token_transfer, update_tx,
 };
 use crate::error::PaymentError;
-use crate::model::TokenTransfer;
+use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
 use crate::utils::{gwei_to_u256, ConversionError};
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
+
 use web3::types::{Address, U256};
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
@@ -81,16 +83,84 @@ pub async fn gather_transactions(
         log::debug!("Processing token transfer {:?}", token_transfer);
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
             //this is some arbitrary number.
-            let MINIMUM_ALLOWANCE = U256::max_value() / U256::from(2);
-            let allowance = check_allowance(
-                web3,
-                Address::from_str(&token_transfer.from_addr)?,
-                Address::from_str(token_addr)?,
-                *MULTI_ERC20_GOERLI,
+            let minimum_allowance: U256 = U256::max_value() / U256::from(2);
+
+            let mut db_allowance = find_allowance(
+                conn,
+                &token_transfer.from_addr,
+                token_addr,
+                &format!("{:#x}", *MULTI_ERC20_GOERLI),
+                token_transfer.chain_id,
             )
             .await?;
-            if allowance < MINIMUM_ALLOWANCE
-            {
+
+            let allowance = match db_allowance.as_mut() {
+                Some(db_allowance) => match db_allowance.confirm_date {
+                    Some(_) => {
+                        log::debug!("Allowance already confirmed from db");
+                        U256::from_dec_str(&db_allowance.allowance)?
+                    }
+                    None => {
+                        log::debug!("Allowance not confirmed in db, check on chain");
+                        let allowance = check_allowance(
+                            web3,
+                            Address::from_str(&token_transfer.from_addr)?,
+                            Address::from_str(token_addr)?,
+                            *MULTI_ERC20_GOERLI,
+                        )
+                        .await?;
+                        if allowance > minimum_allowance {
+                            log::debug!("Allowance found on chain, update db");
+                            db_allowance.confirm_date = Some(chrono::Utc::now());
+                            update_allowance(conn, &db_allowance).await?;
+                        }
+                        allowance
+                    }
+                },
+                None => {
+                    log::debug!("No db entry, check allowance on chain");
+                    let allowance = check_allowance(
+                        web3,
+                        Address::from_str(&token_transfer.from_addr)?,
+                        Address::from_str(token_addr)?,
+                        *MULTI_ERC20_GOERLI,
+                    )
+                    .await?;
+                    if allowance > minimum_allowance {
+                        log::debug!("Allowance found on chain, add entry to db");
+                        let db_allowance = Allowance {
+                            id: 0,
+                            owner: token_transfer.from_addr.clone(),
+                            token_addr: token_addr.clone(),
+                            spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                            chain_id: token_transfer.chain_id,
+                            tx_id: None,
+                            allowance: allowance.to_string(),
+                            confirm_date: Some(chrono::Utc::now()),
+                            fee_paid: None,
+                            error: None,
+                        };
+                        //allowance is confirmed on web3, update db
+                        insert_allowance(conn, &db_allowance).await?;
+                    }
+                    allowance
+                }
+            };
+
+            if allowance < minimum_allowance {
+                let mut allowance = Allowance {
+                    id: 0,
+                    owner: token_transfer.from_addr.clone(),
+                    token_addr: token_addr.clone(),
+                    spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                    allowance: U256::max_value().to_string(),
+                    chain_id: token_transfer.chain_id,
+                    tx_id: None,
+                    fee_paid: None,
+                    confirm_date: None,
+                    error: None,
+                };
+
                 let approve_tx = create_erc20_approve(
                     Address::from_str(&token_transfer.from_addr)?,
                     Address::from_str(&token_addr)?,
@@ -100,13 +170,15 @@ pub async fn gather_transactions(
                     max_fee_per_gas,
                     priority_fee,
                 )?;
-                insert_tx(conn, &approve_tx).await?;
+                let mut db_transaction = conn.begin().await?;
+                let web3_tx_dao = insert_tx(&mut db_transaction, &approve_tx).await?;
+                allowance.tx_id = Some(web3_tx_dao.id);
+                insert_allowance(&mut db_transaction, &allowance).await?;
+
+                db_transaction.commit().await?;
                 inserted_tx_count += 1;
 
-                log::error!("Error in check allowance");
-                return Err(PaymentError::OtherError(
-                    "Allowance too low to continue".to_string(),
-                ));
+                return Ok(inserted_tx_count);
             }
 
             create_erc20_transfer(
@@ -143,6 +215,87 @@ pub async fn gather_transactions(
     Ok(inserted_tx_count)
 }
 
+pub async fn update_token_transfer_result(
+    conn: &mut SqliteConnection,
+    tx: &mut Web3TransactionDao,
+    process_t_res: ProcessTransactionResult,
+) -> Result<(), PaymentError> {
+    match process_t_res {
+        ProcessTransactionResult::Confirmed => {
+            tx.processing = 0;
+
+            let mut db_transaction = conn.begin().await?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+            let token_transfers_count = U256::from(token_transfers.len() as u64);
+            for mut token_transfer in token_transfers {
+                if let Some(fee_paid) = tx.fee_paid.clone() {
+                    let val = U256::from_dec_str(&fee_paid)
+                        .map_err(|_err| ConversionError::from("failed to parse fee paid".into()))?;
+                    let val2 = val / token_transfers_count;
+                    token_transfer.fee_paid = Some(val2.to_string());
+                } else {
+                    token_transfer.fee_paid = None;
+                }
+                update_token_transfer(&mut db_transaction, &token_transfer).await?;
+            }
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        }
+        ProcessTransactionResult::NeedRetry => {
+            tx.processing = 0;
+
+            let mut db_transaction = conn.begin().await?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+            for mut token_transfer in token_transfers {
+                token_transfer.fee_paid = Some("0".to_string());
+                token_transfer.error = Some("NeedRetry".to_string());
+                update_token_transfer(&mut db_transaction, &token_transfer).await?;
+            }
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        }
+        ProcessTransactionResult::Unknown => {
+            tx.processing = 1;
+            update_tx(conn, tx).await?;
+        }
+    }
+    Ok(())
+}
+
+pub async fn update_approve_result(
+    conn: &mut SqliteConnection,
+    tx: &mut Web3TransactionDao,
+    process_t_res: ProcessTransactionResult,
+) -> Result<(), PaymentError> {
+    match process_t_res {
+        ProcessTransactionResult::Confirmed => {
+            tx.processing = 0;
+
+            let mut db_transaction = conn.begin().await?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
+            allowance.fee_paid = tx.fee_paid.clone();
+            update_allowance(&mut db_transaction, &allowance).await?;
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        }
+        ProcessTransactionResult::NeedRetry => {
+            tx.processing = 0;
+            let mut db_transaction = conn.begin().await?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
+            allowance.fee_paid = Some("0".to_string());
+            allowance.error = Some("NeedRetry".to_string());
+            update_allowance(&mut db_transaction, &allowance).await?;
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        }
+        ProcessTransactionResult::Unknown => {
+            tx.processing = 1;
+            update_tx(conn, tx).await?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn process_transactions(
     conn: &mut SqliteConnection,
     web3: &web3::Web3<web3::transports::Http>,
@@ -153,47 +306,12 @@ pub async fn process_transactions(
 
         for tx in &mut transactions {
             let process_t_res = process_transaction(tx, web3, secret_key, false).await?;
-            match process_t_res {
-                ProcessTransactionResult::Confirmed => {
-                    tx.processing = 0;
-
-                    let mut db_transaction = conn.begin().await?;
-                    let token_transfers =
-                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
-                    let token_transfers_count = U256::from(token_transfers.len() as u64);
-                    for mut token_transfer in token_transfers {
-                        if let Some(fee_paid) = tx.fee_paid.clone() {
-                            let val = U256::from_dec_str(&fee_paid).map_err(|_err| {
-                                ConversionError::from("failed to parse fee paid".into())
-                            })?;
-                            let val2 = val / token_transfers_count;
-                            token_transfer.fee_paid = Some(val2.to_string());
-                        } else {
-                            token_transfer.fee_paid = None;
-                        }
-                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
-                    }
-                    update_tx(&mut db_transaction, tx).await?;
-                    db_transaction.commit().await?;
-                }
-                ProcessTransactionResult::NeedRetry => {
-                    tx.processing = 0;
-
-                    let mut db_transaction = conn.begin().await?;
-                    let token_transfers =
-                        get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
-                    for mut token_transfer in token_transfers {
-                        token_transfer.fee_paid = Some("0".to_string());
-                        update_token_transfer(&mut db_transaction, &token_transfer).await?;
-                    }
-                    update_tx(&mut db_transaction, tx).await?;
-                    db_transaction.commit().await?;
-                }
-                ProcessTransactionResult::Unknown => {
-                    tx.processing = 1;
-                    update_tx(conn, tx).await?;
-                }
+            if tx.method == "ERC20.transfer" {
+                update_token_transfer_result(conn, tx, process_t_res).await?;
+            } else if tx.method == "ERC20.approve" {
+                update_approve_result(conn, tx, process_t_res).await?;
             }
+
             //process only one transaction at once
             break;
         }

@@ -1,6 +1,7 @@
 
 CREATE TABLE "tx" (
     id	                INTEGER     NOT NULL,
+    method              TEXT        NOT NULL,
     from_addr           TEXT        NOT NULL,
     to_addr             TEXT        NOT NULL,
     chain_id            INTEGER     NOT NULL,
@@ -16,7 +17,7 @@ CREATE TABLE "tx" (
     signed_raw_data     TEXT        NULL,
     signed_date         DATETIIME   NULL,
     broadcast_date      DATETIIME   NULL,
-    confirmed_date      DATETIIME   NULL,
+    confirm_date        DATETIIME   NULL,
     block_number        INTEGER     NULL,
     chain_status        INTEGER     NULL,
     fee_paid            TEXT        NULL,
@@ -32,8 +33,25 @@ CREATE TABLE "token_transfer" (
     token_amount        TEXT        NOT NULL,
     tx_id               INTEGER     NULL,
     fee_paid            TEXT        NULL,
+    error               TEXT        NULL,
     PRIMARY KEY("id" AUTOINCREMENT)
     CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY("tx_id") REFERENCES "tx"("id")
 );
+
+CREATE TABLE "allowance" (
+    id	                INTEGER     NOT NULL,
+    owner               TEXT        NOT NULL,
+    token_addr          TEXT        NULL,
+    spender             TEXT        NOT NULL,
+    allowance           TEXT        NOT NULL,
+    chain_id            INTEGER     NOT NULL,
+    tx_id               INTEGER     NULL,
+    fee_paid            TEXT        NULL,
+    confirm_date        DATETIME    NULL,
+    error               TEXT        NULL,
+    PRIMARY KEY("id" AUTOINCREMENT)
+    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY("tx_id") REFERENCES "tx"("id")
+);
+
 
 
