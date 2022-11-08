@@ -50,9 +50,7 @@ pub async fn process_transaction(
     }
     if web3_tx_dao.signed_raw_data.is_none() {
         match check_transaction(&web3, web3_tx_dao).await {
-            Ok(_) => {
-
-            }
+            Ok(_) => {}
             Err(err) => {
                 log::error!("Error while checking transaction: {}", err);
                 return Err(err);

@@ -1,0 +1,39 @@
+[chain.rinkeby]
+network-id=4
+rpc-endpoints=["http://1.geth.testnet.golem.network:55555"]
+currency-symbol="tETH"
+priority-gas=1.5111
+max-base-gas=500.0
+token = { address="0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE", symbol="tGLM" }
+
+[chain.goerli]
+network-id=5
+rpc-url="https://ethereum-goerli-rpc.allthatnode.com"
+rpc-endpoints = ["https://goerli.prylabs.net",
+    "https://rpc.goerli.mudit.blog",
+    "https://rpc.slock.it/goerli",
+    "https://www.ethercluster.com/goerli",
+    "https://rpc.ankr.com/eth_goerli"]
+currency-symbol="tETH"
+priority-gas=1.5111
+max-base-gas=500.0
+token = { address="0x33af15c79d64b85ba14aaffaa4577949104b22e8", symbol="tGLM" }
+multi-contract = { address="0x7a2b2c4c9c3b1e1f2e9f53b3e3e9a53a4a4562b2" }
+
+[chain.mumbai]
+network-id=80001
+rpc-endpoints = ["https://rpc-mumbai.matic.today"]
+currency-symbol="tMATIC"
+priority-gas=1.5111
+max-base-gas=500.0
+token = { address = "0x2036807B0B3aaf5b1858EE822D0e111fDdac7018", symbol="tGLM" }
+multi-contract = { address="0x7a2b2c4c9c3b1e1f2e9f53b3e3e9a53a4a4562b2" }
+
+[chain.polygon]
+network-id=137
+rpc-endpoints = ["https://polygon-rpc.com"]
+currency-symbol="MATIC"
+priority-gas=30.111
+max-base-gas=500.0
+token = { address = "0x2036807B0B3aaf5b1858EE822D0e111fDdac7018", symbol="tGLM" }
+multi-contract = { address="0x7a2b2c4c9c3b1e1f2e9f53b3e3e9a53a4a4562b2" }

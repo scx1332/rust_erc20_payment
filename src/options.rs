@@ -6,8 +6,8 @@ use web3::types::{Address, U256};
 #[derive(Debug, StructOpt)]
 struct TransferOptions {
     #[structopt(
-    long = "receivers",
-    help = "Receiver address, or coma separated list of receivers"
+        long = "receivers",
+        help = "Receiver address, or coma separated list of receivers"
     )]
     receivers: String,
 
@@ -18,8 +18,8 @@ struct TransferOptions {
     chain_id: i64,
 
     #[structopt(
-    long = "token-addr",
-    help = "Token address, if not set, ETH will be used"
+        long = "token-addr",
+        help = "Token address, if not set, ETH will be used"
     )]
     token_addr: Option<String>,
 
@@ -30,8 +30,8 @@ struct TransferOptions {
     memory_db: bool,
 
     #[structopt(
-    long = "keep-running",
-    help = "Set to keep running when finished processing transactions"
+        long = "keep-running",
+        help = "Set to keep running when finished processing transactions"
     )]
     keep_running: bool,
 }
@@ -51,16 +51,13 @@ struct TestOptions {
 enum CliOptions {
     /// Transfer options.
     #[structopt(name = "transfer")]
-    Transfer (TransferOptions),
+    Transfer(TransferOptions),
     /// Process options
     #[structopt(name = "process")]
-    Process {
-    },
+    Process {},
     /// Test options
     #[structopt(name = "test")]
     Test(TestOptions),
-
-
 }
 #[allow(unused)]
 pub struct ValidatedOptions {
@@ -76,7 +73,7 @@ pub struct ValidatedOptions {
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
     let opt: CliOptions = CliOptions::from_args();
     match opt {
-        CliOptions::Transfer (transfer_options) => {
+        CliOptions::Transfer(transfer_options) => {
             let split_pattern = [',', ';'];
             let mut amounts = Vec::<U256>::new();
             for amount in transfer_options.amounts.split(&split_pattern) {
@@ -89,7 +86,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             let mut receivers = Vec::<Address>::new();
             for receiver in transfer_options.receivers.split(&split_pattern) {
                 let receiver = Address::from_str(receiver).map_err(|_| {
-                    PaymentError::OtherError(format!("Invalid receiver when parsing input: {receiver}"))
+                    PaymentError::OtherError(format!(
+                        "Invalid receiver when parsing input: {receiver}"
+                    ))
                 })?;
                 receivers.push(receiver);
             }
@@ -118,7 +117,10 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             let token_addr = if transfer_options.plain_eth {
                 None
             } else {
-                transfer_options.token_addr.map(|s| Address::from_str(&s)).transpose()?
+                transfer_options
+                    .token_addr
+                    .map(|s| Address::from_str(&s))
+                    .transpose()?
             };
 
             Ok(ValidatedOptions {
@@ -136,7 +138,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             for i in 0..test_options.generate_count {
                 let gen_addr_str = &format!("0x{:040x}", i + 0x1000);
                 let receiver = Address::from_str(gen_addr_str).map_err(|_| {
-                    PaymentError::OtherError(format!("Invalid receiver when parsing input: {gen_addr_str}"))
+                    PaymentError::OtherError(format!(
+                        "Invalid receiver when parsing input: {gen_addr_str}"
+                    ))
                 })?;
                 receivers.push(receiver);
                 amounts.push(U256::from(i));
@@ -149,10 +153,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 memory_db: false,
                 keep_running: false,
             })
-
         }
-        CliOptions::Process {
-        } => {
+        CliOptions::Process {} => {
             //println!("magicality: {}, color: {}", magicality, color);
             Ok(ValidatedOptions {
                 receivers: vec![],
@@ -163,8 +165,5 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 keep_running: false,
             })
         }
-
     }
-
-
 }

@@ -1,3 +1,4 @@
+mod config;
 mod contracts;
 mod db;
 mod error;
@@ -14,6 +15,7 @@ use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
+use std::sync::Arc;
 use std::time::Duration;
 use std::{env, fmt};
 
@@ -130,6 +132,10 @@ async fn main() -> Result<(), PaymentError> {
     }
     env_logger::init();
     let cli = validated_cli()?;
+
+    let config = Arc::new(config::Config::load("config-payments.toml")?);
+    log::debug!("Config: {:?}", config);
+
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
