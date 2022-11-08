@@ -11,6 +11,7 @@ use web3::Web3;
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;
+use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;
 use crate::transaction::find_receipt;
 use crate::transaction::send_transaction;
@@ -34,14 +35,15 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
 pub async fn process_transaction(
     conn: &mut SqliteConnection,
     web3_tx_dao: &mut Web3TransactionDao,
-    web3: &Web3<Http>,
+    payment_setup: &PaymentSetup,
     secret_key: &SecretKey,
     wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
     const CONFIRMED_BLOCKS: u64 = 0;
 
-    let _chain_id = web3_tx_dao.chain_id;
+    let chain_id = web3_tx_dao.chain_id;
+    let web3 = payment_setup.get_provider(chain_id)?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
     if web3_tx_dao.nonce.is_none() {

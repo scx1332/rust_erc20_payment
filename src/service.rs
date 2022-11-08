@@ -17,6 +17,7 @@ use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 
 use web3::types::{Address, U256};
+use crate::setup::PaymentSetup;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -28,7 +29,7 @@ pub struct TokenTransferKey {
 
 pub async fn gather_transactions(
     conn: &mut SqliteConnection,
-    web3: &web3::Web3<web3::transports::Http>,
+    payment_setup: &PaymentSetup,
 ) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
 
@@ -65,21 +66,12 @@ pub async fn gather_transactions(
             sum += U256::from_dec_str(&token_transfer.token_amount)?;
         }
 
-        let (max_fee_per_gas, priority_fee, _token_addr) = if token_transfer.chain_id == 5 {
-            (
-                gwei_to_u256(1000.0)?,
-                gwei_to_u256(1.111)?,
-                Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap(),
-            )
-        } else if token_transfer.chain_id == 80001 {
-            (
-                gwei_to_u256(1000.0)?,
-                gwei_to_u256(1.51)?,
-                Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap(),
-            )
-        } else {
-            panic!("Chain ID not supported");
-        };
+        let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
+
+        let max_fee_per_gas = chain_setup.max_fee_per_gas;
+        let priority_fee = chain_setup.priority_fee;
+        let web3 = payment_setup.get_provider(token_transfer.chain_id)?;
+
         log::debug!("Processing token transfer {:?}", token_transfer);
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
             //this is some arbitrary number.
@@ -298,14 +290,14 @@ pub async fn update_approve_result(
 
 pub async fn process_transactions(
     conn: &mut SqliteConnection,
-    web3: &web3::Web3<web3::transports::Http>,
+    payment_setup: &PaymentSetup,
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
     loop {
         let mut transactions = get_transactions_being_processed(conn).await?;
 
         for tx in &mut transactions {
-            let process_t_res = process_transaction(conn, tx, web3, secret_key, false).await?;
+            let process_t_res = process_transaction(conn, tx, payment_setup, secret_key, false).await?;
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
@@ -324,7 +316,7 @@ pub async fn process_transactions(
 
 pub async fn service_loop(
     conn: &mut SqliteConnection,
-    web3: &web3::Web3<web3::transports::Http>,
+    payment_setup: PaymentSetup,
     secret_key: &SecretKey,
     finish_when_processed: bool,
 ) {
@@ -348,7 +340,7 @@ pub async fn service_loop(
                 > last_update_time1 + chrono::Duration::seconds(process_transactions_interval)
         {
             log::debug!("Processing transactions...");
-            match process_transactions(conn, web3, secret_key).await {
+            match process_transactions(conn, &payment_setup, secret_key).await {
                 Ok(_) => {
                     //all pending transactions processed
                     process_tx_needed = false;
@@ -364,7 +356,7 @@ pub async fn service_loop(
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
         {
             log::debug!("Gathering transfers...");
-            match gather_transactions(conn, web3).await {
+            match gather_transactions(conn, &payment_setup).await {
                 Ok(count) => {
                     if count > 0 {
                         process_tx_needed = true;

@@ -10,6 +10,7 @@ mod process;
 mod service;
 mod transaction;
 mod utils;
+mod setup;
 
 use secp256k1::{PublicKey, SecretKey};
 
@@ -33,6 +34,7 @@ use crate::error::PaymentError;
 
 use crate::options::validated_cli;
 use crate::service::service_loop;
+use crate::setup::PaymentSetup;
 
 /*
 struct ERC20Payment {
@@ -133,9 +135,9 @@ async fn main() -> Result<(), PaymentError> {
     env_logger::init();
     let cli = validated_cli()?;
 
-    let config = Arc::new(config::Config::load("config-payments.toml")?);
-    log::debug!("Config: {:?}", config);
-
+    let config = config::Config::load("config-payments.toml")?;
+    let payment_setup = PaymentSetup::new(&config)?;
+    log::debug!("Payment setup: {:?}", payment_setup);
 
     // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
 
@@ -175,7 +177,7 @@ async fn main() -> Result<(), PaymentError> {
 
     //service_loop(&mut conn, &web3, &secret_key).await;
     tokio::spawn(
-        async move { service_loop(&mut conn, &web3, &secret_key, !cli.keep_running).await },
+        async move { service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await },
     );
 
     loop {

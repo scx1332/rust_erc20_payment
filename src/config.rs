@@ -25,8 +25,8 @@ pub struct Chain {
     pub network_id: usize,
     pub rpc_endpoints: Vec<String>,
     pub currency_symbol: Option<String>,
-    pub priority_gas: Option<Decimal>,
-    pub max_base_gas: Option<Decimal>,
+    pub priority_fee: f64,
+    pub max_fee_per_gas: f64,
     pub token: Option<Token>,
     pub multi_contract: Option<MultiContractSettings>
 }
