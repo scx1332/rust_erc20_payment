@@ -1,5 +1,16 @@
 use thiserror::Error;
 use web3::ethabi::ethereum_types::FromDecStrErr;
+use web3::types::U256;
+
+#[derive(Debug)]
+pub struct AllowanceRequest {
+    pub owner: String,
+    pub token_addr: String,
+    pub spender_addr: String,
+    pub chain_id: i64,
+    pub amount: U256,
+}
+
 
 #[derive(Error, Debug)]
 pub enum PaymentError {
@@ -23,5 +34,6 @@ pub enum PaymentError {
     TransactionFailedError(String),
     #[error("Payment failed error: {0}")]
     PaymentFailedError(String),
-
+    #[error("No allowance found for chain id: {0:?}")]
+    NoAllowanceFound(AllowanceRequest),
 }

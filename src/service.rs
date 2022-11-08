@@ -7,13 +7,13 @@ use crate::db::operations::{
     get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
     update_token_transfer, update_tx,
 };
-use crate::error::PaymentError;
+use crate::error::{AllowanceRequest, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
 use crate::utils::ConversionError;
-use secp256k1::SecretKey;
+use secp256k1::{All, SecretKey};
 use sqlx::{Connection, SqliteConnection};
 
 use crate::setup::PaymentSetup;
@@ -25,6 +25,113 @@ pub struct TokenTransferKey {
     pub receiver_addr: String,
     pub chain_id: i64,
     pub token_addr: Option<String>,
+}
+
+
+pub async fn process_allowance(conn: &mut SqliteConnection, payment_setup: &PaymentSetup,allowance_request:&AllowanceRequest) -> Result<u32, PaymentError>
+{
+    let minimum_allowance: U256 = U256::max_value() / U256::from(2);
+    let chain_setup = payment_setup.get_chain_setup(allowance_request.chain_id)?;
+    let web3 = payment_setup.get_provider(allowance_request.chain_id)?;
+    let max_fee_per_gas = chain_setup.max_fee_per_gas;
+    let priority_fee = chain_setup.priority_fee;
+
+    let mut db_allowance = find_allowance(
+        conn,
+        &allowance_request.owner,
+        &allowance_request.token_addr,
+        &allowance_request.spender_addr,
+        allowance_request.chain_id,
+    )
+        .await?;
+
+
+    let allowance = match db_allowance.as_mut() {
+        Some(db_allowance) => match db_allowance.confirm_date {
+            Some(_) => {
+                log::debug!("Allowance already confirmed from db");
+                U256::from_dec_str(&db_allowance.allowance)?
+            }
+            None => {
+                log::debug!("Allowance not confirmed in db, check on chain");
+                let allowance = check_allowance(
+                    web3,
+                    Address::from_str(&allowance_request.owner)?,
+                    Address::from_str(&allowance_request.token_addr)?,
+                    Address::from_str(&allowance_request.spender_addr)?,
+                )
+                    .await?;
+                if allowance > minimum_allowance {
+                    log::debug!("Allowance found on chain, update db");
+                    db_allowance.confirm_date = Some(chrono::Utc::now());
+                    update_allowance(conn, &db_allowance).await?;
+                }
+                allowance
+            }
+        },
+        None => {
+            log::debug!("No db entry, check allowance on chain");
+            let allowance = check_allowance(
+                web3,
+                Address::from_str(&allowance_request.owner)?,
+                Address::from_str(&allowance_request.token_addr)?,
+                Address::from_str(&allowance_request.spender_addr)?,
+            )
+                .await?;
+            if allowance > minimum_allowance {
+                log::debug!("Allowance found on chain, add entry to db");
+                let db_allowance = Allowance {
+                    id: 0,
+                    owner: allowance_request.owner.clone(),
+                    token_addr: allowance_request.token_addr.clone(),
+                    spender: allowance_request.spender_addr.clone(),
+                    chain_id: allowance_request.chain_id,
+                    tx_id: None,
+                    allowance: allowance.to_string(),
+                    confirm_date: Some(chrono::Utc::now()),
+                    fee_paid: None,
+                    error: None,
+                };
+                //allowance is confirmed on web3, update db
+                insert_allowance(conn, &db_allowance).await?;
+            }
+            allowance
+        }
+    };
+
+    if allowance < minimum_allowance {
+        let mut allowance = Allowance {
+            id: 0,
+            owner: allowance_request.owner.clone(),
+            token_addr: allowance_request.token_addr.clone(),
+            spender: allowance_request.spender_addr.clone(),
+            allowance: U256::max_value().to_string(),
+            chain_id: allowance_request.chain_id,
+            tx_id: None,
+            fee_paid: None,
+            confirm_date: None,
+            error: None,
+        };
+
+        let approve_tx = create_erc20_approve(
+            Address::from_str(&allowance_request.owner)?,
+            Address::from_str(&allowance_request.token_addr)?,
+            Address::from_str(&allowance_request.spender_addr)?,
+            allowance_request.chain_id as u64,
+            1000,
+            max_fee_per_gas,
+            priority_fee,
+        )?;
+        let mut db_transaction = conn.begin().await?;
+        let web3_tx_dao = insert_tx(&mut db_transaction, &approve_tx).await?;
+        allowance.tx_id = Some(web3_tx_dao.id);
+        insert_allowance(&mut db_transaction, &allowance).await?;
+
+        db_transaction.commit().await?;
+
+        return Ok(1);
+    }
+    Ok(0)
 }
 
 pub async fn gather_transactions(
@@ -86,92 +193,49 @@ pub async fn gather_transactions(
             )
             .await?;
 
-            let allowance = match db_allowance.as_mut() {
+
+            //todo - cleanup this code
+            match db_allowance.as_mut() {
                 Some(db_allowance) => match db_allowance.confirm_date {
                     Some(_) => {
                         log::debug!("Allowance already confirmed from db");
-                        U256::from_dec_str(&db_allowance.allowance)?
-                    }
-                    None => {
-                        log::debug!("Allowance not confirmed in db, check on chain");
-                        let allowance = check_allowance(
-                            web3,
-                            Address::from_str(&token_transfer.from_addr)?,
-                            Address::from_str(token_addr)?,
-                            *MULTI_ERC20_GOERLI,
-                        )
-                        .await?;
-                        if allowance > minimum_allowance {
-                            log::debug!("Allowance found on chain, update db");
-                            db_allowance.confirm_date = Some(chrono::Utc::now());
-                            update_allowance(conn, &db_allowance).await?;
+                        let allowance = U256::from_dec_str(&db_allowance.allowance)?;
+                        if allowance < minimum_allowance {
+                            return Err(PaymentError::NoAllowanceFound(
+                                AllowanceRequest {
+                                    owner: token_transfer.from_addr.clone(),
+                                    token_addr: token_addr.clone(),
+                                    spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                                    chain_id: token_transfer.chain_id,
+                                    amount: U256::max_value()
+                                },
+                            ));
                         }
-                        allowance
+                    },
+                    None => {
+                        return Err(PaymentError::NoAllowanceFound(
+                            AllowanceRequest {
+                                owner: token_transfer.from_addr.clone(),
+                                token_addr: token_addr.clone(),
+                                spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                                chain_id: token_transfer.chain_id,
+                                amount: U256::max_value()
+                            },
+                        ));
                     }
                 },
                 None => {
-                    log::debug!("No db entry, check allowance on chain");
-                    let allowance = check_allowance(
-                        web3,
-                        Address::from_str(&token_transfer.from_addr)?,
-                        Address::from_str(token_addr)?,
-                        *MULTI_ERC20_GOERLI,
-                    )
-                    .await?;
-                    if allowance > minimum_allowance {
-                        log::debug!("Allowance found on chain, add entry to db");
-                        let db_allowance = Allowance {
-                            id: 0,
+                    return Err(PaymentError::NoAllowanceFound(
+                        AllowanceRequest {
                             owner: token_transfer.from_addr.clone(),
                             token_addr: token_addr.clone(),
-                            spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                            spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
                             chain_id: token_transfer.chain_id,
-                            tx_id: None,
-                            allowance: allowance.to_string(),
-                            confirm_date: Some(chrono::Utc::now()),
-                            fee_paid: None,
-                            error: None,
-                        };
-                        //allowance is confirmed on web3, update db
-                        insert_allowance(conn, &db_allowance).await?;
-                    }
-                    allowance
+                            amount: U256::max_value()
+                        },
+                    ));
                 }
             };
-
-            if allowance < minimum_allowance {
-                let mut allowance = Allowance {
-                    id: 0,
-                    owner: token_transfer.from_addr.clone(),
-                    token_addr: token_addr.clone(),
-                    spender: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                    allowance: U256::max_value().to_string(),
-                    chain_id: token_transfer.chain_id,
-                    tx_id: None,
-                    fee_paid: None,
-                    confirm_date: None,
-                    error: None,
-                };
-
-                let approve_tx = create_erc20_approve(
-                    Address::from_str(&token_transfer.from_addr)?,
-                    Address::from_str(&token_addr)?,
-                    *MULTI_ERC20_GOERLI,
-                    token_transfer.chain_id as u64,
-                    1000,
-                    max_fee_per_gas,
-                    priority_fee,
-                )?;
-                let mut db_transaction = conn.begin().await?;
-                let web3_tx_dao = insert_tx(&mut db_transaction, &approve_tx).await?;
-                allowance.tx_id = Some(web3_tx_dao.id);
-                insert_allowance(&mut db_transaction, &allowance).await?;
-
-                db_transaction.commit().await?;
-                inserted_tx_count += 1;
-
-                return Ok(inserted_tx_count);
-            }
 
             create_erc20_transfer(
                 Address::from_str(&token_transfer.from_addr)?,
@@ -400,6 +464,22 @@ pub async fn service_loop(
                     }
                 }
                 Err(e) => {
+                    match &e {
+                        PaymentError::NoAllowanceFound(allowance_request) => {
+                            log::error!("No allowance found for: {:?}", allowance_request);
+                            match process_allowance(conn, &payment_setup, allowance_request).await {
+                                Ok(_) => {
+                                    process_tx_needed = true;
+                                }
+                                Err(e) => {
+                                    log::error!("Error in process allowance: {}", e);
+                                }
+                            }
+                        },
+                        _ => {
+                            log::error!("Error in gather transactions: {}", e);
+                        }
+                    }
                     //if error happened, we should check if partial transfers were inserted
                     process_tx_needed = true;
                     log::error!("Error in gather transactions: {}", e);
