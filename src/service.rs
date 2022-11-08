@@ -12,12 +12,12 @@ use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
-use crate::utils::{ConversionError};
+use crate::utils::ConversionError;
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 
-use web3::types::{Address, U256};
 use crate::setup::PaymentSetup;
+use web3::types::{Address, U256};
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -297,7 +297,8 @@ pub async fn process_transactions(
         let mut transactions = get_transactions_being_processed(conn).await?;
 
         for tx in &mut transactions {
-            let process_t_res = process_transaction(conn, tx, payment_setup, secret_key, false).await?;
+            let process_t_res =
+                process_transaction(conn, tx, payment_setup, secret_key, false).await?;
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {

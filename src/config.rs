@@ -18,7 +18,6 @@ pub struct MultiContractSettings {
     pub address: Address,
 }
 
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Chain {
@@ -28,7 +27,7 @@ pub struct Chain {
     pub priority_fee: f64,
     pub max_fee_per_gas: f64,
     pub token: Option<Token>,
-    pub multi_contract: Option<MultiContractSettings>
+    pub multi_contract: Option<MultiContractSettings>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -49,4 +48,3 @@ impl Config {
         }
     }
 }
-

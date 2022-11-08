@@ -8,14 +8,13 @@ mod multi;
 mod options;
 mod process;
 mod service;
+mod setup;
 mod transaction;
 mod utils;
-mod setup;
 
 use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
-
 
 use std::time::Duration;
 use std::{env, fmt};
@@ -176,9 +175,9 @@ async fn main() -> Result<(), PaymentError> {
     }
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    tokio::spawn(
-        async move { service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await },
-    );
+    tokio::spawn(async move {
+        service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await
+    });
 
     loop {
         //wait
