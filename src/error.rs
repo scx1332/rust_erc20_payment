@@ -17,11 +17,11 @@ pub enum PaymentError {
     Web3AbiError(#[from] web3::ethabi::Error),
     #[error("Io error: {0}")]
     IOError(#[from] std::io::Error),
-    #[error("Parsing error: {0}")]
-    ParsingError(String),
     #[error("Other error: {0}")]
     OtherError(String),
     #[error("Transaction failed error: {0}")]
     TransactionFailedError(String),
+    #[error("Payment failed error: {0}")]
+    PaymentFailedError(String),
 
 }

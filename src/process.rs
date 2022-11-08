@@ -44,11 +44,11 @@ pub async fn process_transaction(
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let chain_id = web3_tx_dao.chain_id;
-    let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|e| {
+    let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {
         PaymentError::TransactionFailedError(format!("Failed to get chain setup for chain id: {}", chain_id))
     })?;
 
-    let web3 = payment_setup.get_provider(chain_id).map_err(|e| {
+    let web3 = payment_setup.get_provider(chain_id).map_err(|_e| {
         PaymentError::TransactionFailedError(format!("Failed to get provider for chain id: {}", chain_id))
     })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
