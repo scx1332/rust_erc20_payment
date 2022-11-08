@@ -20,7 +20,8 @@ use crate::transaction::sign_transaction;
 #[derive(Debug)]
 pub enum ProcessTransactionResult {
     Confirmed,
-    NeedRetry,
+    NeedRetry(String),
+    InternalError(String),
     Unknown,
 }
 
@@ -43,6 +44,7 @@ pub async fn process_transaction(
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let chain_id = web3_tx_dao.chain_id;
+    let chain_setup = payment_setup.get_chain_setup(chain_id)?;
     let web3 = payment_setup.get_provider(chain_id)?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
@@ -50,6 +52,19 @@ pub async fn process_transaction(
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
     }
+
+    //timeout transaction when it is not confirmed after transaction_timeout seconds
+    if let Some(signed_date) = web3_tx_dao.signed_date {
+        let now = chrono::Utc::now();
+        let diff = now - signed_date;
+        if diff.num_seconds() < -10 {
+            return Ok(ProcessTransactionResult::NeedRetry("Time changed".to_string()));
+        }
+        if diff.num_seconds() > chain_setup.transaction_timeout as i64 {
+            return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
+        }
+    }
+
     if web3_tx_dao.signed_raw_data.is_none() {
         match check_transaction(&web3, web3_tx_dao).await {
             Ok(_) => {}
@@ -73,6 +88,7 @@ pub async fn process_transaction(
     if web3_tx_dao.confirm_date.is_some() {
         return Ok(ProcessTransactionResult::Confirmed);
     }
+
 
     let mut tx_not_found_count = 0;
     loop {
@@ -104,18 +120,18 @@ pub async fn process_transaction(
             let res = find_receipt(&web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
-                    println!("Receipt found: {:?}", web3_tx_dao.tx_hash);
+                    log::debug!("Receipt found: {:?}", web3_tx_dao.tx_hash);
                     if block_number + CONFIRMED_BLOCKS <= current_block_number {
                         web3_tx_dao.confirm_date = Some(chrono::Utc::now());
-                        println!("Transaction confirmed: {:?}", web3_tx_dao.tx_hash);
+                        log::debug!("Transaction confirmed: {:?}", web3_tx_dao.tx_hash);
                         break;
                     }
                 }
             } else {
                 tx_not_found_count += 1;
-                println!("Receipt not found: {:?}", web3_tx_dao.tx_hash);
+                log::debug!("Receipt not found: {:?}", web3_tx_dao.tx_hash);
                 if tx_not_found_count >= CHECKS_UNTIL_NOT_FOUND {
-                    return Ok(ProcessTransactionResult::NeedRetry);
+                    return Ok(ProcessTransactionResult::NeedRetry("No receipt".to_string()));
                 }
             }
         }

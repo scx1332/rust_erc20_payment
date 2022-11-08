@@ -233,19 +233,32 @@ pub async fn update_token_transfer_result(
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;
         }
-        ProcessTransactionResult::NeedRetry => {
+        ProcessTransactionResult::NeedRetry(err) => {
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await?;
             let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
             for mut token_transfer in token_transfers {
                 token_transfer.fee_paid = Some("0".to_string());
-                token_transfer.error = Some("NeedRetry".to_string());
+                token_transfer.error = Some(err.clone());
                 update_token_transfer(&mut db_transaction, &token_transfer).await?;
             }
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;
-        }
+        },
+        ProcessTransactionResult::InternalError(err) => {
+            tx.processing = 0;
+
+            let mut db_transaction = conn.begin().await?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await?;
+            for mut token_transfer in token_transfers {
+                token_transfer.fee_paid = Some("0".to_string());
+                token_transfer.error = Some(err.clone());
+                update_token_transfer(&mut db_transaction, &token_transfer).await?;
+            }
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        },
         ProcessTransactionResult::Unknown => {
             tx.processing = 1;
             update_tx(conn, tx).await?;
@@ -270,12 +283,22 @@ pub async fn update_approve_result(
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;
         }
-        ProcessTransactionResult::NeedRetry => {
+        ProcessTransactionResult::NeedRetry(err) => {
             tx.processing = 0;
             let mut db_transaction = conn.begin().await?;
             let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
             allowance.fee_paid = Some("0".to_string());
-            allowance.error = Some("NeedRetry".to_string());
+            allowance.error = Some(err.clone());
+            update_allowance(&mut db_transaction, &allowance).await?;
+            update_tx(&mut db_transaction, tx).await?;
+            db_transaction.commit().await?;
+        }
+        ProcessTransactionResult::InternalError(err) => {
+            tx.processing = 0;
+            let mut db_transaction = conn.begin().await?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await?;
+            allowance.fee_paid = Some("0".to_string());
+            allowance.error = Some(err.clone());
             update_allowance(&mut db_transaction, &allowance).await?;
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;

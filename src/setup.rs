@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use chrono::Duration;
 
 use crate::config::Config;
 use crate::error::PaymentError;
@@ -20,6 +21,7 @@ pub struct ChainSetup {
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<String>,
+    pub transaction_timeout: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -52,6 +54,7 @@ impl PaymentSetup {
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee)?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
                     multi_contract_address: None,
+                    transaction_timeout: chain_config.1.transaction_timeout,
                 },
             );
         }

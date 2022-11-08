@@ -28,6 +28,7 @@ pub struct Chain {
     pub max_fee_per_gas: f64,
     pub token: Option<Token>,
     pub multi_contract: Option<MultiContractSettings>,
+    pub transaction_timeout: u64,
 }
 
 #[derive(Deserialize, Debug, Clone)]
