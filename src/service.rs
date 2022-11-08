@@ -12,7 +12,7 @@ use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
-use crate::utils::{gwei_to_u256, ConversionError};
+use crate::utils::{ConversionError};
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 

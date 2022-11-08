@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap};
-use sqlx::SqliteConnection;
+
 use web3::transports::Http;
-use web3::types::{Address, Res, U256};
+use web3::types::{Address, U256};
 use web3::Web3;
 use crate::config::Config;
 use crate::error::PaymentError;

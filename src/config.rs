@@ -1,11 +1,11 @@
 use serde::Deserialize;
 use std::collections::btree_map::BTreeMap as Map;
-use std::error::Error;
+
 use std::fs;
 use std::path::Path;
 
 use crate::error::PaymentError;
-use rust_decimal::Decimal;
+
 use web3::types::Address;
 
 #[derive(Deserialize, Debug, Clone)]

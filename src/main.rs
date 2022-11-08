@@ -16,7 +16,7 @@ use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
-use std::sync::Arc;
+
 use std::time::Duration;
 use std::{env, fmt};
 
@@ -147,7 +147,7 @@ async fn main() -> Result<(), PaymentError> {
     let transport = web3::transports::Http::new(&prov_url)?;
     let web3 = web3::Web3::new(transport);
 
-    let chain_id = web3.eth().chain_id().await?.as_u64();
+    let _chain_id = web3.eth().chain_id().await?.as_u64();
 
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
     let secret_key = SecretKey::from_str(&private_key).unwrap();
