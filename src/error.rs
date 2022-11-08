@@ -11,7 +11,6 @@ pub struct AllowanceRequest {
     pub amount: U256,
 }
 
-
 #[derive(Error, Debug)]
 pub enum PaymentError {
     #[error("Hex conversion error: {0}")]

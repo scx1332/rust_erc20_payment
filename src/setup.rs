@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::utils::gwei_to_u256;

@@ -45,14 +45,21 @@ pub async fn process_transaction(
 
     let chain_id = web3_tx_dao.chain_id;
     let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {
-        PaymentError::TransactionFailedError(format!("Failed to get chain setup for chain id: {}", chain_id))
+        PaymentError::TransactionFailedError(format!(
+            "Failed to get chain setup for chain id: {}",
+            chain_id
+        ))
     })?;
 
     let web3 = payment_setup.get_provider(chain_id).map_err(|_e| {
-        PaymentError::TransactionFailedError(format!("Failed to get provider for chain id: {}", chain_id))
+        PaymentError::TransactionFailedError(format!(
+            "Failed to get provider for chain id: {}",
+            chain_id
+        ))
     })?;
-    let from_addr = Address::from_str(&web3_tx_dao.from_addr)
-        .map_err(|_e| PaymentError::TransactionFailedError("Failed to parse from_addr".to_string()))?;
+    let from_addr = Address::from_str(&web3_tx_dao.from_addr).map_err(|_e| {
+        PaymentError::TransactionFailedError("Failed to parse from_addr".to_string())
+    })?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
@@ -63,7 +70,9 @@ pub async fn process_transaction(
         let now = chrono::Utc::now();
         let diff = now - first_processed;
         if diff.num_seconds() < -10 {
-            return Ok(ProcessTransactionResult::NeedRetry("Time changed".to_string()));
+            return Ok(ProcessTransactionResult::NeedRetry(
+                "Time changed".to_string(),
+            ));
         }
         if diff.num_seconds() > chain_setup.transaction_timeout as i64 {
             return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
@@ -96,7 +105,6 @@ pub async fn process_transaction(
     if web3_tx_dao.confirm_date.is_some() {
         return Ok(ProcessTransactionResult::Confirmed);
     }
-
 
     let mut tx_not_found_count = 0;
     loop {
@@ -139,7 +147,9 @@ pub async fn process_transaction(
                 tx_not_found_count += 1;
                 log::debug!("Receipt not found: {:?}", web3_tx_dao.tx_hash);
                 if tx_not_found_count >= CHECKS_UNTIL_NOT_FOUND {
-                    return Ok(ProcessTransactionResult::NeedRetry("No receipt".to_string()));
+                    return Ok(ProcessTransactionResult::NeedRetry(
+                        "No receipt".to_string(),
+                    ));
                 }
             }
         }

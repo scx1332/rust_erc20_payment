@@ -13,7 +13,7 @@ use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
 use crate::utils::ConversionError;
-use secp256k1::{All, SecretKey};
+use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
 
 use crate::setup::PaymentSetup;
@@ -27,9 +27,11 @@ pub struct TokenTransferKey {
     pub token_addr: Option<String>,
 }
 
-
-pub async fn process_allowance(conn: &mut SqliteConnection, payment_setup: &PaymentSetup,allowance_request:&AllowanceRequest) -> Result<u32, PaymentError>
-{
+pub async fn process_allowance(
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+    allowance_request: &AllowanceRequest,
+) -> Result<u32, PaymentError> {
     let minimum_allowance: U256 = U256::max_value() / U256::from(2);
     let chain_setup = payment_setup.get_chain_setup(allowance_request.chain_id)?;
     let web3 = payment_setup.get_provider(allowance_request.chain_id)?;
@@ -43,8 +45,7 @@ pub async fn process_allowance(conn: &mut SqliteConnection, payment_setup: &Paym
         &allowance_request.spender_addr,
         allowance_request.chain_id,
     )
-        .await?;
-
+    .await?;
 
     let allowance = match db_allowance.as_mut() {
         Some(db_allowance) => match db_allowance.confirm_date {
@@ -60,7 +61,7 @@ pub async fn process_allowance(conn: &mut SqliteConnection, payment_setup: &Paym
                     Address::from_str(&allowance_request.token_addr)?,
                     Address::from_str(&allowance_request.spender_addr)?,
                 )
-                    .await?;
+                .await?;
                 if allowance > minimum_allowance {
                     log::debug!("Allowance found on chain, update db");
                     db_allowance.confirm_date = Some(chrono::Utc::now());
@@ -77,7 +78,7 @@ pub async fn process_allowance(conn: &mut SqliteConnection, payment_setup: &Paym
                 Address::from_str(&allowance_request.token_addr)?,
                 Address::from_str(&allowance_request.spender_addr)?,
             )
-                .await?;
+            .await?;
             if allowance > minimum_allowance {
                 log::debug!("Allowance found on chain, add entry to db");
                 let db_allowance = Allowance {
@@ -177,7 +178,7 @@ pub async fn gather_transactions(
 
         let max_fee_per_gas = chain_setup.max_fee_per_gas;
         let priority_fee = chain_setup.priority_fee;
-        let web3 = payment_setup.get_provider(token_transfer.chain_id)?;
+        let _web3 = payment_setup.get_provider(token_transfer.chain_id)?;
 
         log::debug!("Processing token transfer {:?}", token_transfer);
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
@@ -193,7 +194,6 @@ pub async fn gather_transactions(
             )
             .await?;
 
-
             //todo - cleanup this code
             match db_allowance.as_mut() {
                 Some(db_allowance) => match db_allowance.confirm_date {
@@ -201,39 +201,33 @@ pub async fn gather_transactions(
                         log::debug!("Allowance already confirmed from db");
                         let allowance = U256::from_dec_str(&db_allowance.allowance)?;
                         if allowance < minimum_allowance {
-                            return Err(PaymentError::NoAllowanceFound(
-                                AllowanceRequest {
-                                    owner: token_transfer.from_addr.clone(),
-                                    token_addr: token_addr.clone(),
-                                    spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                                    chain_id: token_transfer.chain_id,
-                                    amount: U256::max_value()
-                                },
-                            ));
-                        }
-                    },
-                    None => {
-                        return Err(PaymentError::NoAllowanceFound(
-                            AllowanceRequest {
+                            return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
                                 owner: token_transfer.from_addr.clone(),
                                 token_addr: token_addr.clone(),
                                 spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
                                 chain_id: token_transfer.chain_id,
-                                amount: U256::max_value()
-                            },
-                        ));
+                                amount: U256::max_value(),
+                            }));
+                        }
                     }
-                },
-                None => {
-                    return Err(PaymentError::NoAllowanceFound(
-                        AllowanceRequest {
+                    None => {
+                        return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
                             owner: token_transfer.from_addr.clone(),
                             token_addr: token_addr.clone(),
                             spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
                             chain_id: token_transfer.chain_id,
-                            amount: U256::max_value()
-                        },
-                    ));
+                            amount: U256::max_value(),
+                        }));
+                    }
+                },
+                None => {
+                    return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
+                        owner: token_transfer.from_addr.clone(),
+                        token_addr: token_addr.clone(),
+                        spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                        chain_id: token_transfer.chain_id,
+                        amount: U256::max_value(),
+                    }));
                 }
             };
 
@@ -309,7 +303,7 @@ pub async fn update_token_transfer_result(
             }
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;
-        },
+        }
         ProcessTransactionResult::InternalError(err) => {
             tx.processing = 0;
 
@@ -322,7 +316,7 @@ pub async fn update_token_transfer_result(
             }
             update_tx(&mut db_transaction, tx).await?;
             db_transaction.commit().await?;
-        },
+        }
         ProcessTransactionResult::Unknown => {
             tx.processing = 1;
             update_tx(conn, tx).await?;
@@ -385,19 +379,16 @@ pub async fn process_transactions(
 
         for tx in &mut transactions {
             let process_t_res =
-                match process_transaction(conn, tx, payment_setup, secret_key, false).await
-                {
-                    Ok(process_result) => {process_result}
-                    Err(err) => {
-                        match err {
-                            PaymentError::TransactionFailedError(err) => {
-                                ProcessTransactionResult::InternalError(err)
-                            }
-                            _ => {
-                                return Err(err);
-                            }
+                match process_transaction(conn, tx, payment_setup, secret_key, false).await {
+                    Ok(process_result) => process_result,
+                    Err(err) => match err {
+                        PaymentError::TransactionFailedError(err) => {
+                            ProcessTransactionResult::InternalError(err)
                         }
-                    }
+                        _ => {
+                            return Err(err);
+                        }
+                    },
                 };
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
@@ -475,7 +466,7 @@ pub async fn service_loop(
                                     log::error!("Error in process allowance: {}", e);
                                 }
                             }
-                        },
+                        }
                         _ => {
                             log::error!("Error in gather transactions: {}", e);
                         }

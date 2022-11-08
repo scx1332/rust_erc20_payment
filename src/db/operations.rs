@@ -161,7 +161,7 @@ WHERE id = $1
     .bind(&token_transfer.token_amount)
     .bind(&token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
-        .bind(&token_transfer.error)
+    .bind(&token_transfer.error)
     .execute(conn)
     .await?;
     Ok(token_transfer.clone())
@@ -290,7 +290,7 @@ WHERE id = $1
     .bind(&tx.processing)
     .bind(&tx.call_data)
     .bind(&tx.created_date)
-        .bind(&tx.first_processed)
+    .bind(&tx.first_processed)
     .bind(&tx.tx_hash)
     .bind(&tx.signed_raw_data)
     .bind(&tx.signed_date)
