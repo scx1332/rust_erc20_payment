@@ -42,6 +42,7 @@ pub struct Web3TransactionDao {
     pub processing: i64,
     pub call_data: Option<String>,
     pub created_date: DateTime<Utc>,
+    pub first_processed: Option<DateTime<Utc>>,
     pub tx_hash: Option<String>,
     pub signed_raw_data: Option<String>,
     pub signed_date: Option<DateTime<Utc>>,

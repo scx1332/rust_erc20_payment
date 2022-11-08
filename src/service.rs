@@ -321,7 +321,20 @@ pub async fn process_transactions(
 
         for tx in &mut transactions {
             let process_t_res =
-                process_transaction(conn, tx, payment_setup, secret_key, false).await?;
+                match process_transaction(conn, tx, payment_setup, secret_key, false).await
+                {
+                    Ok(process_result) => {process_result}
+                    Err(err) => {
+                        match err {
+                            PaymentError::TransactionFailedError(err) => {
+                                ProcessTransactionResult::InternalError(err)
+                            }
+                            _ => {
+                                return Err(err);
+                            }
+                        }
+                    }
+                };
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {

@@ -136,7 +136,7 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             let mut receivers = Vec::<Address>::new();
             let mut amounts = Vec::<U256>::new();
             for i in 0..test_options.generate_count {
-                let gen_addr_str = &format!("0x{:040x}", i + 0x1000);
+                let gen_addr_str = &format!("0x{:040x}", i + 0x10000);
                 let receiver = Address::from_str(gen_addr_str).map_err(|_| {
                     PaymentError::OtherError(format!(
                         "Invalid receiver when parsing input: {gen_addr_str}"

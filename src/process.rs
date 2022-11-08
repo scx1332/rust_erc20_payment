@@ -44,25 +44,33 @@ pub async fn process_transaction(
     const CONFIRMED_BLOCKS: u64 = 0;
 
     let chain_id = web3_tx_dao.chain_id;
-    let chain_setup = payment_setup.get_chain_setup(chain_id)?;
-    let web3 = payment_setup.get_provider(chain_id)?;
+    let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|e| {
+        PaymentError::TransactionFailedError(format!("Failed to get chain setup for chain id: {}", chain_id))
+    })?;
+
+    let web3 = payment_setup.get_provider(chain_id).map_err(|e| {
+        PaymentError::TransactionFailedError(format!("Failed to get provider for chain id: {}", chain_id))
+    })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
-        .map_err(|_e| PaymentError::ParsingError("Failed to parse from_addr".to_string()))?;
+        .map_err(|_e| PaymentError::TransactionFailedError("Failed to parse from_addr".to_string()))?;
     if web3_tx_dao.nonce.is_none() {
         let nonce = get_transaction_count(from_addr, &web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
     }
 
     //timeout transaction when it is not confirmed after transaction_timeout seconds
-    if let Some(signed_date) = web3_tx_dao.signed_date {
+    if let Some(first_processed) = web3_tx_dao.first_processed {
         let now = chrono::Utc::now();
-        let diff = now - signed_date;
+        let diff = now - first_processed;
         if diff.num_seconds() < -10 {
             return Ok(ProcessTransactionResult::NeedRetry("Time changed".to_string()));
         }
         if diff.num_seconds() > chain_setup.transaction_timeout as i64 {
             return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
         }
+    } else {
+        web3_tx_dao.first_processed = Some(chrono::Utc::now());
+        update_tx(conn, web3_tx_dao).await?;
     }
 
     if web3_tx_dao.signed_raw_data.is_none() {

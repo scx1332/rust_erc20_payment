@@ -142,12 +142,6 @@ async fn main() -> Result<(), PaymentError> {
 
     let mut conn = create_sqlite_connection(2).await?;
 
-    let prov_url = env::var("PROVIDER_URL").unwrap();
-    let transport = web3::transports::Http::new(&prov_url)?;
-    let web3 = web3::Web3::new(transport);
-
-    let _chain_id = web3.eth().chain_id().await?.as_u64();
-
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);

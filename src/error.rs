@@ -21,4 +21,7 @@ pub enum PaymentError {
     ParsingError(String),
     #[error("Other error: {0}")]
     OtherError(String),
+    #[error("Transaction failed error: {0}")]
+    TransactionFailedError(String),
+
 }

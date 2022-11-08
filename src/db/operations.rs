@@ -148,7 +148,8 @@ chain_id = $4,
 token_addr = $5,
 token_amount = $6,
 tx_id = $7,
-fee_paid = $8
+fee_paid = $8,
+error = $9
 WHERE id = $1
 ",
     )
@@ -160,6 +161,7 @@ WHERE id = $1
     .bind(&token_transfer.token_amount)
     .bind(&token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
+        .bind(&token_transfer.error)
     .execute(conn)
     .await?;
     Ok(token_transfer.clone())
@@ -213,8 +215,8 @@ pub async fn insert_tx(
 ) -> Result<Web3TransactionDao, sqlx::Error> {
     let res = sqlx::query_as::<_, Web3TransactionDao>(
         r"INSERT INTO tx
-(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *;
+(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING *;
 ",
     )
         .bind(&tx.method)
@@ -229,6 +231,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .bind( &tx.processing)
         .bind( &tx.call_data)
         .bind( &tx.created_date)
+        .bind( &tx.first_processed)
         .bind( &tx.tx_hash)
         .bind( &tx.signed_raw_data)
         .bind( &tx.signed_date)
@@ -261,15 +264,16 @@ nonce = $10,
 processing = $11,
 call_data = $12,
 created_date = $13,
-tx_hash = $14,
-signed_raw_data = $15,
-signed_date = $16,
-broadcast_date = $17,
-broadcast_count = $18,
-confirm_date = $19,
-block_number = $20,
-chain_status = $21,
-fee_paid = $22
+first_processed = $14,
+tx_hash = $15,
+signed_raw_data = $16,
+signed_date = $17,
+broadcast_date = $18,
+broadcast_count = $19,
+confirm_date = $20,
+block_number = $21,
+chain_status = $22,
+fee_paid = $23
 WHERE id = $1
 ",
     )
@@ -286,6 +290,7 @@ WHERE id = $1
     .bind(&tx.processing)
     .bind(&tx.call_data)
     .bind(&tx.created_date)
+        .bind(&tx.first_processed)
     .bind(&tx.tx_hash)
     .bind(&tx.signed_raw_data)
     .bind(&tx.signed_date)
