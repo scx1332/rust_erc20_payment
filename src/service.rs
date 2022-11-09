@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
 use crate::db::operations::{
@@ -134,13 +134,10 @@ pub async fn process_allowance(
     Ok(0)
 }
 
-pub async fn gather_transactions(
-    conn: &mut SqliteConnection,
-    payment_setup: &PaymentSetup,
-) -> Result<u32, PaymentError> {
-    let mut inserted_tx_count = 0;
+type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
 
-    let mut hash_map = HashMap::<TokenTransferKey, Vec<TokenTransfer>>::new();
+pub async fn gather_transactions_pre(conn: &mut SqliteConnection) -> Result<TokenTransferMap, PaymentError> {
+    let mut transfer_map = TokenTransferMap::new();
 
     let token_transfers = get_pending_token_transfers(conn).await?;
 
@@ -152,19 +149,42 @@ pub async fn gather_transactions(
             chain_id: f.chain_id,
             token_addr: f.token_addr.clone(),
         };
-        match hash_map.get_mut(&key) {
+        match transfer_map.get_mut(&key) {
             Some(v) => {
                 v.push(f.clone());
             }
             None => {
-                hash_map.insert(key, vec![f.clone()]);
+                transfer_map.insert(key, vec![f.clone()]);
             }
         }
     }
+    Ok(transfer_map)
+}
 
-    for pair in hash_map.iter_mut() {
+pub async fn gather_transactions_post(
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+    token_transfer_map: &mut TokenTransferMap
+) -> Result<u32, PaymentError> {
+    let mut inserted_tx_count = 0;
+
+    let mut sorted_order = BTreeMap::<i64, TokenTransferKey>::new();
+
+    for pair in token_transfer_map.iter() {
         let token_transfers = pair.1;
         let token_transfer = pair.0;
+        let min_id = token_transfers.iter().map(|f|f.id).min().ok_or(
+            PaymentError::OtherError("Failed algorithm when searching min".to_string())
+        )?;
+        sorted_order.insert(min_id, token_transfer.clone());
+    }
+
+
+    for key in sorted_order {
+        let token_transfer = key.1;
+        let token_transfers = token_transfer_map.get_mut(&token_transfer).ok_or(
+            PaymentError::OtherError("Failed algorithm when getting key".to_string())
+        )?;
 
         //sum of transfers
 
@@ -252,7 +272,7 @@ pub async fn gather_transactions(
         };
         let mut db_transaction = conn.begin().await?;
         let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
-        for token_transfer in token_transfers {
+        for token_transfer in token_transfers.iter_mut() {
             token_transfer.tx_id = Some(web3_tx_dao.id);
             update_token_transfer(&mut db_transaction, &token_transfer).await?;
         }
@@ -448,7 +468,16 @@ pub async fn service_loop(
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
         {
             log::debug!("Gathering transfers...");
-            match gather_transactions(conn, &payment_setup).await {
+            let mut token_transfer_map = match gather_transactions_pre(conn).await {
+                Ok(token_transfer_map) => token_transfer_map,
+                Err(e) => {
+                    log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+            };
+
+            match gather_transactions_post(conn, &payment_setup, &mut token_transfer_map).await {
                 Ok(count) => {
                     if count > 0 {
                         process_tx_needed = true;
