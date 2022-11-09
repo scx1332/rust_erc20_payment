@@ -62,7 +62,10 @@ pub async fn process_allowance(
                 )
                 .await?;
                 if allowance > minimum_allowance {
-                    log::debug!("Allowance found on chain, update db_allowance with id {}", db_allowance.id);
+                    log::debug!(
+                        "Allowance found on chain, update db_allowance with id {}",
+                        db_allowance.id
+                    );
                     db_allowance.confirm_date = Some(chrono::Utc::now());
                     update_allowance(conn, &db_allowance).await?;
                 }
@@ -299,18 +302,18 @@ pub async fn gather_transactions_post(
                 match e {
                     PaymentError::NoAllowanceFound(allowance_request) => {
                         //pass allowance error up
-                        return Err(PaymentError::NoAllowanceFound(allowance_request))
+                        return Err(PaymentError::NoAllowanceFound(allowance_request));
                     }
                     _ => {
                         //mark other errors in db to not process these failed transfers again
                         for token_transfer in token_transfers {
-                            token_transfer.error = Some("Error in gathering transactions".to_string());
+                            token_transfer.error =
+                                Some("Error in gathering transactions".to_string());
                             update_token_transfer(conn, &token_transfer).await?;
                         }
                         log::error!("Failed to gather transactions: {}", e);
                     }
                 }
-
             }
         }
         inserted_tx_count += 1;

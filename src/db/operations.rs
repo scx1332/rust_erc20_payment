@@ -77,8 +77,8 @@ error = $10
 WHERE id = $1
  ",
     )
-        .bind(&allowance.id)
-        .bind(&allowance.owner)
+    .bind(&allowance.id)
+    .bind(&allowance.owner)
     .bind(&allowance.token_addr)
     .bind(&allowance.spender)
     .bind(&allowance.allowance)

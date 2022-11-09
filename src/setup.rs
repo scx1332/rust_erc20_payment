@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::utils::gwei_to_u256;
+use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
@@ -51,7 +51,11 @@ impl PaymentSetup {
                     max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas)?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee)?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
-                    multi_contract_address: chain_config.1.multi_contract.clone().map(|m| m.address),
+                    multi_contract_address: chain_config
+                        .1
+                        .multi_contract
+                        .clone()
+                        .map(|m| m.address),
                     transaction_timeout: chain_config.1.transaction_timeout,
                 },
             );

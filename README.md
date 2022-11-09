@@ -25,5 +25,5 @@ order by created_date desc
 
 # TODO
 
-- [ ] Add error handling in gather_transactions, now SQL will loop forever, when hit error in gather
+- [x] Add error handling in gather_transactions, now SQL will loop forever, when hit error in gather
 

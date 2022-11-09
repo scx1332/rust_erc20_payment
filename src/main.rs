@@ -126,6 +126,7 @@ async fn main() -> Result<(), PaymentError> {
         service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await
     });
 
-    sp.await.map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
+    sp.await
+        .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
     Ok(())
 }
