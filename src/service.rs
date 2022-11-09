@@ -161,6 +161,104 @@ pub async fn gather_transactions_pre(conn: &mut SqliteConnection) -> Result<Toke
     Ok(transfer_map)
 }
 
+pub async fn gather_transactions_batch(
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+    token_transfers: &mut Vec<TokenTransfer>,
+    token_transfer: &TokenTransferKey,
+) -> Result<u32, PaymentError> {
+    let mut sum = U256::zero();
+    for token_transfer in token_transfers.iter() {
+        sum += U256::from_dec_str(&token_transfer.token_amount)?;
+    }
+
+    let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
+
+    let max_fee_per_gas = chain_setup.max_fee_per_gas;
+    let priority_fee = chain_setup.priority_fee;
+
+    log::debug!("Processing token transfer {:?}", token_transfer);
+    let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
+        if let Some(multi_contract_address) = chain_setup.multi_contract_address.as_ref() {
+            //this is some arbitrary number.
+            let minimum_allowance: U256 = U256::max_value() / U256::from(2);
+
+            let db_allowance = find_allowance(
+                conn,
+                &token_transfer.from_addr,
+                token_addr,
+                multi_contract_address,
+                token_transfer.chain_id,
+            )
+                .await?;
+
+
+            let mut allowance_not_met = false;
+            match db_allowance {
+                Some(db_allowance) => match db_allowance.confirm_date {
+                    Some(_) => {
+                        let allowance = U256::from_dec_str(&db_allowance.allowance)?;
+                        if allowance < minimum_allowance {
+                            log::debug!("Allowance already confirmed from db, but it is too small");
+                            allowance_not_met = true;
+                        } else {
+                            log::debug!("Allowance confirmed from db");
+                        }
+                    }
+                    None => {
+                        log::debug!("Allowance request fount, but not confirmed");
+                        allowance_not_met = true;
+                    }
+                },
+                None => {
+                    log::debug!("Allowance not found in db");
+                    allowance_not_met = true;
+                }
+            };
+            if allowance_not_met {
+                return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
+                    owner: token_transfer.from_addr.clone(),
+                    token_addr: token_addr.clone(),
+                    spender_addr: multi_contract_address.clone(),
+                    chain_id: token_transfer.chain_id,
+                    amount: U256::max_value(),
+                }));
+            }
+        }
+
+
+
+        create_erc20_transfer(
+            Address::from_str(&token_transfer.from_addr)?,
+            Address::from_str(token_addr)?,
+            Address::from_str(&token_transfer.receiver_addr)?,
+            sum,
+            token_transfer.chain_id as u64,
+            1000,
+            max_fee_per_gas,
+            priority_fee,
+        )?
+    } else {
+        create_eth_transfer(
+            Address::from_str(&token_transfer.from_addr)?,
+            Address::from_str(&token_transfer.receiver_addr)?,
+            token_transfer.chain_id as u64,
+            1000,
+            max_fee_per_gas,
+            priority_fee,
+            sum,
+        )
+    };
+    let mut db_transaction = conn.begin().await?;
+    let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
+    for token_transfer in token_transfers.iter_mut() {
+        token_transfer.tx_id = Some(web3_tx_dao.id);
+        update_token_transfer(&mut db_transaction, &token_transfer).await?;
+    }
+    db_transaction.commit().await?;
+    Ok(1)
+}
+
 pub async fn gather_transactions_post(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
@@ -187,96 +285,18 @@ pub async fn gather_transactions_post(
         )?;
 
         //sum of transfers
-
-        let mut sum = U256::zero();
-        for token_transfer in token_transfers.iter() {
-            sum += U256::from_dec_str(&token_transfer.token_amount)?;
-        }
-
-        let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
-
-        let max_fee_per_gas = chain_setup.max_fee_per_gas;
-        let priority_fee = chain_setup.priority_fee;
-
-        log::debug!("Processing token transfer {:?}", token_transfer);
-        let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
-            if let Some(multi_contract_address) = chain_setup.multi_contract_address.as_ref() {
-                //this is some arbitrary number.
-                let minimum_allowance: U256 = U256::max_value() / U256::from(2);
-
-                let db_allowance = find_allowance(
-                    conn,
-                    &token_transfer.from_addr,
-                    token_addr,
-                    multi_contract_address,
-                    token_transfer.chain_id,
-                )
-                    .await?;
-
-
-                let mut allowance_not_met = false;
-                match db_allowance {
-                    Some(db_allowance) => match db_allowance.confirm_date {
-                        Some(_) => {
-                            let allowance = U256::from_dec_str(&db_allowance.allowance)?;
-                            if allowance < minimum_allowance {
-                                log::debug!("Allowance already confirmed from db, but it is too small");
-                                allowance_not_met = true;
-                            } else {
-                                log::debug!("Allowance confirmed from db");
-                            }
-                        }
-                        None => {
-                            log::debug!("Allowance request fount, but not confirmed");
-                            allowance_not_met = true;
-                        }
-                    },
-                    None => {
-                        log::debug!("Allowance not found in db");
-                        allowance_not_met = true;
-                    }
-                };
-                if allowance_not_met {
-                    return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
-                        owner: token_transfer.from_addr.clone(),
-                        token_addr: token_addr.clone(),
-                        spender_addr: multi_contract_address.clone(),
-                        chain_id: token_transfer.chain_id,
-                        amount: U256::max_value(),
-                    }));
-                }
+        match gather_transactions_batch(conn, payment_setup, token_transfers, &token_transfer).await {
+            Ok(_) => {
+                inserted_tx_count += 1;
             }
-
-
-
-            create_erc20_transfer(
-                Address::from_str(&token_transfer.from_addr)?,
-                Address::from_str(token_addr)?,
-                Address::from_str(&token_transfer.receiver_addr)?,
-                sum,
-                token_transfer.chain_id as u64,
-                1000,
-                max_fee_per_gas,
-                priority_fee,
-            )?
-        } else {
-            create_eth_transfer(
-                Address::from_str(&token_transfer.from_addr)?,
-                Address::from_str(&token_transfer.receiver_addr)?,
-                token_transfer.chain_id as u64,
-                1000,
-                max_fee_per_gas,
-                priority_fee,
-                sum,
-            )
-        };
-        let mut db_transaction = conn.begin().await?;
-        let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
-        for token_transfer in token_transfers.iter_mut() {
-            token_transfer.tx_id = Some(web3_tx_dao.id);
-            update_token_transfer(&mut db_transaction, &token_transfer).await?;
+            Err(e) => {
+                for token_transfer in token_transfers {
+                    token_transfer.error = Some("Error in gathering transactions".to_string());
+                    update_token_transfer(conn, &token_transfer).await?;
+                }
+                log::error!("Failed to gather transactions: {}", e);
+            }
         }
-        db_transaction.commit().await?;
         inserted_tx_count += 1;
     }
 
