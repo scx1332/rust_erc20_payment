@@ -136,7 +136,9 @@ pub async fn process_allowance(
 
 type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
 
-pub async fn gather_transactions_pre(conn: &mut SqliteConnection) -> Result<TokenTransferMap, PaymentError> {
+pub async fn gather_transactions_pre(
+    conn: &mut SqliteConnection,
+) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 
     let token_transfers = get_pending_token_transfers(conn).await?;
@@ -190,8 +192,7 @@ pub async fn gather_transactions_batch(
                 multi_contract_address,
                 token_transfer.chain_id,
             )
-                .await?;
-
+            .await?;
 
             let mut allowance_not_met = false;
             match db_allowance {
@@ -225,8 +226,6 @@ pub async fn gather_transactions_batch(
                 }));
             }
         }
-
-
 
         create_erc20_transfer(
             Address::from_str(&token_transfer.from_addr)?,
@@ -262,7 +261,7 @@ pub async fn gather_transactions_batch(
 pub async fn gather_transactions_post(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    token_transfer_map: &mut TokenTransferMap
+    token_transfer_map: &mut TokenTransferMap,
 ) -> Result<u32, PaymentError> {
     let mut inserted_tx_count = 0;
 
@@ -271,21 +270,28 @@ pub async fn gather_transactions_post(
     for pair in token_transfer_map.iter() {
         let token_transfers = pair.1;
         let token_transfer = pair.0;
-        let min_id = token_transfers.iter().map(|f|f.id).min().ok_or(
-            PaymentError::OtherError("Failed algorithm when searching min".to_string())
-        )?;
+        let min_id = token_transfers
+            .iter()
+            .map(|f| f.id)
+            .min()
+            .ok_or(PaymentError::OtherError(
+                "Failed algorithm when searching min".to_string(),
+            ))?;
         sorted_order.insert(min_id, token_transfer.clone());
     }
 
-
     for key in sorted_order {
         let token_transfer = key.1;
-        let token_transfers = token_transfer_map.get_mut(&token_transfer).ok_or(
-            PaymentError::OtherError("Failed algorithm when getting key".to_string())
-        )?;
+        let token_transfers =
+            token_transfer_map
+                .get_mut(&token_transfer)
+                .ok_or(PaymentError::OtherError(
+                    "Failed algorithm when getting key".to_string(),
+                ))?;
 
         //sum of transfers
-        match gather_transactions_batch(conn, payment_setup, token_transfers, &token_transfer).await {
+        match gather_transactions_batch(conn, payment_setup, token_transfers, &token_transfer).await
+        {
             Ok(_) => {
                 inserted_tx_count += 1;
             }
@@ -466,9 +472,10 @@ pub async fn service_loop(
             last_update_time1 = current_time;
         }
 
-        if process_tx_instantly || (process_tx_needed
-            && current_time
-                > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
+        if process_tx_instantly
+            || (process_tx_needed
+                && current_time
+                    > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
         {
             log::debug!("Processing transactions...");
             process_tx_instantly = false;
