@@ -16,7 +16,6 @@ use secp256k1::{PublicKey, SecretKey};
 
 use std::str::FromStr;
 
-use std::time::Duration;
 use std::{env, fmt};
 
 use crate::transaction::create_token_transfer;
@@ -123,12 +122,10 @@ async fn main() -> Result<(), PaymentError> {
     }
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    tokio::spawn(async move {
+    let sp = tokio::spawn(async move {
         service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await
     });
 
-    loop {
-        //wait
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
+    sp.await.map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
+    Ok(())
 }

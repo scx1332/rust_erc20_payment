@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::utils::gwei_to_u256;
@@ -19,7 +18,7 @@ pub struct ChainSetup {
     pub max_fee_per_gas: U256,
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
-    pub multi_contract_address: Option<String>,
+    pub multi_contract_address: Option<Address>,
     pub transaction_timeout: u64,
 }
 
@@ -52,7 +51,7 @@ impl PaymentSetup {
                     max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas)?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee)?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
-                    multi_contract_address: None,
+                    multi_contract_address: chain_config.1.multi_contract.clone().map(|m| m.address),
                     transaction_timeout: chain_config.1.transaction_timeout,
                 },
             );

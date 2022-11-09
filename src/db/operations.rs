@@ -62,21 +62,23 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 pub async fn update_allowance(
     conn: &mut SqliteConnection,
     allowance: &Allowance,
-) -> Result<Allowance, sqlx::Error> {
+) -> Result<(), sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE allowance SET
-owner = $1,
-token_addr = $2,
-spender = $3,
-allowance = $4,
-chain_id = $5,
-tx_id = $6,
-fee_paid = $7,
-confirm_date = $8,
-error = $9
+owner = $2,
+token_addr = $3,
+spender = $4,
+allowance = $5,
+chain_id = $6,
+tx_id = $7,
+fee_paid = $8,
+confirm_date = $9,
+error = $10
+WHERE id = $1
  ",
     )
-    .bind(&allowance.owner)
+        .bind(&allowance.id)
+        .bind(&allowance.owner)
     .bind(&allowance.token_addr)
     .bind(&allowance.spender)
     .bind(&allowance.allowance)
@@ -87,7 +89,7 @@ error = $9
     .bind(&allowance.error)
     .execute(conn)
     .await?;
-    Ok(allowance.clone())
+    Ok(())
 }
 
 #[allow(unused)]

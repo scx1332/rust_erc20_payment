@@ -62,7 +62,7 @@ pub async fn process_allowance(
                 )
                 .await?;
                 if allowance > minimum_allowance {
-                    log::debug!("Allowance found on chain, update db");
+                    log::debug!("Allowance found on chain, update db_allowance with id {}", db_allowance.id);
                     db_allowance.confirm_date = Some(chrono::Utc::now());
                     update_allowance(conn, &db_allowance).await?;
                 }
@@ -189,7 +189,7 @@ pub async fn gather_transactions_batch(
                 conn,
                 &token_transfer.from_addr,
                 token_addr,
-                multi_contract_address,
+                &format!("{:#x}", multi_contract_address),
                 token_transfer.chain_id,
             )
             .await?;
@@ -207,7 +207,7 @@ pub async fn gather_transactions_batch(
                         }
                     }
                     None => {
-                        log::debug!("Allowance request fount, but not confirmed");
+                        log::debug!("Allowance request found, but not confirmed");
                         allowance_not_met = true;
                     }
                 },
@@ -220,7 +220,7 @@ pub async fn gather_transactions_batch(
                 return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
                     owner: token_transfer.from_addr.clone(),
                     token_addr: token_addr.clone(),
-                    spender_addr: multi_contract_address.clone(),
+                    spender_addr: format!("{:#x}", multi_contract_address),
                     chain_id: token_transfer.chain_id,
                     amount: U256::max_value(),
                 }));
@@ -296,11 +296,21 @@ pub async fn gather_transactions_post(
                 inserted_tx_count += 1;
             }
             Err(e) => {
-                for token_transfer in token_transfers {
-                    token_transfer.error = Some("Error in gathering transactions".to_string());
-                    update_token_transfer(conn, &token_transfer).await?;
+                match e {
+                    PaymentError::NoAllowanceFound(allowance_request) => {
+                        //pass allowance error up
+                        return Err(PaymentError::NoAllowanceFound(allowance_request))
+                    }
+                    _ => {
+                        //mark other errors in db to not process these failed transfers again
+                        for token_transfer in token_transfers {
+                            token_transfer.error = Some("Error in gathering transactions".to_string());
+                            update_token_transfer(conn, &token_transfer).await?;
+                        }
+                        log::error!("Failed to gather transactions: {}", e);
+                    }
                 }
-                log::error!("Failed to gather transactions: {}", e);
+
             }
         }
         inserted_tx_count += 1;
@@ -435,8 +445,10 @@ pub async fn process_transactions(
                     },
                 };
             if tx.method == "ERC20.transfer" || tx.method == "transfer" {
+                log::debug!("Updating token transfer result");
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
+                log::debug!("Updating token approve result");
                 update_approve_result(conn, tx, process_t_res).await?;
             }
             //process only one transaction at once
@@ -538,6 +550,7 @@ pub async fn service_loop(
             };
             last_update_time2 = current_time;
             if finish_when_processed && !process_tx_needed {
+                log::info!("No more work to do, exiting...");
                 break;
             }
         }
