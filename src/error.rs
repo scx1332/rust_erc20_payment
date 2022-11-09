@@ -31,8 +31,6 @@ pub enum PaymentError {
     OtherError(String),
     #[error("Transaction failed error: {0}")]
     TransactionFailedError(String),
-    #[error("Payment failed error: {0}")]
-    PaymentFailedError(String),
     #[error("No allowance found for chain id: {0:?}")]
     NoAllowanceFound(AllowanceRequest),
 }
