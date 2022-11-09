@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::PaymentError;
 use crate::utils::gwei_to_u256;
 use std::collections::BTreeMap;
+use rand::Rng;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
@@ -80,9 +81,10 @@ impl PaymentSetup {
                     chain_id
                 )))?;
 
+        let mut rng = rand::thread_rng();
         let provider = chain_setup
             .providers
-            .get(0)
+            .get(rng.gen_range(0..chain_setup.providers.len()))
             .ok_or(PaymentError::OtherError(format!(
                 "No providers found for chain id: {}",
                 chain_id

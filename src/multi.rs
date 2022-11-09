@@ -27,7 +27,7 @@ pub async fn check_allowance(
     let res = web3.eth().call(call_request, None).await?;
     if res.0.len() != 32 {
         return Err(PaymentError::OtherError(
-            "Invalid response from ERC20 allowance check".to_string(),
+            format!("Invalid response from ERC20 allowance check {:?}", res),
         ));
     };
     let allowance = U256::from_big_endian(&res.0);
