@@ -35,15 +35,6 @@ use crate::options::validated_cli;
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 
-/*
-struct ERC20Payment {
-    from: Address,
-    to: Address,
-    token: Address,
-    amount: U256,
-}
-*/
-
 struct _Web3ChainConfig {
     glm_token: Address,
     chain_id: u64,
@@ -95,32 +86,6 @@ where
     }
 }
 
-/*
-fn prepare_erc20_contract(
-    ethereum_client: &Web3<Http>,
-    env: &config::EnvConfiguration,
-) -> Result<Contract<Http>, GenericError> {
-    prepare_contract(
-        ethereum_client,
-        env.glm_contract_address,
-        include_bytes!("../contracts/ierc20.json"),
-    )
-}*/
-
-/*
-fn prepare_erc20_multi_contract(
-    ethereum_client: &Web3<Http>,
-    env: &config::EnvConfiguration,
-) -> Result<Contract<Http>, GenericError> {
-    prepare_contract(
-        env.glm_multi_transfer_contract_address
-            .ok_or(GenericError::new(
-                "No multipayment contract defined for this environment",
-            ))?,
-        include_bytes!("contracts/multi_transfer_erc20.json"),
-    )
-}*/
-
 /// Below sends a transaction to a local node that stores private keys (eg Ganache)
 /// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
 #[tokio::main]
@@ -138,22 +103,11 @@ async fn main() -> Result<(), PaymentError> {
     let payment_setup = PaymentSetup::new(&config)?;
     log::debug!("Payment setup: {:?}", payment_setup);
 
-    // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
-
-    let mut conn = create_sqlite_connection(2).await?;
+    let mut conn = create_sqlite_connection("db.sqlite", true).await?;
 
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
     let secret_key = SecretKey::from_str(&private_key).unwrap();
     let from_addr = get_eth_addr_from_secret(&secret_key);
-
-    /*
-    let _token_addr = if chain_id == 5 {
-        Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
-    } else if chain_id == 80001 {
-        Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
-    } else {
-        panic!("Chain ID not supported");
-    };*/
 
     for transaction_no in 0..cli.receivers.len() {
         let receiver = cli.receivers[transaction_no];

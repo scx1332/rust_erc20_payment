@@ -178,7 +178,6 @@ pub async fn gather_transactions(
 
         let max_fee_per_gas = chain_setup.max_fee_per_gas;
         let priority_fee = chain_setup.priority_fee;
-        let _web3 = payment_setup.get_provider(token_transfer.chain_id)?;
 
         log::debug!("Processing token transfer {:?}", token_transfer);
         let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
@@ -194,42 +193,38 @@ pub async fn gather_transactions(
             )
             .await?;
 
-            //todo - cleanup this code
+
+            let mut allowance_not_met = false;
             match db_allowance.as_mut() {
                 Some(db_allowance) => match db_allowance.confirm_date {
                     Some(_) => {
-                        log::debug!("Allowance already confirmed from db");
                         let allowance = U256::from_dec_str(&db_allowance.allowance)?;
                         if allowance < minimum_allowance {
-                            return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
-                                owner: token_transfer.from_addr.clone(),
-                                token_addr: token_addr.clone(),
-                                spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                                chain_id: token_transfer.chain_id,
-                                amount: U256::max_value(),
-                            }));
+                            log::debug!("Allowance already confirmed from db, but it is too small");
+                            allowance_not_met = true;
+                        } else {
+                            log::debug!("Allowance confirmed from db");
                         }
                     }
                     None => {
-                        return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
-                            owner: token_transfer.from_addr.clone(),
-                            token_addr: token_addr.clone(),
-                            spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                            chain_id: token_transfer.chain_id,
-                            amount: U256::max_value(),
-                        }));
+                        log::debug!("Allowance request fount, but not confirmed");
+                        allowance_not_met = true;
                     }
                 },
                 None => {
-                    return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
-                        owner: token_transfer.from_addr.clone(),
-                        token_addr: token_addr.clone(),
-                        spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
-                        chain_id: token_transfer.chain_id,
-                        amount: U256::max_value(),
-                    }));
+                    log::debug!("Allowance not found in db");
+                    allowance_not_met = true;
                 }
             };
+            if allowance_not_met {
+                return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
+                    owner: token_transfer.from_addr.clone(),
+                    token_addr: token_addr.clone(),
+                    spender_addr: format!("{:#x}", *MULTI_ERC20_GOERLI),
+                    chain_id: token_transfer.chain_id,
+                    amount: U256::max_value(),
+                }));
+            }
 
             create_erc20_transfer(
                 Address::from_str(&token_transfer.from_addr)?,
@@ -420,6 +415,7 @@ pub async fn service_loop(
         chrono::Utc::now() - chrono::Duration::seconds(gather_transactions_interval);
 
     let mut process_tx_needed = true;
+    let mut process_tx_instantly = true;
     loop {
         let current_time = chrono::Utc::now();
         if current_time < last_update_time1 {
@@ -427,11 +423,12 @@ pub async fn service_loop(
             last_update_time1 = current_time;
         }
 
-        if process_tx_needed
+        if process_tx_instantly || (process_tx_needed
             && current_time
-                > last_update_time1 + chrono::Duration::seconds(process_transactions_interval)
+                > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
         {
             log::debug!("Processing transactions...");
+            process_tx_instantly = false;
             match process_transactions(conn, &payment_setup, secret_key).await {
                 Ok(_) => {
                     //all pending transactions processed
@@ -460,7 +457,11 @@ pub async fn service_loop(
                             log::error!("No allowance found for: {:?}", allowance_request);
                             match process_allowance(conn, &payment_setup, allowance_request).await {
                                 Ok(_) => {
+                                    //process transaction instantly
                                     process_tx_needed = true;
+                                    process_tx_instantly = true;
+                                    continue;
+                                    //process_tx_needed = true;
                                 }
                                 Err(e) => {
                                     log::error!("Error in process allowance: {}", e);
