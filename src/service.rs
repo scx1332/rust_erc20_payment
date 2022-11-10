@@ -10,7 +10,7 @@ use crate::error::{AllowanceRequest, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_eth_transfer};
+use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer};
 use crate::utils::ConversionError;
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
@@ -230,9 +230,9 @@ pub async fn gather_transactions_batch(
             }
         }
 
-        create_erc20_transfer(
+        create_erc20_transfer_multi(
             Address::from_str(&token_transfer.from_addr)?,
-            Address::from_str(token_addr)?,
+            chain_setup.multi_contract_address.unwrap(),
             Address::from_str(&token_transfer.receiver_addr)?,
             sum,
             token_transfer.chain_id as u64,
@@ -426,6 +426,34 @@ pub async fn update_approve_result(
     Ok(())
 }
 
+pub async fn update_tx_result(
+    conn: &mut SqliteConnection,
+    tx: &mut Web3TransactionDao,
+    process_t_res: ProcessTransactionResult,
+) -> Result<(), PaymentError> {
+    match process_t_res {
+        ProcessTransactionResult::Confirmed => {
+            tx.processing = 0;
+            update_tx(conn, tx).await?;
+        }
+        ProcessTransactionResult::NeedRetry(err) => {
+            tx.processing = 0;
+            tx.error = Some("Need retry".to_string());
+            update_tx(conn, tx).await?;
+        }
+        ProcessTransactionResult::InternalError(err) => {
+            tx.processing = 0;
+            tx.error = Some(err.clone());
+            update_tx(conn, tx).await?;
+        }
+        ProcessTransactionResult::Unknown => {
+            tx.processing = 1;
+            update_tx(conn, tx).await?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn process_transactions(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
@@ -453,6 +481,8 @@ pub async fn process_transactions(
             } else if tx.method == "ERC20.approve" {
                 log::debug!("Updating token approve result");
                 update_approve_result(conn, tx, process_t_res).await?;
+            } else {
+                update_tx(conn, tx).await?;
             }
             //process only one transaction at once
             break;

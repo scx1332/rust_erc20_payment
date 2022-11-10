@@ -52,4 +52,5 @@ pub struct Web3TransactionDao {
     pub block_number: Option<i64>,
     pub chain_status: Option<i64>,
     pub fee_paid: Option<String>,
+    pub error: Option<String>,
 }

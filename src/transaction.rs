@@ -1,4 +1,4 @@
-use crate::contracts::get_erc20_transfer;
+use crate::contracts::{get_erc20_transfer, get_multi_direct_packed};
 use crate::model::TokenTransfer;
 use crate::model::Web3TransactionDao;
 
@@ -11,6 +11,7 @@ use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
+use crate::multi::pack_transfers_for_multi_contract;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -114,6 +115,7 @@ pub fn create_eth_transfer(
         block_number: None,
         chain_status: None,
         fee_paid: None,
+        error: None,
     };
     web3_tx_dao
 }
@@ -152,6 +154,7 @@ pub fn create_eth_transfer_str(
         block_number: None,
         chain_status: None,
         fee_paid: None,
+        error: None,
     };
     web3_tx_dao
 }
@@ -190,8 +193,52 @@ pub fn create_erc20_transfer(
         block_number: None,
         chain_status: None,
         fee_paid: None,
+        error: None,
     })
 }
+
+pub fn create_erc20_transfer_multi(
+    from: Address,
+    contract: Address,
+    erc20_to: Address,
+    erc20_amount: U256,
+    chain_id: u64,
+    gas_limit: u64,
+    max_fee_per_gas: U256,
+    priority_fee: U256,
+) -> Result<Web3TransactionDao, PaymentError> {
+    let packed = pack_transfers_for_multi_contract(
+        vec![erc20_to],
+        vec![erc20_amount],
+    )?;
+    Ok(Web3TransactionDao {
+        id: 0,
+        method: "ERC20.golemTransferDirectPacked".to_string(),
+        from_addr: format!("{:#x}", from),
+        to_addr: format!("{:#x}", contract),
+        chain_id: chain_id as i64,
+        gas_limit: gas_limit as i64,
+        max_fee_per_gas: max_fee_per_gas.to_string(),
+        priority_fee: priority_fee.to_string(),
+        val: "0".to_string(),
+        nonce: None,
+        processing: 1,
+        call_data: Some(hex::encode(get_multi_direct_packed(packed)?)),
+        signed_raw_data: None,
+        created_date: chrono::Utc::now(),
+        first_processed: None,
+        signed_date: None,
+        broadcast_date: None,
+        broadcast_count: 0,
+        tx_hash: None,
+        confirm_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+        error: None,
+    })
+}
+
 
 pub fn create_erc20_approve(
     from: Address,
@@ -229,6 +276,7 @@ pub fn create_erc20_approve(
         block_number: None,
         chain_status: None,
         fee_paid: None,
+        error: None,
     })
 }
 

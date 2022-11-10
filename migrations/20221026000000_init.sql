@@ -23,6 +23,7 @@ CREATE TABLE "tx" (
     block_number        INTEGER     NULL,
     chain_status        INTEGER     NULL,
     fee_paid            TEXT        NULL,
+    error               TEXT        NULL,
     PRIMARY KEY("id" AUTOINCREMENT)
 );
 
