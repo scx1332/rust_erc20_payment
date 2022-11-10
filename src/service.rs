@@ -482,7 +482,7 @@ pub async fn process_transactions(
                 log::debug!("Updating token approve result");
                 update_approve_result(conn, tx, process_t_res).await?;
             } else {
-                update_tx(conn, tx).await?;
+                update_tx_result(conn, tx, process_t_res).await?;
             }
             //process only one transaction at once
             break;
