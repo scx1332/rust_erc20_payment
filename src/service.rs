@@ -311,7 +311,7 @@ pub async fn gather_transactions_post(
                                 Some("Error in gathering transactions".to_string());
                             update_token_transfer(conn, &token_transfer).await?;
                         }
-                        log::error!("Failed to gather transactions: {}", e);
+                        log::error!("Failed to gather transactions: {:?}", e);
                     }
                 }
             }

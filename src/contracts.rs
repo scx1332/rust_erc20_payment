@@ -77,11 +77,11 @@ pub fn get_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3
 }
 
 pub fn get_multi_direct_packed(packed: Vec<[u8; 32]>) -> Result<Vec<u8>, web3::ethabi::Error> {
-    contract_encode(&ERC20_MULTI_CONTRACT_TEMPLATE, "golemTransferDirectPacked", (packed))
+    contract_encode(&ERC20_MULTI_CONTRACT_TEMPLATE, "golemTransferDirectPacked", packed)
 }
 
 pub fn get_multi_indirect_packed(packed: Vec<[u8; 32]>) -> Result<Vec<u8>, web3::ethabi::Error> {
-    contract_encode(&ERC20_MULTI_CONTRACT_TEMPLATE, "golemTransferIndirectPacked", (packed))
+    contract_encode(&ERC20_MULTI_CONTRACT_TEMPLATE, "golemTransferIndirectPacked", packed)
 }
 
 
