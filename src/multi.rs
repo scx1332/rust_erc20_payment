@@ -26,9 +26,10 @@ pub async fn check_allowance(
     };
     let res = web3.eth().call(call_request, None).await?;
     if res.0.len() != 32 {
-        return Err(PaymentError::OtherError(
-            format!("Invalid response from ERC20 allowance check {:?}", res),
-        ));
+        return Err(PaymentError::OtherError(format!(
+            "Invalid response from ERC20 allowance check {:?}",
+            res
+        )));
     };
     let allowance = U256::from_big_endian(&res.0);
     log::info!(
@@ -42,11 +43,17 @@ pub async fn check_allowance(
     Ok(allowance)
 }
 
-
-pub fn pack_transfers_for_multi_contract(receivers: Vec<Address>, amounts: Vec<U256>) -> Result<Vec<[u8; 32]>, PaymentError> {
+pub fn pack_transfers_for_multi_contract(
+    receivers: Vec<Address>,
+    amounts: Vec<U256>,
+) -> Result<Vec<[u8; 32]>, PaymentError> {
     let max_value = U256::from(2).pow(U256::from(96));
     let max_value_18 = max_value / U256::from(10).pow(U256::from(18));
-    log::debug!("Max value for pack transfers: {:?}. Assuming 18 decimal points: {}", max_value.to_string(), max_value_18.to_string());
+    log::debug!(
+        "Max value for pack transfers: {:?}. Assuming 18 decimal points: {}",
+        max_value.to_string(),
+        max_value_18.to_string()
+    );
     for amount in &amounts {
         if amount > &max_value {
             return Err(PaymentError::OtherError(

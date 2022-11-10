@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::utils::gwei_to_u256;
-use std::collections::BTreeMap;
 use rand::Rng;
+use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
