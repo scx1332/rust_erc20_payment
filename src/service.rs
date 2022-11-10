@@ -233,8 +233,8 @@ pub async fn gather_transactions_batch(
         create_erc20_transfer_multi(
             Address::from_str(&token_transfer.from_addr)?,
             chain_setup.multi_contract_address.unwrap(),
-            Address::from_str(&token_transfer.receiver_addr)?,
-            sum,
+            [Address::from_str(&token_transfer.receiver_addr)?].to_vec(),
+                [sum].to_vec(),
             token_transfer.chain_id as u64,
             1000,
             max_fee_per_gas,

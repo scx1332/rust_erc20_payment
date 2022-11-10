@@ -46,7 +46,7 @@ pub async fn check_allowance(
 pub fn pack_transfers_for_multi_contract(
     receivers: Vec<Address>,
     amounts: Vec<U256>,
-) -> Result<Vec<[u8; 32]>, PaymentError> {
+) -> Result<(Vec<[u8; 32]>, U256), PaymentError> {
     let max_value = U256::from(2).pow(U256::from(96));
     let max_value_18 = max_value / U256::from(10).pow(U256::from(18));
     log::debug!(
@@ -54,12 +54,14 @@ pub fn pack_transfers_for_multi_contract(
         max_value.to_string(),
         max_value_18.to_string()
     );
+    let mut sum = U256::from(0);
     for amount in &amounts {
         if amount > &max_value {
             return Err(PaymentError::OtherError(
                 "Amount is too big to use packed error".to_string(),
             ));
         }
+        sum += *amount;
     }
 
     let packed: Vec<[u8; 32]> = receivers
@@ -73,5 +75,5 @@ pub fn pack_transfers_for_multi_contract(
         })
         .collect();
     //log::debug!("Packed: {:?}", packed);
-    Ok(packed)
+    Ok((packed, sum))
 }

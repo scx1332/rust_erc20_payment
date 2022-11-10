@@ -1,4 +1,4 @@
-use crate::contracts::{get_erc20_transfer, get_multi_direct_packed};
+use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::model::TokenTransfer;
 use crate::model::Web3TransactionDao;
 
@@ -200,17 +200,24 @@ pub fn create_erc20_transfer(
 pub fn create_erc20_transfer_multi(
     from: Address,
     contract: Address,
-    erc20_to: Address,
-    erc20_amount: U256,
+    erc20_to: Vec<Address>,
+    erc20_amount: Vec<U256>,
     chain_id: u64,
     gas_limit: u64,
     max_fee_per_gas: U256,
     priority_fee: U256,
 ) -> Result<Web3TransactionDao, PaymentError> {
-    let packed = pack_transfers_for_multi_contract(vec![erc20_to], vec![erc20_amount])?;
+    let (packed, sum) = pack_transfers_for_multi_contract(erc20_to, erc20_amount)?;
+    //todo set method
+    let (data, method_str) = if sum.as_u32() % 2 == 0 {
+        (get_multi_direct_packed(packed)?, "MULTI.golemTransferDirectPacked".to_string())
+    } else {
+        (get_multi_indirect_packed(packed, sum)?, "MULTI.golemTransferIndirectPacked".to_string())
+    };
+
     Ok(Web3TransactionDao {
         id: 0,
-        method: "ERC20.golemTransferDirectPacked".to_string(),
+        method: method_str,
         from_addr: format!("{:#x}", from),
         to_addr: format!("{:#x}", contract),
         chain_id: chain_id as i64,
@@ -220,7 +227,7 @@ pub fn create_erc20_transfer_multi(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_multi_direct_packed(packed)?)),
+        call_data: Some(hex::encode(data)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         first_processed: None,
