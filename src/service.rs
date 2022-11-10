@@ -10,7 +10,7 @@ use crate::error::{AllowanceRequest, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer};
+use crate::transaction::{create_erc20_approve, create_erc20_transfer_multi, create_eth_transfer};
 use crate::utils::ConversionError;
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
@@ -436,7 +436,7 @@ pub async fn update_tx_result(
             tx.processing = 0;
             update_tx(conn, tx).await?;
         }
-        ProcessTransactionResult::NeedRetry(err) => {
+        ProcessTransactionResult::NeedRetry(_err) => {
             tx.processing = 0;
             tx.error = Some("Need retry".to_string());
             update_tx(conn, tx).await?;
