@@ -14,7 +14,6 @@ use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc
 use crate::utils::ConversionError;
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
-
 use crate::setup::PaymentSetup;
 use web3::types::{Address, U256};
 
@@ -239,8 +238,8 @@ pub async fn gather_transactions_batch_multi(
             }
         }
 
-        let mut erc20_to = Vec::new();
-        let mut erc20_amounts = Vec::new();
+        let mut erc20_to = Vec::with_capacity(token_multi_order.len());
+        let mut erc20_amounts = Vec::with_capacity(token_multi_order.len());
         for token_t in &mut *token_multi_order {
             let mut sum = U256::zero();
             for token_transfer in &token_t.token_transfers {
@@ -250,16 +249,36 @@ pub async fn gather_transactions_batch_multi(
             erc20_amounts.push(sum);
         }
 
-        create_erc20_transfer_multi(
-            Address::from_str(&token_transfer.from_addr)?,
-            chain_setup.multi_contract_address.unwrap(),
-            erc20_to,
-            erc20_amounts,
-            token_transfer.chain_id as u64,
-            1000,
-            max_fee_per_gas,
-            priority_fee,
-        )?
+        match erc20_to.len() {
+            0 => {
+                return Ok(0);
+            }
+            1 => {
+                create_erc20_transfer(
+                    Address::from_str(&token_transfer.from_addr)?,
+                    Address::from_str(token_addr)?,
+                    erc20_to[0],
+                    erc20_amounts[0],
+                    1000,
+                    token_transfer.chain_id as u64,
+                    max_fee_per_gas,
+                    priority_fee,
+                )?
+            }
+            _ => {
+                create_erc20_transfer_multi(
+                    Address::from_str(&token_transfer.from_addr)?,
+                    chain_setup.multi_contract_address.unwrap(),
+                    erc20_to,
+                    erc20_amounts,
+                    token_transfer.chain_id as u64,
+                    1000,
+                    max_fee_per_gas,
+                    priority_fee,
+                    true
+                )?
+            }
+        }
     } else {
         return Err(PaymentError::OtherError("Not implemented for multi".to_string()));
     };

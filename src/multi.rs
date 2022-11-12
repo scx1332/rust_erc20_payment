@@ -48,12 +48,7 @@ pub fn pack_transfers_for_multi_contract(
     amounts: Vec<U256>,
 ) -> Result<(Vec<[u8; 32]>, U256), PaymentError> {
     let max_value = U256::from(2).pow(U256::from(96));
-    let max_value_18 = max_value / U256::from(10).pow(U256::from(18));
-    log::debug!(
-        "Max value for pack transfers: {:?}. Assuming 18 decimal points: {}",
-        max_value.to_string(),
-        max_value_18.to_string()
-    );
+    //Assuming 18 decimals it is sufficient up to: 7.9 billions tokens
     let mut sum = U256::from(0);
     for amount in &amounts {
         if amount > &max_value {
