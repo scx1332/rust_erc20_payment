@@ -403,8 +403,46 @@ pub async fn gather_transactions_post(
                 chain_id: key.1.chain_id,
                 token_addr: key.1.token_addr.clone(),
             };
+            if multi_key.token_addr.is_none() {
+                let token_transfer = key.1;
+                let token_transfers =
+                    token_transfer_map
+                        .get_mut(&token_transfer)
+                        .ok_or(PaymentError::OtherError(
+                            "Failed algorithm when getting key".to_string(),
+                        ))?;
+
+                //sum of transfers
+                match gather_transactions_batch(conn, payment_setup, token_transfers, &token_transfer).await
+                {
+                    Ok(_) => {
+                        inserted_tx_count += 1;
+                    }
+                    Err(e) => {
+                        match e {
+                            PaymentError::NoAllowanceFound(allowance_request) => {
+                                //pass allowance error up
+                                return Err(PaymentError::NoAllowanceFound(allowance_request));
+                            }
+                            _ => {
+                                //mark other errors in db to not process these failed transfers again
+                                for token_transfer in token_transfers {
+                                    token_transfer.error =
+                                        Some("Error in gathering transactions".to_string());
+                                    update_token_transfer(conn, &token_transfer).await?;
+                                }
+                                log::error!("Failed to gather transactions: {:?}", e);
+                            }
+                        }
+                    }
+                }
+                inserted_tx_count += 1;
+                continue;
+            }
+
             //todo - fix unnecessary clone here
             let opt = token_transfer_map.get(&key.1).unwrap().clone();
+            token_transfer_map.remove(&key.1);
 
             match multi_key_map.get_mut(&multi_key) {
                 Some(v) => {
@@ -453,46 +491,6 @@ pub async fn gather_transactions_post(
             }
             inserted_tx_count += 1;
         }
-
-
-        return Ok(inserted_tx_count);
-
-    }
-
-    for key in sorted_order {
-        let token_transfer = key.1;
-        let token_transfers =
-            token_transfer_map
-                .get_mut(&token_transfer)
-                .ok_or(PaymentError::OtherError(
-                    "Failed algorithm when getting key".to_string(),
-                ))?;
-
-        //sum of transfers
-        match gather_transactions_batch(conn, payment_setup, token_transfers, &token_transfer).await
-        {
-            Ok(_) => {
-                inserted_tx_count += 1;
-            }
-            Err(e) => {
-                match e {
-                    PaymentError::NoAllowanceFound(allowance_request) => {
-                        //pass allowance error up
-                        return Err(PaymentError::NoAllowanceFound(allowance_request));
-                    }
-                    _ => {
-                        //mark other errors in db to not process these failed transfers again
-                        for token_transfer in token_transfers {
-                            token_transfer.error =
-                                Some("Error in gathering transactions".to_string());
-                            update_token_transfer(conn, &token_transfer).await?;
-                        }
-                        log::error!("Failed to gather transactions: {:?}", e);
-                    }
-                }
-            }
-        }
-        inserted_tx_count += 1;
     }
 
     Ok(inserted_tx_count)
@@ -651,7 +649,7 @@ pub async fn process_transactions(
                         }
                     },
                 };
-            if tx.method == "ERC20.transfer" || tx.method == "transfer" {
+            if tx.method.starts_with("MULTI.golemTransfer") || tx.method == "ERC20.transfer" || tx.method == "transfer" {
                 log::debug!("Updating token transfer result");
                 update_token_transfer_result(conn, tx, process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
