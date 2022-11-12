@@ -10,7 +10,7 @@ use crate::error::{AllowanceRequest, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{create_erc20_approve, create_erc20_transfer_multi, create_eth_transfer};
+use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer};
 use crate::utils::ConversionError;
 use secp256k1::SecretKey;
 use sqlx::{Connection, SqliteConnection};
@@ -22,6 +22,13 @@ use web3::types::{Address, U256};
 pub struct TokenTransferKey {
     pub from_addr: String,
     pub receiver_addr: String,
+    pub chain_id: i64,
+    pub token_addr: Option<String>,
+}
+
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
+pub struct TokenTransferMultiKey {
+    pub from_addr: String,
     pub chain_id: i64,
     pub token_addr: Option<String>,
 }
@@ -166,6 +173,111 @@ pub async fn gather_transactions_pre(
     Ok(transfer_map)
 }
 
+#[derive(Debug, Clone)]
+pub struct TokenTransferMultiOrder {
+    receiver: Address,
+    token_transfers: Vec<TokenTransfer>
+}
+
+pub async fn gather_transactions_batch_multi(
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+    token_multi_order: &mut Vec<TokenTransferMultiOrder>,
+    token_transfer: &TokenTransferMultiKey,
+) -> Result<u32, PaymentError> {
+
+    let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
+
+    let max_fee_per_gas = chain_setup.max_fee_per_gas;
+    let priority_fee = chain_setup.priority_fee;
+
+    log::debug!("Processing token transfer {:?}", token_transfer);
+    let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
+        if let Some(multi_contract_address) = chain_setup.multi_contract_address.as_ref() {
+            //this is some arbitrary number.
+            let minimum_allowance: U256 = U256::max_value() / U256::from(2);
+
+            let db_allowance = find_allowance(
+                conn,
+                &token_transfer.from_addr,
+                token_addr,
+                &format!("{:#x}", multi_contract_address),
+                token_transfer.chain_id,
+            )
+                .await?;
+
+            let mut allowance_not_met = false;
+            match db_allowance {
+                Some(db_allowance) => match db_allowance.confirm_date {
+                    Some(_) => {
+                        let allowance = U256::from_dec_str(&db_allowance.allowance)?;
+                        if allowance < minimum_allowance {
+                            log::debug!("Allowance already confirmed from db, but it is too small");
+                            allowance_not_met = true;
+                        } else {
+                            log::debug!("Allowance confirmed from db");
+                        }
+                    }
+                    None => {
+                        log::debug!("Allowance request found, but not confirmed");
+                        allowance_not_met = true;
+                    }
+                },
+                None => {
+                    log::debug!("Allowance not found in db");
+                    allowance_not_met = true;
+                }
+            };
+            if allowance_not_met {
+                return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
+                    owner: token_transfer.from_addr.clone(),
+                    token_addr: token_addr.clone(),
+                    spender_addr: format!("{:#x}", multi_contract_address),
+                    chain_id: token_transfer.chain_id,
+                    amount: U256::max_value(),
+                }));
+            }
+        }
+
+        let mut erc20_to = Vec::new();
+        let mut erc20_amounts = Vec::new();
+        for token_t in &mut *token_multi_order {
+            let mut sum = U256::zero();
+            for token_transfer in &token_t.token_transfers {
+                sum += U256::from_dec_str(&token_transfer.token_amount)?;
+            }
+            erc20_to.push(token_t.receiver);
+            erc20_amounts.push(sum);
+        }
+
+        create_erc20_transfer_multi(
+            Address::from_str(&token_transfer.from_addr)?,
+            chain_setup.multi_contract_address.unwrap(),
+            erc20_to,
+            erc20_amounts,
+            token_transfer.chain_id as u64,
+            1000,
+            max_fee_per_gas,
+            priority_fee,
+        )?
+    } else {
+        return Err(PaymentError::OtherError("Not implemented for multi".to_string()));
+    };
+    let mut db_transaction = conn.begin().await?;
+    let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
+
+    for token_t in &mut *token_multi_order {
+        for token_transfer in &token_t.token_transfers {
+            //todo - fix unnecessary clone here
+            let mut token_transfer = token_transfer.clone();
+            token_transfer.tx_id = Some(web3_tx_dao.id);
+            update_token_transfer(&mut db_transaction, &token_transfer).await?;
+        }
+    }
+    db_transaction.commit().await?;
+    Ok(1)
+}
+
 pub async fn gather_transactions_batch(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
@@ -230,11 +342,11 @@ pub async fn gather_transactions_batch(
             }
         }
 
-        create_erc20_transfer_multi(
+        create_erc20_transfer(
             Address::from_str(&token_transfer.from_addr)?,
             chain_setup.multi_contract_address.unwrap(),
-            [Address::from_str(&token_transfer.receiver_addr)?].to_vec(),
-                [sum].to_vec(),
+            Address::from_str(&token_transfer.receiver_addr)?,
+                sum,
             token_transfer.chain_id as u64,
             1000,
             max_fee_per_gas,
@@ -281,6 +393,70 @@ pub async fn gather_transactions_post(
                 "Failed algorithm when searching min".to_string(),
             ))?;
         sorted_order.insert(min_id, token_transfer.clone());
+    }
+    let use_multi = true;
+    if use_multi {
+        let mut multi_key_map = HashMap::<TokenTransferMultiKey, Vec<TokenTransferMultiOrder>>::new();
+        for key in &sorted_order {
+            let multi_key = TokenTransferMultiKey {
+                from_addr: key.1.from_addr.clone(),
+                chain_id: key.1.chain_id,
+                token_addr: key.1.token_addr.clone(),
+            };
+            //todo - fix unnecessary clone here
+            let opt = token_transfer_map.get(&key.1).unwrap().clone();
+
+            match multi_key_map.get_mut(&multi_key) {
+                Some(v) => {
+                    v.push(TokenTransferMultiOrder {
+                        receiver:  Address::from_str(&key.1.receiver_addr)?,
+                        token_transfers: opt,
+                    });
+                }
+                None => {
+                    multi_key_map.insert(multi_key,vec![TokenTransferMultiOrder {
+                        token_transfers: opt,
+                        receiver: Address::from_str(&key.1.receiver_addr)?,
+                    }]);
+                }
+            }
+        }
+        for key in multi_key_map {
+            let token_transfer = key.0;
+            let mut token_transfers = key.1.clone();
+            //todo fix clones
+            match gather_transactions_batch_multi(conn, payment_setup, &mut token_transfers, &token_transfer).await
+            {
+                Ok(_) => {
+                    inserted_tx_count += 1;
+                }
+                Err(e) => {
+                    match e {
+                        PaymentError::NoAllowanceFound(allowance_request) => {
+                            //pass allowance error up
+                            return Err(PaymentError::NoAllowanceFound(allowance_request));
+                        }
+                        _ => {
+                            //mark other errors in db to not process these failed transfers again
+                            for multi in token_transfers {
+                                for token_transfer in multi.token_transfers {
+                                    let mut tt = token_transfer.clone();
+                                    tt.error =
+                                        Some("Error in gathering transactions".to_string());
+                                    update_token_transfer(conn, &tt).await?;
+                                }
+                            }
+                            log::error!("Failed to gather transactions: {:?}", e);
+                        }
+                    }
+                }
+            }
+            inserted_tx_count += 1;
+        }
+
+
+        return Ok(inserted_tx_count);
+
     }
 
     for key in sorted_order {
