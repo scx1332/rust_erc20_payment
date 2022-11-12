@@ -296,55 +296,9 @@ pub async fn gather_transactions_batch(
 
     log::debug!("Processing token transfer {:?}", token_transfer);
     let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
-        if let Some(multi_contract_address) = chain_setup.multi_contract_address.as_ref() {
-            //this is some arbitrary number.
-            let minimum_allowance: U256 = U256::max_value() / U256::from(2);
-
-            let db_allowance = find_allowance(
-                conn,
-                &token_transfer.from_addr,
-                token_addr,
-                &format!("{:#x}", multi_contract_address),
-                token_transfer.chain_id,
-            )
-            .await?;
-
-            let mut allowance_not_met = false;
-            match db_allowance {
-                Some(db_allowance) => match db_allowance.confirm_date {
-                    Some(_) => {
-                        let allowance = U256::from_dec_str(&db_allowance.allowance)?;
-                        if allowance < minimum_allowance {
-                            log::debug!("Allowance already confirmed from db, but it is too small");
-                            allowance_not_met = true;
-                        } else {
-                            log::debug!("Allowance confirmed from db");
-                        }
-                    }
-                    None => {
-                        log::debug!("Allowance request found, but not confirmed");
-                        allowance_not_met = true;
-                    }
-                },
-                None => {
-                    log::debug!("Allowance not found in db");
-                    allowance_not_met = true;
-                }
-            };
-            if allowance_not_met {
-                return Err(PaymentError::NoAllowanceFound(AllowanceRequest {
-                    owner: token_transfer.from_addr.clone(),
-                    token_addr: token_addr.clone(),
-                    spender_addr: format!("{:#x}", multi_contract_address),
-                    chain_id: token_transfer.chain_id,
-                    amount: U256::max_value(),
-                }));
-            }
-        }
-
         create_erc20_transfer(
             Address::from_str(&token_transfer.from_addr)?,
-            chain_setup.multi_contract_address.unwrap(),
+            Address::from_str(token_addr)?,
             Address::from_str(&token_transfer.receiver_addr)?,
                 sum,
             token_transfer.chain_id as u64,
