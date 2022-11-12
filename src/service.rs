@@ -267,11 +267,10 @@ pub async fn gather_transactions_batch_multi(
     let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
 
     for token_t in &mut *token_multi_order {
-        for token_transfer in &token_t.token_transfers {
-            //todo - fix unnecessary clone here
-            let mut token_transfer = token_transfer.clone();
+        for token_transfer in &mut token_t.token_transfers {
+
             token_transfer.tx_id = Some(web3_tx_dao.id);
-            update_token_transfer(&mut db_transaction, &token_transfer).await?;
+            update_token_transfer(&mut db_transaction, token_transfer).await?;
         }
     }
     db_transaction.commit().await?;
