@@ -16,6 +16,7 @@ use secp256k1::SecretKey;
 
 use std::str::FromStr;
 
+use sqlx::SqliteConnection;
 use std::{env, fmt};
 
 use crate::transaction::create_token_transfer;
@@ -30,7 +31,7 @@ use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
 use crate::eth::get_eth_addr_from_secret;
 
-use crate::options::validated_cli;
+use crate::options::{validated_cli, ValidatedOptions};
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 
@@ -75,7 +76,31 @@ where
     }
 }
 
-async fn setup_and_run() -> Result<(), PaymentError> {
+async fn process_cli(
+    conn: &mut SqliteConnection,
+    cli: &ValidatedOptions,
+    secret_key: &SecretKey,
+) -> Result<(), PaymentError> {
+    let from_addr = get_eth_addr_from_secret(&secret_key);
+    for transaction_no in 0..cli.receivers.len() {
+        let receiver = cli.receivers[transaction_no];
+        let amount = cli.amounts[transaction_no];
+        let token_transfer = create_token_transfer(
+            from_addr,
+            receiver,
+            cli.chain_id as u64,
+            cli.token_addr,
+            amount,
+        );
+        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
+    }
+    Ok(())
+
+    //service_loop(&mut conn, &web3, &secret_key).await;
+}
+
+#[tokio::main]
+async fn main() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
         return Err(PaymentError::OtherError(format!(
             "No .env file found: {}",
@@ -92,32 +117,10 @@ async fn setup_and_run() -> Result<(), PaymentError> {
     log::debug!("Payment setup: {:?}", payment_setup);
 
     let mut conn = create_sqlite_connection("db.sqlite", true).await?;
+    process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
-    let from_addr = get_eth_addr_from_secret(&secret_key);
-    for transaction_no in 0..cli.receivers.len() {
-        let receiver = cli.receivers[transaction_no];
-        let amount = cli.amounts[transaction_no];
-        let token_transfer = create_token_transfer(
-            from_addr,
-            receiver,
-            cli.chain_id as u64,
-            cli.token_addr,
-            amount,
-        );
-        let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
-    }
-
-    //service_loop(&mut conn, &web3, &secret_key).await;
     let sp = tokio::spawn(async move { service_loop(&mut conn, payment_setup).await });
-
     sp.await
         .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
     Ok(())
-}
-
-/// Below sends a transaction to a local node that stores private keys (eg Ganache)
-/// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
-#[tokio::main]
-async fn main() -> Result<(), PaymentError> {
-    setup_and_run().await
 }
