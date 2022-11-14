@@ -11,6 +11,7 @@ mod service;
 mod setup;
 mod transaction;
 mod utils;
+mod misc;
 
 use secp256k1::SecretKey;
 
@@ -116,7 +117,9 @@ async fn main() -> Result<(), PaymentError> {
     let payment_setup = PaymentSetup::new(&config, secret_key, !cli.keep_running)?;
     log::debug!("Payment setup: {:?}", payment_setup);
 
-    let mut conn = create_sqlite_connection("db.sqlite", true).await?;
+    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
+    let mut conn = create_sqlite_connection(&db_conn, true).await?;
+
     process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
     let sp = tokio::spawn(async move { service_loop(&mut conn, payment_setup).await });

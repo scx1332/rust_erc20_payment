@@ -26,9 +26,6 @@ struct TransferOptions {
     #[structopt(long = "plain-eth", help = "Set if you want to send main token")]
     plain_eth: bool,
 
-    #[structopt(long = "memory-db", help = "Use memory db, default is file db")]
-    memory_db: bool,
-
     #[structopt(
         long = "keep-running",
         help = "Set to keep running when finished processing transactions"
@@ -65,7 +62,6 @@ pub struct ValidatedOptions {
     pub amounts: Vec<U256>,
     pub chain_id: i64,
     pub token_addr: Option<Address>,
-    pub memory_db: bool,
     pub keep_running: bool,
 }
 
@@ -128,7 +124,6 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 amounts,
                 chain_id: transfer_options.chain_id,
                 token_addr,
-                memory_db: transfer_options.memory_db,
                 keep_running: transfer_options.keep_running,
             })
         }
@@ -150,7 +145,6 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 amounts,
                 chain_id: test_options.chain_id,
                 token_addr: None,
-                memory_db: false,
                 keep_running: false,
             })
         }
@@ -161,7 +155,6 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 amounts: vec![],
                 chain_id: 0,
                 token_addr: None,
-                memory_db: false,
                 keep_running: false,
             })
         }
