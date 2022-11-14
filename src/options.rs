@@ -4,6 +4,15 @@ use structopt::StructOpt;
 use web3::types::{Address, U256};
 
 #[derive(Debug, StructOpt)]
+pub struct ProcessOptions {
+    #[structopt(
+    long = "keep-running",
+    help = "Set to keep running when finished processing transactions"
+    )]
+    keep_running: bool,
+}
+
+#[derive(Debug, StructOpt)]
 struct TransferOptions {
     #[structopt(
         long = "receivers",
@@ -51,7 +60,7 @@ enum CliOptions {
     Transfer(TransferOptions),
     /// Process options
     #[structopt(name = "process")]
-    Process {},
+    Process(ProcessOptions),
     /// Test options
     #[structopt(name = "test")]
     Test(TestOptions),
@@ -64,6 +73,8 @@ pub struct ValidatedOptions {
     pub token_addr: Option<Address>,
     pub keep_running: bool,
 }
+
+
 
 #[allow(unused)]
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
@@ -148,14 +159,14 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 keep_running: false,
             })
         }
-        CliOptions::Process {} => {
+        CliOptions::Process (process_options) => {
             //println!("magicality: {}, color: {}", magicality, color);
             Ok(ValidatedOptions {
                 receivers: vec![],
                 amounts: vec![],
                 chain_id: 0,
                 token_addr: None,
-                keep_running: false,
+                keep_running: process_options.keep_running,
             })
         }
     }
