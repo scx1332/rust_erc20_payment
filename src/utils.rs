@@ -45,3 +45,4 @@ pub fn gwei_to_u256(gas: f64) -> Result<U256, ConversionError> {
     }
     Ok(U256::from((gas * GWEI) as u64))
 }
+

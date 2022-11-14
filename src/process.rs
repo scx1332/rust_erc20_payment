@@ -37,7 +37,6 @@ pub async fn process_transaction(
     conn: &mut SqliteConnection,
     web3_tx_dao: &mut Web3TransactionDao,
     payment_setup: &PaymentSetup,
-    secret_key: &SecretKey,
     wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
@@ -92,7 +91,7 @@ pub async fn process_transaction(
         }
 
         println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-        sign_transaction(&web3, web3_tx_dao, &secret_key).await?;
+        sign_transaction(&web3, web3_tx_dao, &payment_setup.secret_key).await?;
         update_tx(conn, web3_tx_dao).await?;
     }
 

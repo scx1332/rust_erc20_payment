@@ -12,14 +12,13 @@ mod setup;
 mod transaction;
 mod utils;
 
-use secp256k1::{PublicKey, SecretKey};
+use secp256k1::{SecretKey};
 
 use std::str::FromStr;
 
 use std::{env, fmt};
 
 use crate::transaction::create_token_transfer;
-use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
@@ -29,6 +28,7 @@ use web3::types::Address;
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
+use crate::eth::get_eth_addr_from_secret;
 
 use crate::options::validated_cli;
 use crate::service::service_loop;
@@ -40,15 +40,7 @@ struct _Web3ChainConfig {
     erc20_contract: Contract<Http>,
 }
 
-pub fn get_eth_addr_from_secret(secret_key: &SecretKey) -> Address {
-    Address::from_slice(
-        &Keccak256::digest(
-            &PublicKey::from_secret_key(&secp256k1::Secp256k1::new(), &secret_key)
-                .serialize_uncompressed()[1..65],
-        )
-        .as_slice()[12..],
-    )
-}
+
 
 struct HexSlice<'a>(&'a [u8]);
 
@@ -85,10 +77,7 @@ where
     }
 }
 
-/// Below sends a transaction to a local node that stores private keys (eg Ganache)
-/// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
-#[tokio::main]
-async fn main() -> Result<(), PaymentError> {
+async fn setup_and_run() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
         return Err(PaymentError::OtherError(format!(
             "No .env file found: {}",
@@ -99,15 +88,15 @@ async fn main() -> Result<(), PaymentError> {
     let cli = validated_cli()?;
 
     let config = config::Config::load("config-payments.toml")?;
-    let payment_setup = PaymentSetup::new(&config)?;
+    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
+    let secret_key = SecretKey::from_str(&private_key).unwrap();
+    let payment_setup = PaymentSetup::new(&config, secret_key, !cli.keep_running)?;
     log::debug!("Payment setup: {:?}", payment_setup);
 
     let mut conn = create_sqlite_connection("db.sqlite", true).await?;
 
-    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-    let secret_key = SecretKey::from_str(&private_key).unwrap();
-    let from_addr = get_eth_addr_from_secret(&secret_key);
 
+    let from_addr = get_eth_addr_from_secret(&secret_key);
     for transaction_no in 0..cli.receivers.len() {
         let receiver = cli.receivers[transaction_no];
         let amount = cli.amounts[transaction_no];
@@ -123,10 +112,17 @@ async fn main() -> Result<(), PaymentError> {
 
     //service_loop(&mut conn, &web3, &secret_key).await;
     let sp = tokio::spawn(async move {
-        service_loop(&mut conn, payment_setup, &secret_key, !cli.keep_running).await
+        service_loop(&mut conn, payment_setup).await
     });
 
     sp.await
         .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
     Ok(())
+}
+
+/// Below sends a transaction to a local node that stores private keys (eg Ganache)
+/// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
+#[tokio::main]
+async fn main() -> Result<(), PaymentError> {
+    setup_and_run().await
 }

@@ -603,14 +603,13 @@ pub async fn update_tx_result(
 pub async fn process_transactions(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
     loop {
         let mut transactions = get_transactions_being_processed(conn).await?;
 
         for tx in &mut transactions {
             let process_t_res =
-                match process_transaction(conn, tx, payment_setup, secret_key, false).await {
+                match process_transaction(conn, tx, payment_setup, false).await {
                     Ok(process_result) => process_result,
                     Err(err) => match err {
                         PaymentError::TransactionFailedError(err) => {
@@ -644,8 +643,6 @@ pub async fn process_transactions(
 pub async fn service_loop(
     conn: &mut SqliteConnection,
     payment_setup: PaymentSetup,
-    secret_key: &SecretKey,
-    finish_when_processed: bool,
 ) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
@@ -670,7 +667,7 @@ pub async fn service_loop(
         {
             log::debug!("Processing transactions...");
             process_tx_instantly = false;
-            match process_transactions(conn, &payment_setup, secret_key).await {
+            match process_transactions(conn, &payment_setup).await {
                 Ok(_) => {
                     //all pending transactions processed
                     process_tx_needed = false;
@@ -728,7 +725,7 @@ pub async fn service_loop(
                 }
             };
             last_update_time2 = current_time;
-            if finish_when_processed && !process_tx_needed {
+            if payment_setup.finish_when_done && !process_tx_needed {
                 log::info!("No more work to do, exiting...");
                 break;
             }
