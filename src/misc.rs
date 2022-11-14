@@ -1,17 +1,14 @@
-use crate::config;
-use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
-use crate::eth::get_eth_addr_from_secret;
+
 use crate::transaction::create_token_transfer;
-use secp256k1::SecretKey;
+
 use sqlx::SqliteConnection;
-use std::env;
-use std::str::FromStr;
+
+use crate::error::PaymentError;
 use rand::Rng;
 use web3::types::{Address, U256};
-use crate::error::PaymentError;
 
-pub fn create_test_address_pool() -> Result<Vec::<Address>, PaymentError>{
+pub fn create_test_address_pool() -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
     for i in 0..2000 {
         addr_pool.push(Address::from_low_u64_le(i + 100));
@@ -19,7 +16,7 @@ pub fn create_test_address_pool() -> Result<Vec::<Address>, PaymentError>{
     Ok(addr_pool)
 }
 
-pub fn create_test_amount_pool() -> Result<Vec::<U256>, PaymentError>{
+pub fn create_test_amount_pool() -> Result<Vec<U256>, PaymentError> {
     let mut amount_pool = Vec::<U256>::new();
     for i in 0..2000 {
         amount_pool.push(U256::from(i + 100));
@@ -47,4 +44,3 @@ pub async fn generate_transaction_batch(
     }
     Ok(())
 }
-

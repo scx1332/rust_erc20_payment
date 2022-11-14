@@ -1,16 +1,17 @@
 use rust_erc20_payment::config;
 use rust_erc20_payment::db::create_sqlite_connection;
-use rust_erc20_payment::db::operations::insert_token_transfer;
+
 use rust_erc20_payment::error::PaymentError;
 use rust_erc20_payment::eth::get_eth_addr_from_secret;
-use rust_erc20_payment::transaction::create_token_transfer;
+
 use secp256k1::SecretKey;
-use sqlx::SqliteConnection;
+
 use std::env;
 use std::str::FromStr;
-use rand::Rng;
-use web3::types::{Address, U256};
-use rust_erc20_payment::misc::{create_test_address_pool, create_test_amount_pool, generate_transaction_batch};
+
+use rust_erc20_payment::misc::{
+    create_test_address_pool, create_test_amount_pool, generate_transaction_batch,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {

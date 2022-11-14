@@ -3,6 +3,7 @@ mod contracts;
 mod db;
 mod error;
 mod eth;
+mod misc;
 mod model;
 mod multi;
 mod options;
@@ -11,7 +12,6 @@ mod service;
 mod setup;
 mod transaction;
 mod utils;
-mod misc;
 
 use secp256k1::SecretKey;
 
