@@ -12,7 +12,7 @@ mod setup;
 mod transaction;
 mod utils;
 
-use secp256k1::{SecretKey};
+use secp256k1::SecretKey;
 
 use std::str::FromStr;
 
@@ -39,8 +39,6 @@ struct _Web3ChainConfig {
     chain_id: u64,
     erc20_contract: Contract<Http>,
 }
-
-
 
 struct HexSlice<'a>(&'a [u8]);
 
@@ -95,7 +93,6 @@ async fn setup_and_run() -> Result<(), PaymentError> {
 
     let mut conn = create_sqlite_connection("db.sqlite", true).await?;
 
-
     let from_addr = get_eth_addr_from_secret(&secret_key);
     for transaction_no in 0..cli.receivers.len() {
         let receiver = cli.receivers[transaction_no];
@@ -111,9 +108,7 @@ async fn setup_and_run() -> Result<(), PaymentError> {
     }
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    let sp = tokio::spawn(async move {
-        service_loop(&mut conn, payment_setup).await
-    });
+    let sp = tokio::spawn(async move { service_loop(&mut conn, payment_setup).await });
 
     sp.await
         .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;

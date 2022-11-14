@@ -1,10 +1,10 @@
 use crate::config::Config;
 use crate::error::PaymentError;
-use crate::utils::{gwei_to_u256};
 use crate::eth::get_eth_addr_from_secret;
+use crate::utils::gwei_to_u256;
 use rand::Rng;
-use std::collections::BTreeMap;
 use secp256k1::SecretKey;
+use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
@@ -30,16 +30,20 @@ pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
     pub secret_key: SecretKey,
     pub pub_address: Address,
-    pub finish_when_done: bool
+    pub finish_when_done: bool,
 }
 
 impl PaymentSetup {
-    pub fn new(config: &Config, secret_key: SecretKey, finish_when_done: bool) -> Result<Self, PaymentError> {
+    pub fn new(
+        config: &Config,
+        secret_key: SecretKey,
+        finish_when_done: bool,
+    ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
             secret_key,
             pub_address: get_eth_addr_from_secret(&secret_key),
-            finish_when_done
+            finish_when_done,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();

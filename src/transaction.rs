@@ -206,14 +206,20 @@ pub fn create_erc20_transfer_multi(
     gas_limit: u64,
     max_fee_per_gas: U256,
     priority_fee: U256,
-    direct: bool
+    direct: bool,
 ) -> Result<Web3TransactionDao, PaymentError> {
     let (packed, sum) = pack_transfers_for_multi_contract(erc20_to, erc20_amount)?;
     //todo set method
     let (data, method_str) = if direct {
-        (get_multi_direct_packed(packed)?, "MULTI.golemTransferDirectPacked".to_string())
+        (
+            get_multi_direct_packed(packed)?,
+            "MULTI.golemTransferDirectPacked".to_string(),
+        )
     } else {
-        (get_multi_indirect_packed(packed, sum)?, "MULTI.golemTransferIndirectPacked".to_string())
+        (
+            get_multi_indirect_packed(packed, sum)?,
+            "MULTI.golemTransferIndirectPacked".to_string(),
+        )
     };
 
     Ok(Web3TransactionDao {

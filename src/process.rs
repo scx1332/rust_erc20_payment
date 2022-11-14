@@ -1,5 +1,3 @@
-use secp256k1::SecretKey;
-
 use crate::db::operations::update_tx;
 use crate::error::PaymentError;
 use sqlx::SqliteConnection;
