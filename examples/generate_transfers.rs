@@ -8,10 +8,17 @@ use secp256k1::SecretKey;
 
 use std::env;
 use std::str::FromStr;
+use structopt::StructOpt;
+use rust_erc20_payment::misc::{create_test_amount_pool, generate_transaction_batch, null_address_pool, ordered_address_pool};
 
-use rust_erc20_payment::misc::{
-    create_test_address_pool, create_test_amount_pool, generate_transaction_batch,
-};
+#[derive(Debug, StructOpt)]
+struct TestOptions {
+    #[structopt(long = "chain-name", default_value = "mumbai")]
+    chain_name: String,
+
+    #[structopt(long = "generate-count", default_value = "10")]
+    generate_count: i64,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
@@ -23,6 +30,8 @@ async fn main() -> Result<(), PaymentError> {
     }
     env_logger::init();
 
+    let cli = TestOptions::from_args();
+
     let config = config::Config::load("config-payments.toml")?;
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
     let secret_key = SecretKey::from_str(&private_key).unwrap();
@@ -31,10 +40,10 @@ async fn main() -> Result<(), PaymentError> {
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
 
-    let addr_pool = create_test_address_pool()?;
-    let amount_pool = create_test_amount_pool()?;
+    let addr_pool = ordered_address_pool(200000)?;
+    let amount_pool = create_test_amount_pool(200000)?;
 
-    let c = config.chain.get("mumbai").unwrap();
+    let c = config.chain.get(&cli.chain_name).unwrap();
     generate_transaction_batch(
         &mut conn,
         c.network_id as u64,
@@ -42,7 +51,7 @@ async fn main() -> Result<(), PaymentError> {
         Some(c.token.clone().unwrap().address),
         addr_pool,
         amount_pool,
-        10,
+        cli.generate_count as usize,
     )
     .await?;
 

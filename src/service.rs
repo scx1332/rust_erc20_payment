@@ -259,8 +259,9 @@ pub async fn gather_transactions_batch_multi(
                 Address::from_str(token_addr)?,
                 erc20_to[0],
                 erc20_amounts[0],
-                1000,
+
                 token_transfer.chain_id as u64,
+                1000,
                 max_fee_per_gas,
                 priority_fee,
             )?,
@@ -273,7 +274,7 @@ pub async fn gather_transactions_batch_multi(
                 1000,
                 max_fee_per_gas,
                 priority_fee,
-                true,
+                false,
             )?,
         }
     } else {

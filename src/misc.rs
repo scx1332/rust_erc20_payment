@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::db::operations::insert_token_transfer;
 
 use crate::transaction::create_token_transfer;
@@ -8,17 +9,27 @@ use crate::error::PaymentError;
 use rand::Rng;
 use web3::types::{Address, U256};
 
-pub fn create_test_address_pool() -> Result<Vec<Address>, PaymentError> {
+pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
-    for i in 0..2000 {
-        addr_pool.push(Address::from_low_u64_le(i + 100));
+    for i in 0..1 {
+        //let p = U256::from(i);
+        addr_pool.push(Address::from_low_u64_le(0));
     }
     Ok(addr_pool)
 }
 
-pub fn create_test_amount_pool() -> Result<Vec<U256>, PaymentError> {
+pub fn ordered_address_pool(size: usize) -> Result<Vec<Address>, PaymentError> {
+    let mut addr_pool = Vec::<Address>::new();
+    for i in 0..size {
+        //let p = U256::from(i);
+        addr_pool.push(Address::from_str(&format!("0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}", i))?);
+    }
+    Ok(addr_pool)
+}
+
+pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
     let mut amount_pool = Vec::<U256>::new();
-    for i in 0..2000 {
+    for i in 0..size {
         amount_pool.push(U256::from(i + 100));
     }
     Ok(amount_pool)
