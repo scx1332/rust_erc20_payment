@@ -5,12 +5,27 @@ use rust_erc20_payment::error::PaymentError;
 use rust_erc20_payment::eth::get_eth_addr_from_secret;
 use rust_erc20_payment::transaction::create_token_transfer;
 use secp256k1::SecretKey;
-use sqlx::postgres::PgAdvisoryLockKey::BigInt;
 use sqlx::SqliteConnection;
 use std::env;
 use std::str::FromStr;
 use rand::Rng;
 use web3::types::{Address, U256};
+
+fn create_test_address_pool() -> Result<Vec::<Address>, PaymentError>{
+    let mut addr_pool = Vec::<Address>::new();
+    for i in 0..2000 {
+        addr_pool.push(Address::from_low_u64_le(i + 100));
+    }
+    Ok(addr_pool)
+}
+
+fn create_test_amount_pool() -> Result<Vec::<U256>, PaymentError>{
+    let mut amount_pool = Vec::<U256>::new();
+    for i in 0..2000 {
+        amount_pool.push(U256::from(i + 100));
+    }
+    Ok(amount_pool)
+}
 
 async fn generate_transaction_batch(
     conn: &mut SqliteConnection,
@@ -49,17 +64,11 @@ async fn main() -> Result<(), PaymentError> {
 
     let mut conn = create_sqlite_connection("db.sqlite", true).await?;
 
-    let mut addr_pool = Vec::<Address>::new();
-    for i in 0..2000 {
-        addr_pool.push(Address::from_low_u64_le(i + 100));
-    }
-    let mut amount_pool = Vec::<U256>::new();
-    for i in 0..2000 {
-        amount_pool.push(U256::from(i + 1));
-    }
+
+    let addr_pool = create_test_address_pool()?;
+    let amount_pool = create_test_amount_pool()?;
 
     let c = config.chain.get("mumbai").unwrap();
-
     generate_transaction_batch(
         &mut conn,
         c.network_id as u64,
