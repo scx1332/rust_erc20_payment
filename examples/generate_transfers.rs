@@ -7,7 +7,7 @@ use rust_erc20_payment::eth::get_eth_addr_from_secret;
 use secp256k1::SecretKey;
 
 use rust_erc20_payment::misc::{
-    create_test_amount_pool, generate_transaction_batch, null_address_pool, ordered_address_pool,
+    create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
 };
 use sqlx::Connection;
 use std::env;

@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
-use rustc_hex::FromHexError;
 
 use crate::db::operations::{
     find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
@@ -18,7 +17,7 @@ use crate::utils::ConversionError;
 
 use crate::setup::PaymentSetup;
 use sqlx::{Connection, SqliteConnection};
-use web3::types::{Address, H160, U256};
+use web3::types::{Address, U256};
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -164,7 +163,7 @@ pub async fn gather_transactions_pre(
                     continue;
                 }
             }
-            Err(err) => {
+            Err(_err) => {
                 f.error = Some("Invalid from address".to_string());
                 update_token_transfer(conn, f).await?;
                 continue;
@@ -178,13 +177,12 @@ pub async fn gather_transactions_pre(
                     continue;
                 }
             }
-            Err(err) => {
+            Err(_err) => {
                 f.error = Some("Invalid receiver address".to_string());
                 update_token_transfer(conn, f).await?;
                 continue;
             }
         }
-
 
         //group transactions
         let key = TokenTransferKey {
