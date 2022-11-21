@@ -50,12 +50,12 @@ pub async fn generate_transaction_batch(
 ) -> Result<(), PaymentError> {
     //thread rng
     let mut rng = rand::thread_rng();
-    for _transaction_no in 0..number_of_transfers {
+    for transaction_no in 0..number_of_transfers {
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
         let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
         let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
-        log::info!("Generated token transfer: {:?}", token_transfer);
+        log::info!("Generated token transfer: {:?} {}/{}", token_transfer, transaction_no, number_of_transfers);
     }
     Ok(())
 }
