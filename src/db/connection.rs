@@ -39,21 +39,24 @@ pub async fn _create_postgres_connection(
 }
 
 pub async fn create_sqlite_connection(
-    _max_connections: u32,
+    file_name: &str,
+    run_migrations: bool,
 ) -> Result<SqliteConnection, PaymentError> {
-    let url = format!("sqlite://db.sqlite");
+    let url = format!("sqlite://{}", file_name);
 
     log::info!("connecting to db using url {}", url);
 
-    let mut conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?
+    let mut conn = SqliteConnectOptions::from_str(&url)?
         .create_if_missing(true)
         .connect()
         .await?;
 
-    MIGRATOR
-        .run(&mut conn)
-        .await
-        .map_err(|err| PaymentError::OtherError(format!("Err: {:?}", err)))?;
+    if run_migrations {
+        MIGRATOR
+            .run(&mut conn)
+            .await
+            .map_err(|err| PaymentError::OtherError(format!("Err: {:?}", err)))?;
+    }
 
     Ok(conn)
 }

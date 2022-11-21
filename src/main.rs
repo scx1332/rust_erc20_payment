@@ -1,60 +1,45 @@
+mod config;
 mod contracts;
 mod db;
 mod error;
 mod eth;
+mod misc;
 mod model;
 mod multi;
+mod options;
 mod process;
 mod service;
+mod setup;
 mod transaction;
 mod utils;
-mod options;
 
-use secp256k1::{PublicKey, SecretKey};
+use secp256k1::SecretKey;
 
 use std::str::FromStr;
 
-use std::time::Duration;
+use sqlx::SqliteConnection;
 use std::{env, fmt};
 
 use crate::transaction::create_token_transfer;
-use sha3::{Digest, Keccak256};
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use web3::types::{Address, U256};
+use web3::types::Address;
 
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
-use crate::multi::check_allowance;
-use crate::options::{CliOptions, validated_cli};
+use crate::eth::get_eth_addr_from_secret;
+
+use crate::options::{validated_cli, ValidatedOptions};
 use crate::service::service_loop;
-use structopt::StructOpt;
-/*
-struct ERC20Payment {
-    from: Address,
-    to: Address,
-    token: Address,
-    amount: U256,
-}
-*/
+use crate::setup::PaymentSetup;
 
 struct _Web3ChainConfig {
     glm_token: Address,
     chain_id: u64,
     erc20_contract: Contract<Http>,
-}
-
-pub fn get_eth_addr_from_secret(secret_key: &SecretKey) -> Address {
-    Address::from_slice(
-        &Keccak256::digest(
-            &PublicKey::from_secret_key(&secp256k1::Secp256k1::new(), &secret_key)
-                .serialize_uncompressed()[1..65],
-        )
-        .as_slice()[12..],
-    )
 }
 
 struct HexSlice<'a>(&'a [u8]);
@@ -92,82 +77,53 @@ where
     }
 }
 
-/*
-fn prepare_erc20_contract(
-    ethereum_client: &Web3<Http>,
-    env: &config::EnvConfiguration,
-) -> Result<Contract<Http>, GenericError> {
-    prepare_contract(
-        ethereum_client,
-        env.glm_contract_address,
-        include_bytes!("../contracts/ierc20.json"),
-    )
-}*/
-
-/*
-fn prepare_erc20_multi_contract(
-    ethereum_client: &Web3<Http>,
-    env: &config::EnvConfiguration,
-) -> Result<Contract<Http>, GenericError> {
-    prepare_contract(
-        env.glm_multi_transfer_contract_address
-            .ok_or(GenericError::new(
-                "No multipayment contract defined for this environment",
-            ))?,
-        include_bytes!("contracts/multi_transfer_erc20.json"),
-    )
-}*/
-
-/// Below sends a transaction to a local node that stores private keys (eg Ganache)
-/// For generating and signing a transaction offline, before transmitting it to a public node (eg Infura) see transaction_public
-#[tokio::main]
-async fn main() -> Result<(), PaymentError> {
-    env_logger::init();
-
-    let cli = validated_cli();
-
-    // let conn = SqliteConnectOptions::from_str("sqlite://db.sqlite")?.create_if_missing(true).connect().await?;
-
-    let mut conn = create_sqlite_connection(2).await?;
-
-    let prov_url = env::var("PROVIDER_URL").unwrap();
-    let transport = web3::transports::Http::new(&prov_url)?;
-    let web3 = web3::Web3::new(transport);
-
-    let chain_id = web3.eth().chain_id().await?.as_u64();
-    // Insert the 20-byte "to" address in hex format (prefix with 0x)
-
-    // Insert the 32-byte private key in hex format (do NOT prefix with 0x)
-    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-
-    let secret_key = SecretKey::from_str(&private_key).unwrap();
+async fn process_cli(
+    conn: &mut SqliteConnection,
+    cli: &ValidatedOptions,
+    secret_key: &SecretKey,
+) -> Result<(), PaymentError> {
     let from_addr = get_eth_addr_from_secret(&secret_key);
-    let to = Address::from_str(&env::var("ETH_TO_ADDRESS").unwrap()).unwrap();
-
-    let token_addr = if chain_id == 5 {
-        Address::from_str("0x33af15c79d64b85ba14aaffaa4577949104b22e8").unwrap()
-    } else if chain_id == 80001 {
-        Address::from_str("0x2036807b0b3aaf5b1858ee822d0e111fddac7018").unwrap()
-    } else {
-        panic!("Chain ID not supported");
-    };
-
-    for transaction_no in 0..2 {
+    for transaction_no in 0..cli.receivers.len() {
+        let receiver = cli.receivers[transaction_no];
+        let amount = cli.amounts[transaction_no];
         let token_transfer = create_token_transfer(
             from_addr,
-            to,
-            chain_id,
-            Some(token_addr),
-            U256::from(1 + transaction_no as i32),
+            receiver,
+            cli.chain_id as u64,
+            cli.token_addr,
+            amount,
         );
-        let _token_transfer = insert_token_transfer(&mut conn, &token_transfer).await?;
+        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
     }
+    Ok(())
 
     //service_loop(&mut conn, &web3, &secret_key).await;
-    tokio::spawn(async move { service_loop(&mut conn, &web3, &secret_key).await });
+}
 
-    loop {
-        //wait
-        tokio::time::sleep(Duration::from_secs(1)).await;
+#[tokio::main]
+async fn main() -> Result<(), PaymentError> {
+    if let Err(err) = dotenv::dotenv() {
+        return Err(PaymentError::OtherError(format!(
+            "No .env file found: {}",
+            err
+        )));
     }
+    env_logger::init();
+    let cli = validated_cli()?;
+
+    let config = config::Config::load("config-payments.toml")?;
+    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
+    let secret_key = SecretKey::from_str(&private_key).unwrap();
+    let payment_setup = PaymentSetup::new(&config, secret_key, !cli.keep_running)?;
+    log::debug!("Payment setup: {:?}", payment_setup);
+
+    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
+    let mut conn = create_sqlite_connection(&db_conn, true).await?;
+
+    process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
+
+    let sp = tokio::spawn(async move { service_loop(&mut conn, payment_setup).await });
+    sp.await
+        .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
+    Ok(())
 }

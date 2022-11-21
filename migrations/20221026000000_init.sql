@@ -13,14 +13,17 @@ CREATE TABLE "tx" (
     processing          INTEGER     NOT NULL,
     call_data           TEXT        NULL,
     created_date        DATETIME    NOT NULL,
+    first_processed     DATETIME    NULL,
     tx_hash             TEXT        NULL,
     signed_raw_data     TEXT        NULL,
-    signed_date         DATETIIME   NULL,
-    broadcast_date      DATETIIME   NULL,
-    confirm_date        DATETIIME   NULL,
+    signed_date         DATETIME    NULL,
+    broadcast_date      DATETIME    NULL,
+    broadcast_count     INTEGER     NOT NULL,
+    confirm_date        DATETIME    NULL,
     block_number        INTEGER     NULL,
     chain_status        INTEGER     NULL,
     fee_paid            TEXT        NULL,
+    error               TEXT        NULL,
     PRIMARY KEY("id" AUTOINCREMENT)
 );
 

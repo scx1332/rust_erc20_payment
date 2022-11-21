@@ -1,2 +1,5 @@
 /target
 .idea
+/.env
+/db.sqlite
+/*.sqlite-journal

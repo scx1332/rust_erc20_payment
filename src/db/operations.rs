@@ -62,20 +62,22 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 pub async fn update_allowance(
     conn: &mut SqliteConnection,
     allowance: &Allowance,
-) -> Result<Allowance, sqlx::Error> {
+) -> Result<(), sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE allowance SET
-owner = $1,
-token_addr = $2,
-spender = $3,
-allowance = $4,
-chain_id = $5,
-tx_id = $6,
-fee_paid = $7,
-confirm_date = $8,
-error = $9
+owner = $2,
+token_addr = $3,
+spender = $4,
+allowance = $5,
+chain_id = $6,
+tx_id = $7,
+fee_paid = $8,
+confirm_date = $9,
+error = $10
+WHERE id = $1
  ",
     )
+    .bind(&allowance.id)
     .bind(&allowance.owner)
     .bind(&allowance.token_addr)
     .bind(&allowance.spender)
@@ -87,7 +89,7 @@ error = $9
     .bind(&allowance.error)
     .execute(conn)
     .await?;
-    Ok(allowance.clone())
+    Ok(())
 }
 
 #[allow(unused)]
@@ -148,7 +150,8 @@ chain_id = $4,
 token_addr = $5,
 token_amount = $6,
 tx_id = $7,
-fee_paid = $8
+fee_paid = $8,
+error = $9
 WHERE id = $1
 ",
     )
@@ -160,6 +163,7 @@ WHERE id = $1
     .bind(&token_transfer.token_amount)
     .bind(&token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
+    .bind(&token_transfer.error)
     .execute(conn)
     .await?;
     Ok(token_transfer.clone())
@@ -178,10 +182,14 @@ pub async fn get_all_token_transfers(
 pub async fn get_pending_token_transfers(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<TokenTransfer>, sqlx::Error> {
-    let rows =
-        sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer WHERE tx_id is null")
-            .fetch_all(conn)
-            .await?;
+    let rows = sqlx::query_as::<_, TokenTransfer>(
+        r"SELECT * FROM token_transfer
+WHERE tx_id is null
+AND error is null
+",
+    )
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
 
@@ -213,8 +221,8 @@ pub async fn insert_tx(
 ) -> Result<Web3TransactionDao, sqlx::Error> {
     let res = sqlx::query_as::<_, Web3TransactionDao>(
         r"INSERT INTO tx
-(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, tx_hash, signed_raw_data, signed_date, broadcast_date, confirm_date, block_number, chain_status, fee_paid)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING *;
+(method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid, error)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING *;
 ",
     )
         .bind(&tx.method)
@@ -229,14 +237,17 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .bind( &tx.processing)
         .bind( &tx.call_data)
         .bind( &tx.created_date)
+        .bind( &tx.first_processed)
         .bind( &tx.tx_hash)
         .bind( &tx.signed_raw_data)
         .bind( &tx.signed_date)
         .bind( &tx.broadcast_date)
+        .bind( &tx.broadcast_count)
         .bind( &tx.confirm_date)
         .bind( &tx.block_number)
         .bind( &tx.chain_status)
         .bind( &tx.fee_paid)
+        .bind(&tx.error)
         .fetch_one(conn)
         .await?;
     Ok(res)
@@ -260,14 +271,17 @@ nonce = $10,
 processing = $11,
 call_data = $12,
 created_date = $13,
-tx_hash = $14,
-signed_raw_data = $15,
-signed_date = $16,
-broadcast_date = $17,
-confirm_date = $18,
-block_number = $19,
-chain_status = $20,
-fee_paid = $21
+first_processed = $14,
+tx_hash = $15,
+signed_raw_data = $16,
+signed_date = $17,
+broadcast_date = $18,
+broadcast_count = $19,
+confirm_date = $20,
+block_number = $21,
+chain_status = $22,
+fee_paid = $23,
+error = $24
 WHERE id = $1
 ",
     )
@@ -284,14 +298,17 @@ WHERE id = $1
     .bind(&tx.processing)
     .bind(&tx.call_data)
     .bind(&tx.created_date)
+    .bind(&tx.first_processed)
     .bind(&tx.tx_hash)
     .bind(&tx.signed_raw_data)
     .bind(&tx.signed_date)
     .bind(&tx.broadcast_date)
+    .bind(&tx.broadcast_count)
     .bind(&tx.confirm_date)
     .bind(&tx.block_number)
     .bind(&tx.chain_status)
     .bind(&tx.fee_paid)
+    .bind(&tx.error)
     .execute(conn)
     .await?;
     Ok(tx.clone())
