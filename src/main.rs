@@ -114,7 +114,7 @@ async fn main() -> Result<(), PaymentError> {
     let config = config::Config::load("config-payments.toml")?;
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
     let secret_key = SecretKey::from_str(&private_key).unwrap();
-    let payment_setup = PaymentSetup::new(&config, secret_key, !cli.keep_running)?;
+    let payment_setup = PaymentSetup::new(&config, secret_key, !cli.keep_running, cli.generate_tx_only, cli.skip_multi_contract_check)?;
     log::debug!("Payment setup: {:?}", payment_setup);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();

@@ -9,15 +9,17 @@ use crate::error::PaymentError;
 use rand::Rng;
 use web3::types::{Address, U256};
 
+#[allow(unused)]
 pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
-    for i in 0..1 {
+    for _i in 0..1 {
         //let p = U256::from(i);
         addr_pool.push(Address::from_low_u64_le(0));
     }
     Ok(addr_pool)
 }
 
+#[allow(unused)]
 pub fn ordered_address_pool(size: usize) -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
     for i in 0..size {
@@ -27,6 +29,7 @@ pub fn ordered_address_pool(size: usize) -> Result<Vec<Address>, PaymentError> {
     Ok(addr_pool)
 }
 
+#[allow(unused)]
 pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
     let mut amount_pool = Vec::<U256>::new();
     for i in 0..size {
@@ -35,6 +38,7 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
     Ok(amount_pool)
 }
 
+#[allow(unused)]
 pub async fn generate_transaction_batch(
     conn: &mut SqliteConnection,
     chain_id: u64,

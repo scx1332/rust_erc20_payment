@@ -23,6 +23,8 @@ pub struct ChainSetup {
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<Address>,
     pub transaction_timeout: u64,
+    pub skip_multi_contract_check: bool,
+
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +33,8 @@ pub struct PaymentSetup {
     pub secret_key: SecretKey,
     pub pub_address: Address,
     pub finish_when_done: bool,
+    pub generate_tx_only: bool,
+    pub skip_multi_contract_check: bool,
 }
 
 impl PaymentSetup {
@@ -38,12 +42,16 @@ impl PaymentSetup {
         config: &Config,
         secret_key: SecretKey,
         finish_when_done: bool,
+        generate_txs_only: bool,
+        skip_multi_contract_check: bool,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
             secret_key,
             pub_address: get_eth_addr_from_secret(&secret_key),
             finish_when_done,
+            generate_tx_only: generate_txs_only,
+            skip_multi_contract_check,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();
@@ -70,6 +78,7 @@ impl PaymentSetup {
                         .clone()
                         .map(|m| m.address),
                     transaction_timeout: chain_config.1.transaction_timeout,
+                    skip_multi_contract_check
                 },
             );
         }
