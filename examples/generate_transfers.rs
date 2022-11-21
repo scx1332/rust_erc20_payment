@@ -6,10 +6,13 @@ use rust_erc20_payment::eth::get_eth_addr_from_secret;
 
 use secp256k1::SecretKey;
 
+use rust_erc20_payment::misc::{
+    create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
+};
+use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
-use rust_erc20_payment::misc::{create_test_amount_pool, generate_transaction_batch, null_address_pool, ordered_address_pool};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
@@ -17,7 +20,13 @@ struct TestOptions {
     chain_name: String,
 
     #[structopt(long = "generate-count", default_value = "10")]
-    generate_count: i64,
+    generate_count: usize,
+
+    #[structopt(long = "address-pool-size", default_value = "10")]
+    address_pool_size: usize,
+
+    #[structopt(long = "amounts-pool-size", default_value = "10")]
+    amounts_pool_size: usize,
 }
 
 #[tokio::main]
@@ -30,7 +39,7 @@ async fn main() -> Result<(), PaymentError> {
     }
     env_logger::init();
 
-    let cli = TestOptions::from_args();
+    let cli: TestOptions = TestOptions::from_args();
 
     let config = config::Config::load("config-payments.toml")?;
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
@@ -40,8 +49,8 @@ async fn main() -> Result<(), PaymentError> {
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
 
-    let addr_pool = ordered_address_pool(200000)?;
-    let amount_pool = create_test_amount_pool(200000)?;
+    let addr_pool = ordered_address_pool(cli.address_pool_size)?;
+    let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
 
     let c = config.chain.get(&cli.chain_name).unwrap();
     generate_transaction_batch(
@@ -51,9 +60,10 @@ async fn main() -> Result<(), PaymentError> {
         Some(c.token.clone().unwrap().address),
         addr_pool,
         amount_pool,
-        cli.generate_count as usize,
+        cli.generate_count,
     )
     .await?;
 
+    conn.close().await?; //it is needed to process all the transactions before closing the connection
     Ok(())
 }

@@ -6,10 +6,22 @@ use web3::types::{Address, U256};
 #[derive(Debug, StructOpt)]
 pub struct ProcessOptions {
     #[structopt(
-    long = "keep-running",
-    help = "Set to keep running when finished processing transactions"
+        long = "keep-running",
+        help = "Set to keep running when finished processing transactions"
     )]
     keep_running: bool,
+
+    #[structopt(
+        long = "generate-tx-only",
+        help = "Do not send or process transactions, only generate stubs"
+    )]
+    generate_tx_only: bool,
+
+    #[structopt(
+        long = "skip-multi-contract-check",
+        help = "Skip multi contract check when generating txs"
+    )]
+    skip_multi_contract_check: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -40,6 +52,18 @@ struct TransferOptions {
         help = "Set to keep running when finished processing transactions"
     )]
     keep_running: bool,
+
+    #[structopt(
+        long = "generate-tx-only",
+        help = "Do not send or process transactions, only generate stubs"
+    )]
+    generate_tx_only: bool,
+
+    #[structopt(
+        long = "skip-multi-contract-check",
+        help = "Skip multi contract check when generating txs"
+    )]
+    skip_multi_contract_check: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -72,9 +96,9 @@ pub struct ValidatedOptions {
     pub chain_id: i64,
     pub token_addr: Option<Address>,
     pub keep_running: bool,
+    pub generate_tx_only: bool,
+    pub skip_multi_contract_check: bool,
 }
-
-
 
 #[allow(unused)]
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
@@ -108,17 +132,19 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 )));
             };
             if receivers.is_empty() {
-                return Err(PaymentError::OtherError(format!("No receivers specified")));
+                return Err(PaymentError::OtherError(
+                    "No receivers specified".to_string(),
+                ));
             };
             if transfer_options.plain_eth && transfer_options.token_addr.is_some() {
-                return Err(PaymentError::OtherError(format!(
-                    "Can't specify both plain-eth and token-addr"
-                )));
+                return Err(PaymentError::OtherError(
+                    "Can't specify both plain-eth and token-addr".to_string(),
+                ));
             };
             if !transfer_options.plain_eth && transfer_options.token_addr.is_none() {
-                return Err(PaymentError::OtherError(format!(
-                    "Specify token-addr or set plain-eth true to plain transfer"
-                )));
+                return Err(PaymentError::OtherError(
+                    "Specify token-addr or set plain-eth true to plain transfer".to_string(),
+                ));
             };
 
             let token_addr = if transfer_options.plain_eth {
@@ -136,6 +162,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 chain_id: transfer_options.chain_id,
                 token_addr,
                 keep_running: transfer_options.keep_running,
+                generate_tx_only: transfer_options.generate_tx_only,
+                skip_multi_contract_check: transfer_options.skip_multi_contract_check,
             })
         }
         CliOptions::Test(test_options) => {
@@ -157,17 +185,18 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 chain_id: test_options.chain_id,
                 token_addr: None,
                 keep_running: false,
+                generate_tx_only: false,
+                skip_multi_contract_check: false,
             })
         }
-        CliOptions::Process (process_options) => {
-            //println!("magicality: {}, color: {}", magicality, color);
-            Ok(ValidatedOptions {
-                receivers: vec![],
-                amounts: vec![],
-                chain_id: 0,
-                token_addr: None,
-                keep_running: process_options.keep_running,
-            })
-        }
+        CliOptions::Process(process_options) => Ok(ValidatedOptions {
+            receivers: vec![],
+            amounts: vec![],
+            chain_id: 0,
+            token_addr: None,
+            keep_running: process_options.keep_running,
+            generate_tx_only: process_options.generate_tx_only,
+            skip_multi_contract_check: process_options.skip_multi_contract_check,
+        }),
     }
 }

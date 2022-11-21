@@ -25,8 +25,7 @@ pub enum ProcessTransactionResult {
 
 #[allow(dead_code)]
 pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
-    let prov_url = url;
-    let transport = web3::transports::Http::new(&prov_url)?;
+    let transport = web3::transports::Http::new(url)?;
     let web3 = web3::Web3::new(transport);
     Ok(web3)
 }
@@ -58,7 +57,7 @@ pub async fn process_transaction(
         PaymentError::TransactionFailedError("Failed to parse from_addr".to_string())
     })?;
     if web3_tx_dao.nonce.is_none() {
-        let nonce = get_transaction_count(from_addr, &web3, false).await?;
+        let nonce = get_transaction_count(from_addr, web3, false).await?;
         web3_tx_dao.nonce = Some(nonce as i64);
     }
 
@@ -72,7 +71,8 @@ pub async fn process_transaction(
             ));
         }
         if diff.num_seconds() > chain_setup.transaction_timeout as i64 {
-            return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
+            log::warn!("Transaction timeout for tx id: {}", web3_tx_dao.id);
+            //return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
         }
     } else {
         web3_tx_dao.first_processed = Some(chrono::Utc::now());
@@ -80,7 +80,7 @@ pub async fn process_transaction(
     }
 
     if web3_tx_dao.signed_raw_data.is_none() {
-        match check_transaction(&web3, web3_tx_dao).await {
+        match check_transaction(web3, web3_tx_dao).await {
             Ok(_) => {}
             Err(err) => {
                 log::error!("Error while checking transaction: {}", err);
@@ -89,12 +89,12 @@ pub async fn process_transaction(
         }
 
         println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-        sign_transaction(&web3, web3_tx_dao, &payment_setup.secret_key).await?;
+        sign_transaction(web3, web3_tx_dao, &payment_setup.secret_key).await?;
         update_tx(conn, web3_tx_dao).await?;
     }
 
     if web3_tx_dao.broadcast_date.is_none() {
-        send_transaction(&web3, web3_tx_dao).await?;
+        send_transaction(web3, web3_tx_dao).await?;
         web3_tx_dao.broadcast_count += 1;
         update_tx(conn, web3_tx_dao).await?;
     }
@@ -105,32 +105,32 @@ pub async fn process_transaction(
 
     let mut tx_not_found_count = 0;
     loop {
-        let pending_nonce = get_transaction_count(from_addr, &web3, true).await?;
+        let pending_nonce = get_transaction_count(from_addr, web3, true).await?;
         if pending_nonce
             <= web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or(PaymentError::OtherError("Nonce not found".to_string()))?
+                .ok_or_else(|| PaymentError::OtherError("Nonce not found".to_string()))?
         {
             println!(
                 "Resend because pending nonce too low: {:?}",
                 web3_tx_dao.tx_hash
             );
-            send_transaction(&web3, web3_tx_dao).await?;
+            send_transaction(web3, web3_tx_dao).await?;
             web3_tx_dao.broadcast_count += 1;
             update_tx(conn, web3_tx_dao).await?;
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
         }
-        let latest_nonce = get_transaction_count(from_addr, &web3, false).await?;
+        let latest_nonce = get_transaction_count(from_addr, web3, false).await?;
         let current_block_number = web3.eth().block_number().await?.as_u64();
         if latest_nonce
             > web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or(PaymentError::OtherError("Nonce not found".to_string()))?
+                .ok_or_else(|| PaymentError::OtherError("Nonce not found".to_string()))?
         {
-            let res = find_receipt(&web3, web3_tx_dao).await?;
+            let res = find_receipt(web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
                     log::debug!("Receipt found: {:?}", web3_tx_dao.tx_hash);

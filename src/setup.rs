@@ -22,7 +22,9 @@ pub struct ChainSetup {
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<Address>,
+    pub multi_contract_max_at_once: usize,
     pub transaction_timeout: u64,
+    pub skip_multi_contract_check: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +33,8 @@ pub struct PaymentSetup {
     pub secret_key: SecretKey,
     pub pub_address: Address,
     pub finish_when_done: bool,
+    pub generate_tx_only: bool,
+    pub skip_multi_contract_check: bool,
 }
 
 impl PaymentSetup {
@@ -38,17 +42,21 @@ impl PaymentSetup {
         config: &Config,
         secret_key: SecretKey,
         finish_when_done: bool,
+        generate_txs_only: bool,
+        skip_multi_contract_check: bool,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
             secret_key,
             pub_address: get_eth_addr_from_secret(&secret_key),
             finish_when_done,
+            generate_tx_only: generate_txs_only,
+            skip_multi_contract_check,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();
             for endp in &chain_config.1.rpc_endpoints {
-                let Ok(transport) = web3::transports::Http::new(&endp) else {
+                let Ok(transport) = web3::transports::Http::new(endp) else {
                     return Err(PaymentError::OtherError(format!("Failed to create transport for endpoint: {}", endp)));
                 };
                 let provider = Web3::new(transport);
@@ -69,38 +77,37 @@ impl PaymentSetup {
                         .multi_contract
                         .clone()
                         .map(|m| m.address),
+                    multi_contract_max_at_once: chain_config
+                        .1
+                        .multi_contract
+                        .clone()
+                        .map(|m| m.max_at_once)
+                        .unwrap_or(1),
                     transaction_timeout: chain_config.1.transaction_timeout,
+                    skip_multi_contract_check,
                 },
             );
         }
         Ok(ps)
     }
     pub fn get_chain_setup(&self, chain_id: i64) -> Result<&ChainSetup, PaymentError> {
-        self.chain_setup
-            .get(&(chain_id as usize))
-            .ok_or(PaymentError::OtherError(format!(
-                "No chain setup for chain id: {}",
-                chain_id
-            )))
+        self.chain_setup.get(&(chain_id as usize)).ok_or_else(|| {
+            PaymentError::OtherError(format!("No chain setup for chain id: {}", chain_id))
+        })
     }
 
     pub fn get_provider(&self, chain_id: i64) -> Result<&Web3<Http>, PaymentError> {
-        let chain_setup =
-            self.chain_setup
-                .get(&(chain_id as usize))
-                .ok_or(PaymentError::OtherError(format!(
-                    "No chain setup for chain id: {}",
-                    chain_id
-                )))?;
+        let chain_setup = self.chain_setup.get(&(chain_id as usize)).ok_or_else(|| {
+            PaymentError::OtherError(format!("No chain setup for chain id: {}", chain_id))
+        })?;
 
         let mut rng = rand::thread_rng();
         let provider = chain_setup
             .providers
             .get(rng.gen_range(0..chain_setup.providers.len()))
-            .ok_or(PaymentError::OtherError(format!(
-                "No providers found for chain id: {}",
-                chain_id
-            )))?;
+            .ok_or_else(|| {
+                PaymentError::OtherError(format!("No providers found for chain id: {}", chain_id))
+            })?;
         Ok(&provider.provider)
     }
 }
