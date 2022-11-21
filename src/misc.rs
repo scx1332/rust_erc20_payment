@@ -11,19 +11,19 @@ use web3::types::{Address, U256};
 
 #[allow(unused)]
 pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {
-    let mut addr_pool = Vec::<Address>::new();
-    for _i in 0..1 {
-        //let p = U256::from(i);
-        addr_pool.push(Address::from_low_u64_le(0));
-    }
-    Ok(addr_pool)
+    ordered_address_pool(1, true)
 }
 
 #[allow(unused)]
-pub fn ordered_address_pool(size: usize) -> Result<Vec<Address>, PaymentError> {
+pub fn ordered_address_pool(size: usize, include_null_address: bool) -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
-    for i in 0..size {
-        //let p = U256::from(i);
+    let range = if include_null_address {
+        0..size
+    } else {
+        1..(size + 1)
+    };
+    for i in range {
+        //if i equals to 0 then null address is generated
         addr_pool.push(Address::from_str(&format!(
             "0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}",
             i
