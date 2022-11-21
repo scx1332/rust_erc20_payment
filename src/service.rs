@@ -75,7 +75,7 @@ pub async fn process_allowance(
                         db_allowance.id
                     );
                     db_allowance.confirm_date = Some(chrono::Utc::now());
-                    update_allowance(conn, &db_allowance).await?;
+                    update_allowance(conn, db_allowance).await?;
                 }
                 allowance
             }
@@ -183,7 +183,7 @@ pub struct TokenTransferMultiOrder {
 pub async fn gather_transactions_batch_multi(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    multi_order_vector: &mut Vec<TokenTransferMultiOrder>,
+    multi_order_vector: &mut [TokenTransferMultiOrder],
     token_transfer: &TokenTransferMultiKey,
 ) -> Result<u32, PaymentError> {
     let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
@@ -206,7 +206,7 @@ pub async fn gather_transactions_batch_multi(
                     &format!("{:#x}", multi_contract_address),
                     token_transfer.chain_id,
                 )
-                    .await?;
+                .await?;
 
                 let mut allowance_not_met = false;
                 match db_allowance {
@@ -214,7 +214,9 @@ pub async fn gather_transactions_batch_multi(
                         Some(_) => {
                             let allowance = U256::from_dec_str(&db_allowance.allowance)?;
                             if allowance < minimum_allowance {
-                                log::debug!("Allowance already confirmed from db, but it is too small");
+                                log::debug!(
+                                    "Allowance already confirmed from db, but it is too small"
+                                );
                                 allowance_not_met = true;
                             } else {
                                 log::debug!("Allowance confirmed from db");
@@ -242,7 +244,9 @@ pub async fn gather_transactions_batch_multi(
             }
         }
 
-        let split_orders = multi_order_vector.chunks_mut(max_per_batch).collect::<Vec<_>>();
+        let split_orders = multi_order_vector
+            .chunks_mut(max_per_batch)
+            .collect::<Vec<_>>();
 
         for smaller_order in split_orders {
             let mut erc20_to = Vec::with_capacity(smaller_order.len());
@@ -265,7 +269,6 @@ pub async fn gather_transactions_batch_multi(
                     Address::from_str(token_addr)?,
                     erc20_to[0],
                     erc20_amounts[0],
-
                     token_transfer.chain_id as u64,
                     1000,
                     max_fee_per_gas,
@@ -281,7 +284,7 @@ pub async fn gather_transactions_batch_multi(
                     max_fee_per_gas,
                     priority_fee,
                     false,
-                )?
+                )?,
             };
             let mut db_transaction = conn.begin().await?;
             let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
@@ -306,7 +309,7 @@ pub async fn gather_transactions_batch_multi(
 pub async fn gather_transactions_batch(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    token_transfers: &mut Vec<TokenTransfer>,
+    token_transfers: &mut [TokenTransfer],
     token_transfer: &TokenTransferKey,
 ) -> Result<u32, PaymentError> {
     let mut sum = U256::zero();
@@ -346,7 +349,7 @@ pub async fn gather_transactions_batch(
     let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
     for token_transfer in token_transfers.iter_mut() {
         token_transfer.tx_id = Some(web3_tx_dao.id);
-        update_token_transfer(&mut db_transaction, &token_transfer).await?;
+        update_token_transfer(&mut db_transaction, token_transfer).await?;
     }
     db_transaction.commit().await?;
     Ok(1)
@@ -364,13 +367,9 @@ pub async fn gather_transactions_post(
     for pair in token_transfer_map.iter() {
         let token_transfers = pair.1;
         let token_transfer = pair.0;
-        let min_id = token_transfers
-            .iter()
-            .map(|f| f.id)
-            .min()
-            .ok_or(PaymentError::OtherError(
-                "Failed algorithm when searching min".to_string(),
-            ))?;
+        let min_id = token_transfers.iter().map(|f| f.id).min().ok_or_else(|| {
+            PaymentError::OtherError("Failed algorithm when searching min".to_string())
+        })?;
         sorted_order.insert(min_id, token_transfer.clone());
     }
     let use_multi = true;
@@ -386,18 +385,16 @@ pub async fn gather_transactions_post(
             if multi_key.token_addr.is_none() {
                 let token_transfer = key.1;
                 let token_transfers =
-                    token_transfer_map
-                        .get_mut(&token_transfer)
-                        .ok_or(PaymentError::OtherError(
-                            "Failed algorithm when getting key".to_string(),
-                        ))?;
+                    token_transfer_map.get_mut(token_transfer).ok_or_else(|| {
+                        PaymentError::OtherError("Failed algorithm when getting key".to_string())
+                    })?;
 
                 //sum of transfers
                 match gather_transactions_batch(
                     conn,
                     payment_setup,
                     token_transfers,
-                    &token_transfer,
+                    token_transfer,
                 )
                 .await
                 {
@@ -415,7 +412,7 @@ pub async fn gather_transactions_post(
                                 for token_transfer in token_transfers {
                                     token_transfer.error =
                                         Some("Error in gathering transactions".to_string());
-                                    update_token_transfer(conn, &token_transfer).await?;
+                                    update_token_transfer(conn, token_transfer).await?;
                                 }
                                 log::error!("Failed to gather transactions: {:?}", e);
                             }
@@ -427,8 +424,8 @@ pub async fn gather_transactions_post(
             }
 
             //todo - fix unnecessary clone here
-            let opt = token_transfer_map.get(&key.1).unwrap().clone();
-            token_transfer_map.remove(&key.1);
+            let opt = token_transfer_map.get(key.1).unwrap().clone();
+            token_transfer_map.remove(key.1);
 
             match multi_key_map.get_mut(&multi_key) {
                 Some(v) => {
@@ -629,6 +626,8 @@ pub async fn process_transactions(
     loop {
         let mut transactions = get_transactions_being_processed(conn).await?;
 
+        //TODO - This loop is getting only first element, fix code so only one transaction is taken from db
+        #[allow(clippy::never_loop)]
         for tx in &mut transactions {
             let process_t_res = match process_transaction(conn, tx, payment_setup, false).await {
                 Ok(process_result) => process_result,

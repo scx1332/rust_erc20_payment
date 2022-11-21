@@ -6,12 +6,13 @@ use rust_erc20_payment::eth::get_eth_addr_from_secret;
 
 use secp256k1::SecretKey;
 
+use rust_erc20_payment::misc::{
+    create_test_amount_pool, generate_transaction_batch, null_address_pool, ordered_address_pool,
+};
+use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
-use sqlx::Connection;
 use structopt::StructOpt;
-use rust_erc20_payment::misc::{create_test_amount_pool, generate_transaction_batch, null_address_pool, ordered_address_pool};
-
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
@@ -26,7 +27,6 @@ struct TestOptions {
 
     #[structopt(long = "amounts-pool-size", default_value = "10")]
     amounts_pool_size: usize,
-
 }
 
 #[tokio::main]
@@ -39,7 +39,7 @@ async fn main() -> Result<(), PaymentError> {
     }
     env_logger::init();
 
-    let cli : TestOptions = TestOptions::from_args();
+    let cli: TestOptions = TestOptions::from_args();
 
     let config = config::Config::load("config-payments.toml")?;
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();

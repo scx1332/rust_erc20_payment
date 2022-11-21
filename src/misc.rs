@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use crate::db::operations::insert_token_transfer;
+use std::str::FromStr;
 
 use crate::transaction::create_token_transfer;
 
@@ -24,7 +24,10 @@ pub fn ordered_address_pool(size: usize) -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
     for i in 0..size {
         //let p = U256::from(i);
-        addr_pool.push(Address::from_str(&format!("0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}", i))?);
+        addr_pool.push(Address::from_str(&format!(
+            "0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}",
+            i
+        ))?);
     }
     Ok(addr_pool)
 }
@@ -55,7 +58,12 @@ pub async fn generate_transaction_batch(
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
         let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
         let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
-        log::info!("Generated token transfer: {:?} {}/{}", token_transfer, transaction_no, number_of_transfers);
+        log::info!(
+            "Generated token transfer: {:?} {}/{}",
+            token_transfer,
+            transaction_no,
+            number_of_transfers
+        );
     }
     Ok(())
 }

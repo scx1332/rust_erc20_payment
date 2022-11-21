@@ -6,20 +6,20 @@ use web3::types::{Address, U256};
 #[derive(Debug, StructOpt)]
 pub struct ProcessOptions {
     #[structopt(
-    long = "keep-running",
-    help = "Set to keep running when finished processing transactions"
+        long = "keep-running",
+        help = "Set to keep running when finished processing transactions"
     )]
     keep_running: bool,
 
     #[structopt(
-    long = "generate-tx-only",
-    help = "Do not send or process transactions, only generate stubs"
+        long = "generate-tx-only",
+        help = "Do not send or process transactions, only generate stubs"
     )]
     generate_tx_only: bool,
 
     #[structopt(
-    long = "skip-multi-contract-check",
-    help = "Skip multi contract check when generating txs"
+        long = "skip-multi-contract-check",
+        help = "Skip multi contract check when generating txs"
     )]
     skip_multi_contract_check: bool,
 }
@@ -54,14 +54,14 @@ struct TransferOptions {
     keep_running: bool,
 
     #[structopt(
-    long = "generate-tx-only",
-    help = "Do not send or process transactions, only generate stubs"
+        long = "generate-tx-only",
+        help = "Do not send or process transactions, only generate stubs"
     )]
     generate_tx_only: bool,
 
     #[structopt(
-    long = "skip-multi-contract-check",
-    help = "Skip multi contract check when generating txs"
+        long = "skip-multi-contract-check",
+        help = "Skip multi contract check when generating txs"
     )]
     skip_multi_contract_check: bool,
 }
@@ -100,8 +100,6 @@ pub struct ValidatedOptions {
     pub skip_multi_contract_check: bool,
 }
 
-
-
 #[allow(unused)]
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
     let opt: CliOptions = CliOptions::from_args();
@@ -134,17 +132,19 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 )));
             };
             if receivers.is_empty() {
-                return Err(PaymentError::OtherError(format!("No receivers specified")));
+                return Err(PaymentError::OtherError(
+                    "No receivers specified".to_string(),
+                ));
             };
             if transfer_options.plain_eth && transfer_options.token_addr.is_some() {
-                return Err(PaymentError::OtherError(format!(
-                    "Can't specify both plain-eth and token-addr"
-                )));
+                return Err(PaymentError::OtherError(
+                    "Can't specify both plain-eth and token-addr".to_string(),
+                ));
             };
             if !transfer_options.plain_eth && transfer_options.token_addr.is_none() {
-                return Err(PaymentError::OtherError(format!(
-                    "Specify token-addr or set plain-eth true to plain transfer"
-                )));
+                return Err(PaymentError::OtherError(
+                    "Specify token-addr or set plain-eth true to plain transfer".to_string(),
+                ));
             };
 
             let token_addr = if transfer_options.plain_eth {
@@ -189,16 +189,14 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 skip_multi_contract_check: false,
             })
         }
-        CliOptions::Process (process_options) => {
-            Ok(ValidatedOptions {
-                receivers: vec![],
-                amounts: vec![],
-                chain_id: 0,
-                token_addr: None,
-                keep_running: process_options.keep_running,
-                generate_tx_only: process_options.generate_tx_only,
-                skip_multi_contract_check: process_options.skip_multi_contract_check,
-            })
-        }
+        CliOptions::Process(process_options) => Ok(ValidatedOptions {
+            receivers: vec![],
+            amounts: vec![],
+            chain_id: 0,
+            token_addr: None,
+            keep_running: process_options.keep_running,
+            generate_tx_only: process_options.generate_tx_only,
+            skip_multi_contract_check: process_options.skip_multi_contract_check,
+        }),
     }
 }
