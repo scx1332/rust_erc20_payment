@@ -72,7 +72,11 @@ pub async fn process_transaction(
             ));
         }
         if diff.num_seconds() > chain_setup.transaction_timeout as i64 {
-            return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
+            log::warn!(
+                "Transaction timeout for tx id: {}",
+                web3_tx_dao.id
+            );
+            //return Ok(ProcessTransactionResult::NeedRetry("Timeout".to_string()));
         }
     } else {
         web3_tx_dao.first_processed = Some(chrono::Utc::now());

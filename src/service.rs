@@ -183,7 +183,7 @@ pub struct TokenTransferMultiOrder {
 pub async fn gather_transactions_batch_multi(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    token_multi_order: &mut Vec<TokenTransferMultiOrder>,
+    multi_order_vector: &mut Vec<TokenTransferMultiOrder>,
     token_transfer: &TokenTransferMultiKey,
 ) -> Result<u32, PaymentError> {
     let chain_setup = payment_setup.get_chain_setup(token_transfer.chain_id)?;
@@ -191,8 +191,9 @@ pub async fn gather_transactions_batch_multi(
     let max_fee_per_gas = chain_setup.max_fee_per_gas;
     let priority_fee = chain_setup.priority_fee;
 
+    let max_per_batch = 2;
     log::debug!("Processing token transfer {:?}", token_transfer);
-    let web3tx = if let Some(token_addr) = token_transfer.token_addr.as_ref() {
+    if let Some(token_addr) = token_transfer.token_addr.as_ref() {
         if let Some(multi_contract_address) = chain_setup.multi_contract_address.as_ref() {
             //this is some arbitrary number.
             let minimum_allowance: U256 = U256::max_value() / U256::from(2);
@@ -239,59 +240,64 @@ pub async fn gather_transactions_batch_multi(
             }
         }
 
-        let mut erc20_to = Vec::with_capacity(token_multi_order.len());
-        let mut erc20_amounts = Vec::with_capacity(token_multi_order.len());
-        for token_t in &mut *token_multi_order {
-            let mut sum = U256::zero();
-            for token_transfer in &token_t.token_transfers {
-                sum += U256::from_dec_str(&token_transfer.token_amount)?;
-            }
-            erc20_to.push(token_t.receiver);
-            erc20_amounts.push(sum);
-        }
+        let split_orders = multi_order_vector.chunks_mut(max_per_batch).collect::<Vec<_>>();
 
-        match erc20_to.len() {
-            0 => {
-                return Ok(0);
+        for smaller_order in split_orders {
+            let mut erc20_to = Vec::with_capacity(smaller_order.len());
+            let mut erc20_amounts = Vec::with_capacity(smaller_order.len());
+            for token_t in &mut *smaller_order {
+                let mut sum = U256::zero();
+                for token_transfer in &token_t.token_transfers {
+                    sum += U256::from_dec_str(&token_transfer.token_amount)?;
+                }
+                erc20_to.push(token_t.receiver);
+                erc20_amounts.push(sum);
             }
-            1 => create_erc20_transfer(
-                Address::from_str(&token_transfer.from_addr)?,
-                Address::from_str(token_addr)?,
-                erc20_to[0],
-                erc20_amounts[0],
 
-                token_transfer.chain_id as u64,
-                1000,
-                max_fee_per_gas,
-                priority_fee,
-            )?,
-            _ => create_erc20_transfer_multi(
-                Address::from_str(&token_transfer.from_addr)?,
-                chain_setup.multi_contract_address.unwrap(),
-                erc20_to,
-                erc20_amounts,
-                token_transfer.chain_id as u64,
-                1000,
-                max_fee_per_gas,
-                priority_fee,
-                false,
-            )?,
+            let web3tx = match erc20_to.len() {
+                0 => {
+                    return Ok(0);
+                }
+                1 => create_erc20_transfer(
+                    Address::from_str(&token_transfer.from_addr)?,
+                    Address::from_str(token_addr)?,
+                    erc20_to[0],
+                    erc20_amounts[0],
+
+                    token_transfer.chain_id as u64,
+                    1000,
+                    max_fee_per_gas,
+                    priority_fee,
+                )?,
+                _ => create_erc20_transfer_multi(
+                    Address::from_str(&token_transfer.from_addr)?,
+                    chain_setup.multi_contract_address.unwrap(),
+                    erc20_to,
+                    erc20_amounts,
+                    token_transfer.chain_id as u64,
+                    1000,
+                    max_fee_per_gas,
+                    priority_fee,
+                    false,
+                )?
+            };
+            let mut db_transaction = conn.begin().await?;
+            let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
+
+            for token_t in &mut *smaller_order {
+                for token_transfer in &mut token_t.token_transfers {
+                    token_transfer.tx_id = Some(web3_tx_dao.id);
+                    update_token_transfer(&mut db_transaction, token_transfer).await?;
+                }
+            }
+            db_transaction.commit().await?;
         }
     } else {
         return Err(PaymentError::OtherError(
             "Not implemented for multi".to_string(),
         ));
     };
-    let mut db_transaction = conn.begin().await?;
-    let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await?;
 
-    for token_t in &mut *token_multi_order {
-        for token_transfer in &mut token_t.token_transfers {
-            token_transfer.tx_id = Some(web3_tx_dao.id);
-            update_token_transfer(&mut db_transaction, token_transfer).await?;
-        }
-    }
-    db_transaction.commit().await?;
     Ok(1)
 }
 
