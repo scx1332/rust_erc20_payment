@@ -12,6 +12,7 @@ mod service;
 mod setup;
 mod transaction;
 mod utils;
+mod runtime;
 
 use secp256k1::SecretKey;
 
@@ -19,6 +20,7 @@ use std::str::FromStr;
 
 use sqlx::SqliteConnection;
 use std::{env, fmt};
+use tokio::task::JoinHandle;
 
 use crate::transaction::create_token_transfer;
 
@@ -33,6 +35,7 @@ use crate::error::PaymentError;
 use crate::eth::get_eth_addr_from_secret;
 
 use crate::options::{validated_cli, ValidatedOptions};
+use crate::runtime::start_payment_engine;
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 
@@ -77,28 +80,6 @@ where
     }
 }
 
-async fn process_cli(
-    conn: &mut SqliteConnection,
-    cli: &ValidatedOptions,
-    secret_key: &SecretKey,
-) -> Result<(), PaymentError> {
-    let from_addr = get_eth_addr_from_secret(secret_key);
-    for transaction_no in 0..cli.receivers.len() {
-        let receiver = cli.receivers[transaction_no];
-        let amount = cli.amounts[transaction_no];
-        let token_transfer = create_token_transfer(
-            from_addr,
-            receiver,
-            cli.chain_id as u64,
-            cli.token_addr,
-            amount,
-        );
-        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
-    }
-    Ok(())
-
-    //service_loop(&mut conn, &web3, &secret_key).await;
-}
 
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
@@ -111,24 +92,7 @@ async fn main() -> Result<(), PaymentError> {
     env_logger::init();
     let cli = validated_cli()?;
 
-    let config = config::Config::load("config-payments.toml")?;
-    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-    let secret_key = SecretKey::from_str(&private_key).unwrap();
-    let payment_setup = PaymentSetup::new(
-        &config,
-        secret_key,
-        !cli.keep_running,
-        cli.generate_tx_only,
-        cli.skip_multi_contract_check,
-    )?;
-    log::debug!("Payment setup: {:?}", payment_setup);
-
-    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    let mut conn = create_sqlite_connection(&db_conn, true).await?;
-
-    process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
-
-    let sp = tokio::spawn(async move { service_loop(&mut conn, payment_setup).await });
+    let sp = start_payment_engine(Some(cli)).await?;
     sp.await
         .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
     Ok(())
