@@ -686,17 +686,21 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: PaymentSet
                 && current_time
                     > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
         {
-            log::debug!("Processing transactions...");
             process_tx_instantly = false;
-            match process_transactions(conn, &payment_setup).await {
-                Ok(_) => {
-                    //all pending transactions processed
-                    process_tx_needed = false;
-                }
-                Err(e) => {
-                    log::error!("Error in process transactions: {}", e);
-                }
-            };
+            if payment_setup.generate_tx_only {
+                log::warn!("Skipping processing transactions...");
+                process_tx_needed = false;
+            } else {
+                match process_transactions(conn, &payment_setup).await {
+                    Ok(_) => {
+                        //all pending transactions processed
+                        process_tx_needed = false;
+                    }
+                    Err(e) => {
+                        log::error!("Error in process transactions: {}", e);
+                    }
+                };
+            }
             last_update_time1 = current_time;
         }
 
