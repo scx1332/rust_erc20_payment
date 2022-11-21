@@ -191,7 +191,7 @@ pub async fn gather_transactions_batch_multi(
     let max_fee_per_gas = chain_setup.max_fee_per_gas;
     let priority_fee = chain_setup.priority_fee;
 
-    let max_per_batch = 2;
+    let max_per_batch = chain_setup.multi_contract_max_at_once;
     log::debug!("Processing token transfer {:?}", token_transfer);
     if let Some(token_addr) = token_transfer.token_addr.as_ref() {
         if !payment_setup.skip_multi_contract_check {

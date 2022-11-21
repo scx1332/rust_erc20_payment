@@ -14,8 +14,10 @@ pub struct Config {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub struct MultiContractSettings {
     pub address: Address,
+    pub max_at_once: usize,
 }
 
 #[derive(Deserialize, Debug, Clone)]

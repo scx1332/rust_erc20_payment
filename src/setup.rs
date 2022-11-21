@@ -22,6 +22,7 @@ pub struct ChainSetup {
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<Address>,
+    pub multi_contract_max_at_once: usize,
     pub transaction_timeout: u64,
     pub skip_multi_contract_check: bool,
 
@@ -77,6 +78,7 @@ impl PaymentSetup {
                         .multi_contract
                         .clone()
                         .map(|m| m.address),
+                    multi_contract_max_at_once: chain_config.1.multi_contract.clone().map(|m| m.max_at_once).unwrap_or(1),
                     transaction_timeout: chain_config.1.transaction_timeout,
                     skip_multi_contract_check
                 },
