@@ -47,8 +47,8 @@ impl PaymentSetup {
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
-            secret_key: secret_key.clone(),
-            pub_address: get_eth_addr_from_secret(&secret_key),
+            secret_key: *secret_key,
+            pub_address: get_eth_addr_from_secret(secret_key),
             finish_when_done,
             generate_tx_only: generate_txs_only,
             skip_multi_contract_check,

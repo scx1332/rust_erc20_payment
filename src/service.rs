@@ -725,7 +725,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 log::warn!("Skipping processing transactions...");
                 process_tx_needed = false;
             } else {
-                match process_transactions(conn, &payment_setup).await {
+                match process_transactions(conn, payment_setup).await {
                     Ok(_) => {
                         //all pending transactions processed
                         process_tx_needed = false;
@@ -751,7 +751,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 }
             };
 
-            match gather_transactions_post(conn, &payment_setup, &mut token_transfer_map).await {
+            match gather_transactions_post(conn, payment_setup, &mut token_transfer_map).await {
                 Ok(count) => {
                     if count > 0 {
                         process_tx_needed = true;
@@ -761,7 +761,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                     match &e {
                         PaymentError::NoAllowanceFound(allowance_request) => {
                             log::error!("No allowance found for: {:?}", allowance_request);
-                            match process_allowance(conn, &payment_setup, allowance_request).await {
+                            match process_allowance(conn, payment_setup, allowance_request).await {
                                 Ok(_) => {
                                     //process transaction instantly
                                     process_tx_needed = true;

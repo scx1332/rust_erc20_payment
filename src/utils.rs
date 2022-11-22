@@ -84,10 +84,9 @@ pub fn rust_dec_to_u256(
             dec_mul
         )));
     }
-    let u128 = dec_mul.to_u128().ok_or(ConversionError::from(format!(
-        "Number cannot be converted to u128 {}",
-        dec_mul
-    )))?;
+    let u128 = dec_mul.to_u128().ok_or_else(|ca| {
+        ConversionError::from(format!("Number cannot be converted to u128 {}", dec_mul))
+    })?;
     Ok(U256::from(u128))
 }
 
