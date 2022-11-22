@@ -1,17 +1,17 @@
-use std::env;
-use secp256k1::SecretKey;
-use sqlx::SqliteConnection;
-use tokio::task::JoinHandle;
 use crate::config;
-use crate::error::PaymentError;
-use crate::options::ValidatedOptions;
-use crate::setup::PaymentSetup;
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
+use crate::error::PaymentError;
 use crate::eth::get_eth_addr_from_secret;
+use crate::options::ValidatedOptions;
 use crate::service::service_loop;
+use crate::setup::PaymentSetup;
 use crate::transaction::create_token_transfer;
+use secp256k1::SecretKey;
+use sqlx::SqliteConnection;
+use std::env;
 use std::str::FromStr;
+use tokio::task::JoinHandle;
 
 async fn process_cli(
     conn: &mut SqliteConnection,
@@ -36,7 +36,9 @@ async fn process_cli(
     //service_loop(&mut conn, &web3, &secret_key).await;
 }
 
-pub async fn start_payment_engine(cli: Option<ValidatedOptions>) -> Result<JoinHandle<()>, PaymentError> {
+pub async fn start_payment_engine(
+    cli: Option<ValidatedOptions>,
+) -> Result<JoinHandle<()>, PaymentError> {
     let cli = cli.unwrap_or_default();
     let config = config::Config::load("config-payments.toml")?;
     let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
@@ -55,5 +57,7 @@ pub async fn start_payment_engine(cli: Option<ValidatedOptions>) -> Result<JoinH
 
     process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
-    Ok(tokio::spawn(async move { service_loop(&mut conn, payment_setup).await }))
+    Ok(tokio::spawn(async move {
+        service_loop(&mut conn, payment_setup).await
+    }))
 }

@@ -8,36 +8,23 @@ mod model;
 mod multi;
 mod options;
 mod process;
+mod runtime;
 mod service;
 mod setup;
 mod transaction;
 mod utils;
-mod runtime;
 
-use secp256k1::SecretKey;
-
-use std::str::FromStr;
-
-use sqlx::SqliteConnection;
-use std::{env, fmt};
-use tokio::task::JoinHandle;
-
-use crate::transaction::create_token_transfer;
+use std::fmt;
 
 use web3::contract::Contract;
 use web3::transports::Http;
 
 use web3::types::Address;
 
-use crate::db::create_sqlite_connection;
-use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
-use crate::eth::get_eth_addr_from_secret;
 
-use crate::options::{validated_cli, ValidatedOptions};
+use crate::options::validated_cli;
 use crate::runtime::start_payment_engine;
-use crate::service::service_loop;
-use crate::setup::PaymentSetup;
 
 struct _Web3ChainConfig {
     glm_token: Address,
@@ -79,7 +66,6 @@ where
         HexSlice::new(self)
     }
 }
-
 
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {

@@ -15,7 +15,10 @@ pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {
 }
 
 #[allow(unused)]
-pub fn ordered_address_pool(size: usize, include_null_address: bool) -> Result<Vec<Address>, PaymentError> {
+pub fn ordered_address_pool(
+    size: usize,
+    include_null_address: bool,
+) -> Result<Vec<Address>, PaymentError> {
     let mut addr_pool = Vec::<Address>::new();
     let range = if include_null_address {
         0..size

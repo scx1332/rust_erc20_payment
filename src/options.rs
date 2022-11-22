@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use crate::error::PaymentError;
+use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
