@@ -155,7 +155,6 @@ pub async fn gather_transactions_pre(
 
     let mut token_transfers = get_pending_token_transfers(conn).await?;
 
-
     for f in token_transfers.iter_mut() {
         match Address::from_str(&f.from_addr) {
             Ok(from_addr) => {

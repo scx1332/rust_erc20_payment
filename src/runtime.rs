@@ -10,7 +10,7 @@ use crate::transaction::create_token_transfer;
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
-use std::str::FromStr;
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -66,7 +66,7 @@ pub async fn start_payment_engine(
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
-    let mut conn2 = create_sqlite_connection(&db_conn, false).await?;
+    let conn2 = create_sqlite_connection(&db_conn, false).await?;
 
     process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
@@ -74,9 +74,7 @@ pub async fn start_payment_engine(
 
     let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0 }));
 
-    let jh = tokio::spawn(async move {
-        service_loop(&mut conn, &ps).await
-    });
+    let jh = tokio::spawn(async move { service_loop(&mut conn, &ps).await });
 
     Ok(PaymentRuntime {
         runtime_handle: jh,
@@ -84,5 +82,4 @@ pub async fn start_payment_engine(
         shared_state,
         conn: Arc::new(Mutex::new(conn2)),
     })
-
 }
