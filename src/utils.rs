@@ -2,7 +2,6 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 use web3::types::U256;
 
 #[derive(Debug, Clone)]
@@ -62,15 +61,11 @@ pub fn rust_dec_to_u256(
     }
 
     let dec_base = if num_decimals == 18 {
-        Decimal::from(1000000000000000000_u64)
+        Decimal::new(1000000000000000000, 0)
     } else if num_decimals == 6 {
-        Decimal::from(1000000_u64)
+        Decimal::new(1000000, 0)
     } else {
-        let mut dec_base: Decimal = Decimal::from(1);
-        for i in 0..num_decimals {
-            dec_base *= Decimal::from(10);
-        }
-        dec_base
+        Decimal::from(10_u128.pow(num_decimals as u32))
     };
     //println!("dec: {}, number scale: {}", dec_base, dec_base.scale());
 
@@ -123,10 +118,7 @@ mod tests {
 
         let res = rust_dec_to_u256(Decimal::from(8777666555_u64) + dec_gwei, None).unwrap();
         println!("res: {:?}", res);
-        assert_eq!(
-            res,
-            U256::from(8777666555000000000000000001_u128)
-        );
+        assert_eq!(res, U256::from(8777666555000000000000000001_u128));
 
         let res = rust_dec_to_u256(Decimal::from(0), None).unwrap();
         println!("res: {:?}", res);
@@ -164,7 +156,8 @@ mod tests {
         let res = rust_dec_to_u256(
             Decimal::from_str("79228162514.264337593543950335").unwrap(),
             Some(18),
-        ).unwrap();
+        )
+        .unwrap();
         println!("res: {:?}", res);
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
@@ -172,7 +165,8 @@ mod tests {
         let res = rust_dec_to_u256(
             Decimal::from_str("79228162514264337593543950335").unwrap(),
             Some(0),
-        ).unwrap();
+        )
+        .unwrap();
         println!("res: {:?}", res);
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
@@ -180,7 +174,8 @@ mod tests {
         let res = rust_dec_to_u256(
             Decimal::from_str("79228162514264337593543.950335").unwrap(),
             Some(6),
-        ).unwrap();
+        )
+        .unwrap();
         println!("res: {:?}", res);
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
@@ -188,7 +183,8 @@ mod tests {
         let res = rust_dec_to_u256(
             Decimal::from_str("792281625142643.37593543950335").unwrap(),
             Some(14),
-        ).unwrap();
+        )
+        .unwrap();
         println!("res: {:?}", res);
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
         //assert_eq!(res, U256::zero());
