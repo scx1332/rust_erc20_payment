@@ -11,7 +11,20 @@ use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+
+pub struct SharedState {
+    pub inserted: usize,
+}
+
+pub struct PaymentRuntime {
+    pub runtime_handle: JoinHandle<()>,
+    pub setup: PaymentSetup,
+    pub shared_state: Arc<Mutex<SharedState>>,
+    pub conn: Arc<Mutex<SqliteConnection>>,
+}
 
 async fn process_cli(
     conn: &mut SqliteConnection,
@@ -38,11 +51,10 @@ async fn process_cli(
 
 pub async fn start_payment_engine(
     cli: Option<ValidatedOptions>,
-) -> Result<JoinHandle<()>, PaymentError> {
+    secret_key: &SecretKey,
+    config: config::Config,
+) -> Result<PaymentRuntime, PaymentError> {
     let cli = cli.unwrap_or_default();
-    let config = config::Config::load("config-payments.toml")?;
-    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-    let secret_key = SecretKey::from_str(&private_key).unwrap();
     let payment_setup = PaymentSetup::new(
         &config,
         secret_key,
@@ -54,10 +66,23 @@ pub async fn start_payment_engine(
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
+    let mut conn2 = create_sqlite_connection(&db_conn, false).await?;
 
     process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
-    Ok(tokio::spawn(async move {
-        service_loop(&mut conn, payment_setup).await
-    }))
+    let ps = payment_setup.clone();
+
+    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0 }));
+
+    let jh = tokio::spawn(async move {
+        service_loop(&mut conn, &ps).await
+    });
+
+    Ok(PaymentRuntime {
+        runtime_handle: jh,
+        setup: payment_setup,
+        shared_state,
+        conn: Arc::new(Mutex::new(conn2)),
+    })
+
 }

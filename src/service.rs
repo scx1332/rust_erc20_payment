@@ -149,16 +149,23 @@ type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
 
 pub async fn gather_transactions_pre(
     conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 
     let mut token_transfers = get_pending_token_transfers(conn).await?;
+
 
     for f in token_transfers.iter_mut() {
         match Address::from_str(&f.from_addr) {
             Ok(from_addr) => {
                 if from_addr == Address::zero() {
                     f.error = Some("from_addr is zero".to_string());
+                    update_token_transfer(conn, f).await?;
+                    continue;
+                }
+                if from_addr != payment_setup.pub_address {
+                    f.error = Some("no from_addr in wallet".to_string());
                     update_token_transfer(conn, f).await?;
                     continue;
                 }
@@ -692,7 +699,7 @@ pub async fn process_transactions(
     Ok(())
 }
 
-pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: PaymentSetup) {
+pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
     let mut last_update_time1 =
@@ -736,7 +743,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: PaymentSet
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
         {
             log::debug!("Gathering transfers...");
-            let mut token_transfer_map = match gather_transactions_pre(conn).await {
+            let mut token_transfer_map = match gather_transactions_pre(conn, payment_setup).await {
                 Ok(token_transfer_map) => token_transfer_map,
                 Err(e) => {
                     log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);

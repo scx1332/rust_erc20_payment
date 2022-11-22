@@ -14,7 +14,7 @@ mod setup;
 mod transaction;
 mod utils;
 
-use std::fmt;
+use std::{env, fmt};
 
 use web3::contract::Contract;
 use web3::transports::Http;
@@ -77,9 +77,11 @@ async fn main() -> Result<(), PaymentError> {
     }
     env_logger::init();
     let cli = validated_cli()?;
+    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
+    let config = config::Config::load("config-payments.toml")?;
 
-    let sp = start_payment_engine(Some(cli)).await?;
-    sp.await
+    let sp = start_payment_engine(Some(cli), &private_key, config).await?;
+    sp.runtime_handle.await
         .map_err(|e| PaymentError::OtherError(format!("Service loop failed: {:?}", e)))?;
     Ok(())
 }
