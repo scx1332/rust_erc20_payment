@@ -48,7 +48,8 @@ pub fn gwei_to_u256(gas: f64) -> Result<U256, ConversionError> {
     Ok(U256::from((gas * GWEI) as u64))
 }
 
-//good from one gwei up to at least one billion ethers
+#[allow(unused)]
+///good from one gwei up to at least one billion ethers
 pub fn rust_dec_to_u256(
     dec_amount: rust_decimal::Decimal,
     decimals: Option<u32>,
