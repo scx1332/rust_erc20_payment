@@ -1,5 +1,8 @@
 use lazy_static::lazy_static;
 
+use crate::err_custom_create;
+use crate::error::CustomError;
+use crate::error::ErrorBag;
 use crate::error::PaymentError;
 use std::str::FromStr;
 use web3::contract::tokens::Tokenize;
@@ -32,7 +35,7 @@ pub fn prepare_contract_template(json_abi: &[u8]) -> Result<Contract<Http>, Paym
         Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
         json_abi,
     )
-    .map_err(|_err| PaymentError::OtherError("Failed to create contract".into()))?;
+    .map_err(|_err| err_custom_create!("Failed to create contract"))?;
 
     Ok(contract)
 }

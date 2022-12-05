@@ -5,7 +5,9 @@ use crate::transaction::create_token_transfer;
 
 use sqlx::SqliteConnection;
 
+use crate::err_from;
 use crate::error::PaymentError;
+use crate::error::*;
 use rand::Rng;
 use web3::types::{Address, U256};
 
@@ -27,10 +29,10 @@ pub fn ordered_address_pool(
     };
     for i in range {
         //if i equals to 0 then null address is generated
-        addr_pool.push(Address::from_str(&format!(
-            "0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}",
-            i
-        ))?);
+        addr_pool.push(
+            Address::from_str(&format!("0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}", i))
+                .map_err(err_from!())?,
+        );
     }
     Ok(addr_pool)
 }
@@ -60,7 +62,9 @@ pub async fn generate_transaction_batch(
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
         let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
-        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
+        let _token_transfer = insert_token_transfer(conn, &token_transfer)
+            .await
+            .map_err(err_from!())?;
         log::info!(
             "Generated token transfer: {:?} {}/{}",
             token_transfer,

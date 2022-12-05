@@ -1,4 +1,4 @@
-use rust_erc20_payment::config;
+use rust_erc20_payment::{config, err_custom_create, err_from};
 use rust_erc20_payment::db::create_sqlite_connection;
 
 use rust_erc20_payment::error::PaymentError;
@@ -13,6 +13,7 @@ use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
+use rust_erc20_payment::error::{ErrorBag, CustomError};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
@@ -29,13 +30,12 @@ struct TestOptions {
     amounts_pool_size: usize,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), PaymentError> {
+async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
-        return Err(PaymentError::OtherError(format!(
+        return Err(err_custom_create!(
             "No .env file found: {}",
             err
-        )));
+        ));
     }
     env_logger::init();
 
@@ -62,8 +62,19 @@ async fn main() -> Result<(), PaymentError> {
         amount_pool,
         cli.generate_count,
     )
-    .await?;
+        .await?;
 
-    conn.close().await?; //it is needed to process all the transactions before closing the connection
+    conn.close().await.map_err(err_from!())?; //it is needed to process all the transactions before closing the connection
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), PaymentError> {
+    match main_internal().await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            Err(e)
+        }
+    }
 }

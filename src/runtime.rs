@@ -1,4 +1,3 @@
-use crate::config;
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
@@ -7,10 +6,12 @@ use crate::options::ValidatedOptions;
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 use crate::transaction::create_token_transfer;
+use crate::{config, err_from};
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
 
+use crate::error::ErrorBag;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -42,7 +43,9 @@ async fn process_cli(
             cli.token_addr,
             amount,
         );
-        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
+        let _token_transfer = insert_token_transfer(conn, &token_transfer)
+            .await
+            .map_err(err_from!())?;
     }
     Ok(())
 
