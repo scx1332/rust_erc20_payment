@@ -1,19 +1,19 @@
-use rust_erc20_payment::{config, err_custom_create, err_from};
-use rust_erc20_payment::db::create_sqlite_connection;
+use payment_processor::{config, err_custom_create, err_from};
+use payment_processor::db::create_sqlite_connection;
 
-use rust_erc20_payment::error::PaymentError;
-use rust_erc20_payment::eth::get_eth_addr_from_secret;
+use payment_processor::error::PaymentError;
+use payment_processor::eth::get_eth_addr_from_secret;
 
 use secp256k1::SecretKey;
 
-use rust_erc20_payment::misc::{
+use payment_processor::misc::{
     create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
 };
 use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
-use rust_erc20_payment::error::{ErrorBag, CustomError};
+use payment_processor::error::{ErrorBag, CustomError};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
