@@ -8,11 +8,11 @@ use web3::contract::Contract;
 use web3::transports::Http;
 
 use web3::types::Address;
-use payment_processor::{config, err_custom_create};
+use erc20_payment_lib::{config, err_custom_create};
 
-use payment_processor::error::{CustomError, ErrorBag, PaymentError};
-use payment_processor::options::validated_cli;
-use payment_processor::runtime::start_payment_engine;
+use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
+use erc20_payment_lib::options::validated_cli;
+use erc20_payment_lib::runtime::start_payment_engine;
 
 struct _Web3ChainConfig {
     glm_token: Address,

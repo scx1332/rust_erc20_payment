@@ -1,19 +1,19 @@
-use payment_processor::{config, err_custom_create, err_from};
-use payment_processor::db::create_sqlite_connection;
+use erc20_payment_lib::{config, err_custom_create, err_from};
+use erc20_payment_lib::db::create_sqlite_connection;
 
-use payment_processor::error::PaymentError;
-use payment_processor::eth::get_eth_addr_from_secret;
+use erc20_payment_lib::error::PaymentError;
+use erc20_payment_lib::eth::get_eth_addr_from_secret;
 
 use secp256k1::SecretKey;
 
-use payment_processor::misc::{
+use erc20_payment_lib::misc::{
     create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
 };
 use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
-use payment_processor::error::{ErrorBag, CustomError};
+use erc20_payment_lib::error::{ErrorBag, CustomError};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {

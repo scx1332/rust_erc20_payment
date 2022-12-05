@@ -38,7 +38,7 @@ rust_decimal = { version = "1.26.1", features = ["serde-arbitrary-precision"] }
 toml = "0.5.9"
 
 [dependencies]
-payment_processor = { path = "crates/payment_processor" }
+erc20_payment_lib = { path = "crates/erc20_payment_lib" }
 web3 = { workspace = true }
 tokio = { workspace = true }
 secp256k1 = { workspace = true }
