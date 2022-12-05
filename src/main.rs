@@ -11,8 +11,10 @@ use web3::types::Address;
 use erc20_payment_lib::{config, err_custom_create};
 
 use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
-use erc20_payment_lib::options::validated_cli;
+use options::validated_cli;
 use erc20_payment_lib::runtime::start_payment_engine;
+
+pub mod options;
 
 struct _Web3ChainConfig {
     glm_token: Address,

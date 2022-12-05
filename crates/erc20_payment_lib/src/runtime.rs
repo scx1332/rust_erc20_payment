@@ -2,7 +2,6 @@ use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
 use crate::eth::get_eth_addr_from_secret;
-use crate::options::ValidatedOptions;
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 use crate::transaction::create_token_transfer;
@@ -15,11 +14,35 @@ use crate::error::ErrorBag;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use web3::types::{Address, U256};
 
 pub struct SharedState {
     pub inserted: usize,
 }
+#[allow(unused)]
+pub struct ValidatedOptions {
+    pub receivers: Vec<Address>,
+    pub amounts: Vec<U256>,
+    pub chain_id: i64,
+    pub token_addr: Option<Address>,
+    pub keep_running: bool,
+    pub generate_tx_only: bool,
+    pub skip_multi_contract_check: bool,
+}
 
+impl Default for ValidatedOptions {
+    fn default() -> Self {
+        ValidatedOptions {
+            receivers: vec![],
+            amounts: vec![],
+            chain_id: 80001,
+            token_addr: None,
+            keep_running: true,
+            generate_tx_only: false,
+            skip_multi_contract_check: false,
+        }
+    }
+}
 pub struct PaymentRuntime {
     pub runtime_handle: JoinHandle<()>,
     pub setup: PaymentSetup,
