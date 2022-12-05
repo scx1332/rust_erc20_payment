@@ -363,8 +363,8 @@ pub async fn find_tx(
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
-            .map_err(|err| ConversionError::from("Failed to convert tx hash".into()))?;
-        let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await?;
+            .map_err(|err| ConversionError::from("Failed to convert tx hash".into())).map_err(err_from!())?;
+        let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await.map_err(err_from!())?;
         if let Some(tx) = tx {
             web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64() as i64);
             Ok(true)
@@ -372,7 +372,7 @@ pub async fn find_tx(
             Ok(false)
         }
     } else {
-        Err(PaymentError::OtherError("No tx hash".into()))
+        Err(err_create!(CustomError::new("No tx hash".into())))
     }
 }
 

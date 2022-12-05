@@ -32,7 +32,7 @@ pub fn ordered_address_pool(
         addr_pool.push(Address::from_str(&format!(
             "0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}",
             i
-        ))?);
+        )).map_err(err_from!())?);
     }
     Ok(addr_pool)
 }

@@ -7,6 +7,9 @@ use std::path::Path;
 use crate::error::PaymentError;
 
 use web3::types::Address;
+use crate::{err_create, err_from};
+use crate::error::ErrorBag;
+use crate::error::CustomError;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
@@ -42,12 +45,12 @@ pub struct Token {
 
 impl Config {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, PaymentError> {
-        match toml::from_slice(&fs::read(path)?) {
+        match toml::from_slice(&fs::read(path).map_err(err_from!())?) {
             Ok(config) => Ok(config),
-            Err(e) => Err(PaymentError::OtherError(format!(
+            Err(e) => Err(err_create!(CustomError::new(&format!(
                 "Failed to parse toml {:?}",
                 e
-            ))),
+            )))),
         }
     }
 }

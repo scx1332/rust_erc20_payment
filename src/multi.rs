@@ -55,9 +55,9 @@ pub fn pack_transfers_for_multi_contract(
     let mut sum = U256::from(0);
     for amount in &amounts {
         if amount > &max_value {
-            return Err(PaymentError::OtherError(
-                "Amount is too big to use packed error".to_string(),
-            ));
+            return Err(err_create!(CustomError::new(
+                "Amount is too big to use packed error",
+            )));
         }
         sum += *amount;
     }

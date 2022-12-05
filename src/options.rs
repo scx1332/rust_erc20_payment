@@ -3,6 +3,9 @@ use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
+use crate::{err_create, err_from_msg};
+use crate::error::ErrorBag;
+use crate::error::CustomError;
 
 #[derive(Debug, StructOpt)]
 pub struct ProcessOptions {
@@ -123,33 +126,29 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             let split_pattern = [',', ';'];
             let mut amounts = Vec::<U256>::new();
             for amount in transfer_options.amounts.split(&split_pattern) {
-                let amount = U256::from_dec_str(amount).map_err(|_| {
-                    PaymentError::OtherError(format!("Invalid amount when parsing input: {amount}"))
-                })?;
+                let amount = U256::from_dec_str(amount).map_err(err_from_msg!("Invalid amount when parsing input: {amount}"))?;
                 amounts.push(amount);
             }
 
             let mut receivers = Vec::<Address>::new();
             for receiver in transfer_options.receivers.split(&split_pattern) {
-                let receiver = Address::from_str(receiver).map_err(|_| {
-                    PaymentError::OtherError(format!(
-                        "Invalid receiver when parsing input: {receiver}"
-                    ))
-                })?;
+                let receiver = Address::from_str(receiver).map_err(err_from_msg!("Invalid receiver when parsing input: {receiver}"))?;
                 receivers.push(receiver);
             }
 
             if receivers.len() != amounts.len() {
-                return Err(PaymentError::OtherError(format!(
+                return Err(err_create!(
+            CustomError::new(&(format!(
                     "Receivers count and amount count don't match: {} != {}",
                     receivers.len(),
                     amounts.len()
-                )));
+                )))));
             };
             if receivers.is_empty() {
-                return Err(PaymentError::OtherError(
-                    "No receivers specified".to_string(),
-                ));
+                return Err(err_create!(
+            CustomError::new(
+                    "No receivers specified",
+                )));
             };
             if transfer_options.plain_eth && transfer_options.token_addr.is_some() {
                 return Err(PaymentError::OtherError(
