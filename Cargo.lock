@@ -1268,6 +1268,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1de2e551fb905ac83f73f7aedf2f0cb4a0da7e35efa24a202a936269f1f18e1"
 
 [[package]]
+name = "payment_processor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dotenv",
+ "env_logger",
+ "hex",
+ "lazy_static",
+ "log",
+ "rand",
+ "rust_decimal",
+ "rustc-hex",
+ "secp256k1",
+ "serde",
+ "sha3 0.10.6",
+ "sqlx",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "toml",
+ "web3",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
