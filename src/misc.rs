@@ -8,6 +8,8 @@ use sqlx::SqliteConnection;
 use crate::error::PaymentError;
 use rand::Rng;
 use web3::types::{Address, U256};
+use crate::err_from;
+use crate::error::*;
 
 #[allow(unused)]
 pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {
@@ -60,7 +62,7 @@ pub async fn generate_transaction_batch(
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
         let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
-        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
+        let _token_transfer = insert_token_transfer(conn, &token_transfer).await.map_err(err_from!())?;
         log::info!(
             "Generated token transfer: {:?} {}/{}",
             token_transfer,

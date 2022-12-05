@@ -1,4 +1,4 @@
-use crate::config;
+use crate::{config, err_from};
 use crate::db::create_sqlite_connection;
 use crate::db::operations::insert_token_transfer;
 use crate::error::PaymentError;
@@ -14,6 +14,7 @@ use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use crate::error::ErrorBag;
 
 pub struct SharedState {
     pub inserted: usize,
@@ -42,7 +43,7 @@ async fn process_cli(
             cli.token_addr,
             amount,
         );
-        let _token_transfer = insert_token_transfer(conn, &token_transfer).await?;
+        let _token_transfer = insert_token_transfer(conn, &token_transfer).await.map_err(err_from!())?;
     }
     Ok(())
 

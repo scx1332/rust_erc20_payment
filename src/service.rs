@@ -6,7 +6,8 @@ use crate::db::operations::{
     get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
     update_token_transfer, update_tx,
 };
-use crate::error::{AllowanceRequest, PaymentError};
+use crate::model::{AllowanceRequest};
+use crate::error::{ErrorBag, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
@@ -758,8 +759,8 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                     }
                 }
                 Err(e) => {
-                    match &e {
-                        PaymentError::NoAllowanceFound(allowance_request) => {
+                    match &e.inner {
+                        ErrorBag::NoAllowanceFound(allowance_request) => {
                             log::error!("No allowance found for: {:?}", allowance_request);
                             match process_allowance(conn, payment_setup, allowance_request).await {
                                 Ok(_) => {

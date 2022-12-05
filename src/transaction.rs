@@ -12,6 +12,8 @@ use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
+use crate::{err_create, err_from};
+use crate::error::*;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -301,7 +303,7 @@ pub async fn check_transaction(
     let gas_est = web3
         .eth()
         .estimate_gas(dao_to_call_request(web3_tx_dao)?, None)
-        .await?;
+        .await.map_err(err_from!())?;
 
     let add_gas_safety_margin: U256 = U256::from(20000);
     let gas_limit = gas_est + add_gas_safety_margin;
@@ -322,7 +324,7 @@ pub async fn sign_transaction(
     let signed = web3
         .accounts()
         .sign_transaction(tx_object, secret_key)
-        .await?;
+        .await.map_err(err_from!())?;
 
     let slice: Vec<u8> = signed.raw_transaction.0;
     web3_tx_dao.signed_raw_data = Some(hex::encode(slice));
@@ -340,14 +342,14 @@ pub async fn send_transaction(
         let bytes =
             Bytes(hex::decode(signed_raw_data).map_err(|_err| {
                 ConversionError::from("cannot decode signed_raw_data".to_string())
-            })?);
+            }).map_err(err_from!())?);
         let result = web3.eth().send_raw_transaction(bytes).await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
             log::error!("Error sending transaction: {:#?}", e);
         }
     } else {
-        return Err(PaymentError::OtherError("No signed raw data".into()));
+        return Err(err_create!(CustomError::new("No signed raw data".into())));
     }
     Ok(())
 }
@@ -380,8 +382,8 @@ pub async fn find_receipt(
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
-            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))?;
-        let receipt = web3.eth().transaction_receipt(tx_hash).await?;
+            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string())).map_err(err_from!())?;
+        let receipt = web3.eth().transaction_receipt(tx_hash).await.map_err(err_from!())?;
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
@@ -389,10 +391,10 @@ pub async fn find_receipt(
 
             let gas_used = receipt
                 .gas_used
-                .ok_or_else(|| PaymentError::OtherError("Gas used expected".into()))?;
+                .ok_or_else(|| err_create!(CustomError::new("Gas used expected".into())))?;
             let effective_gas_price = receipt
                 .effective_gas_price
-                .ok_or_else(|| PaymentError::OtherError("Effective gas price expected".into()))?;
+                .ok_or_else(|| err_create!(CustomError::new("Effective gas price expected".into())))?;
             web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
             Ok(true)
         } else {
@@ -402,6 +404,6 @@ pub async fn find_receipt(
             Ok(false)
         }
     } else {
-        Err(PaymentError::OtherError("No tx hash".into()))
+        Err(err_create!(CustomError::new("No tx hash".into())))
     }
 }
