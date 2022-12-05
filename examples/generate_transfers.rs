@@ -49,7 +49,7 @@ async fn main() -> Result<(), PaymentError> {
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
 
-    let addr_pool = ordered_address_pool(cli.address_pool_size)?;
+    let addr_pool = ordered_address_pool(cli.address_pool_size, false)?;
     let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
 
     let c = config.chain.get(&cli.chain_name).unwrap();

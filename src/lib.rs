@@ -8,6 +8,7 @@ pub mod model;
 pub mod multi;
 mod options;
 pub mod process;
+pub mod runtime;
 pub mod service;
 mod setup;
 pub mod transaction;

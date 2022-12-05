@@ -40,15 +40,15 @@ pub struct PaymentSetup {
 impl PaymentSetup {
     pub fn new(
         config: &Config,
-        secret_key: SecretKey,
+        secret_key: &SecretKey,
         finish_when_done: bool,
         generate_txs_only: bool,
         skip_multi_contract_check: bool,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
-            secret_key,
-            pub_address: get_eth_addr_from_secret(&secret_key),
+            secret_key: *secret_key,
+            pub_address: get_eth_addr_from_secret(secret_key),
             finish_when_done,
             generate_tx_only: generate_txs_only,
             skip_multi_contract_check,

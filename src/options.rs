@@ -1,4 +1,5 @@
 use crate::error::PaymentError;
+use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
@@ -98,6 +99,20 @@ pub struct ValidatedOptions {
     pub keep_running: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
+}
+
+impl Default for ValidatedOptions {
+    fn default() -> Self {
+        ValidatedOptions {
+            receivers: vec![],
+            amounts: vec![],
+            chain_id: 80001,
+            token_addr: None,
+            keep_running: true,
+            generate_tx_only: false,
+            skip_multi_contract_check: false,
+        }
+    }
 }
 
 #[allow(unused)]
