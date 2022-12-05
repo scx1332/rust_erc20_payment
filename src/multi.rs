@@ -4,7 +4,7 @@ use web3::Web3;
 
 use crate::contracts::get_erc20_allowance;
 use crate::error::{CustomError, PaymentError};
-use crate::{err_create, err_custom_create, err_from, error::ErrorBag};
+use crate::{err_custom_create, err_from, error::ErrorBag};
 
 pub async fn check_allowance(
     web3: &Web3<Http>,
@@ -59,9 +59,7 @@ pub fn pack_transfers_for_multi_contract(
     let mut sum = U256::from(0);
     for amount in &amounts {
         if amount > &max_value {
-            return Err(err_custom_create!(
-                "Amount is too big to use packed error",
-            ));
+            return Err(err_custom_create!("Amount is too big to use packed error",));
         }
         sum += *amount;
     }

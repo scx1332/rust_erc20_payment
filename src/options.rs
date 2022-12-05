@@ -1,7 +1,7 @@
 use crate::error::CustomError;
 use crate::error::ErrorBag;
 use crate::error::PaymentError;
-use crate::{err_create, err_custom_create, err_from, err_from_msg};
+use crate::{err_custom_create, err_from, err_from_msg};
 use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
@@ -141,12 +141,10 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
 
             if receivers.len() != amounts.len() {
                 return Err(err_custom_create!(
-
-                        "Receivers count and amount count don't match: {} != {}",
-                        receivers.len(),
-                        amounts.len()
-                    )
-                );
+                    "Receivers count and amount count don't match: {} != {}",
+                    receivers.len(),
+                    amounts.len()
+                ));
             };
             if receivers.is_empty() {
                 return Err(err_custom_create!("No receivers specified"));

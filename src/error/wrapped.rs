@@ -26,14 +26,14 @@ impl std::fmt::Display for PaymentError {
                 use std::fs;
                 let p = std::path::Path::new(self.file);
                 if p.exists() {
-                    let path = fs::canonicalize(p).unwrap_or(self.file.into());
+                    let path = fs::canonicalize(p).unwrap_or_else(|_| self.file.into());
                     path.display().to_string().replace(r"\\?\", "")
                 } else {
-                    self.file.replace(r"\", "/")
+                    self.file.replace('\\', "/")
                 }
             }
             #[cfg(not(debug_assertions))]
-            self.file.replace(r"\", "/")
+            self.file.replace('\\', "/")
         };
 
         if let Some(msg) = &self.msg {

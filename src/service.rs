@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fmt::format;
+
 use std::str::FromStr;
 
 use crate::db::operations::{
@@ -19,7 +19,7 @@ use crate::utils::ConversionError;
 use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
-use rustc_hex::FromHexError;
+
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
 
@@ -425,10 +425,11 @@ pub async fn gather_transactions_post(
     for pair in token_transfer_map.iter() {
         let token_transfers = pair.1;
         let token_transfer = pair.0;
-        let min_id =
-            token_transfers.iter().map(|f| f.id).min().ok_or_else(|| {
-                err_custom_create!("Failed algorithm when searching min")
-            })?;
+        let min_id = token_transfers
+            .iter()
+            .map(|f| f.id)
+            .min()
+            .ok_or_else(|| err_custom_create!("Failed algorithm when searching min"))?;
         sorted_order.insert(min_id, token_transfer.clone());
     }
     let use_multi = true;
@@ -443,10 +444,9 @@ pub async fn gather_transactions_post(
             };
             if multi_key.token_addr.is_none() {
                 let token_transfer = key.1;
-                let token_transfers =
-                    token_transfer_map.get_mut(token_transfer).ok_or_else(|| {
-                        err_custom_create!("Failed algorithm when getting key")
-                    })?;
+                let token_transfers = token_transfer_map
+                    .get_mut(token_transfer)
+                    .ok_or_else(|| err_custom_create!("Failed algorithm when getting key"))?;
 
                 //sum of transfers
                 match gather_transactions_batch(
@@ -462,7 +462,7 @@ pub async fn gather_transactions_post(
                     }
                     Err(e) => {
                         match &e.inner {
-                            ErrorBag::NoAllowanceFound(allowance_request) => {
+                            ErrorBag::NoAllowanceFound(_allowance_request) => {
                                 //pass allowance error up
                                 return Err(e);
                             }
@@ -524,7 +524,7 @@ pub async fn gather_transactions_post(
                 }
                 Err(e) => {
                     match &e.inner {
-                        ErrorBag::NoAllowanceFound(allowance_request) => {
+                        ErrorBag::NoAllowanceFound(_allowance_request) => {
                             //pass allowance error up
                             return Err(e);
                         }

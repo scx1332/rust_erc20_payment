@@ -8,12 +8,6 @@ pub struct CustomError {
 }
 
 impl CustomError {
-    pub fn new(message: &str) -> CustomError {
-        CustomError {
-            message: message.to_string(),
-        }
-    }
-
     pub fn from_owned_string(message: String) -> CustomError {
         CustomError { message }
     }

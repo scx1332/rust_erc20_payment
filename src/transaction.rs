@@ -9,7 +9,7 @@ use crate::error::PaymentError;
 use crate::error::*;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
-use crate::{err_create, err_custom_create, err_from};
+use crate::{err_custom_create, err_from};
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
@@ -411,9 +411,9 @@ pub async fn find_receipt(
             let gas_used = receipt
                 .gas_used
                 .ok_or_else(|| err_custom_create!("Gas used expected"))?;
-            let effective_gas_price = receipt.effective_gas_price.ok_or_else(|| {
-                err_custom_create!("Effective gas price expected")
-            })?;
+            let effective_gas_price = receipt
+                .effective_gas_price
+                .ok_or_else(|| err_custom_create!("Effective gas price expected"))?;
             web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
             Ok(true)
         } else {
