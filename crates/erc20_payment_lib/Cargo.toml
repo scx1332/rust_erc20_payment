@@ -1,9 +1,10 @@
 [package]
 name = "erc20_payment_lib"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Payment processor for ERC20 tokens"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
 
 [dependencies]
 web3 = { workspace = true }
