@@ -16,12 +16,12 @@ use crate::transaction::{
 };
 use crate::utils::ConversionError;
 
+use crate::error::CustomError;
 use crate::setup::PaymentSetup;
+use crate::{err_create, err_custom_create, err_from};
+use rustc_hex::FromHexError;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
-use crate::{err_create, err_from};
-use crate::error::CustomError;
-use rustc_hex::FromHexError;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -56,7 +56,8 @@ pub async fn process_allowance(
         &allowance_request.spender_addr,
         allowance_request.chain_id,
     )
-    .await.map_err(err_from!())?;
+    .await
+    .map_err(err_from!())?;
 
     let allowance = match db_allowance.as_mut() {
         Some(db_allowance) => match db_allowance.confirm_date {
@@ -79,7 +80,9 @@ pub async fn process_allowance(
                         db_allowance.id
                     );
                     db_allowance.confirm_date = Some(chrono::Utc::now());
-                    update_allowance(conn, db_allowance).await.map_err(err_from!())?;
+                    update_allowance(conn, db_allowance)
+                        .await
+                        .map_err(err_from!())?;
                 }
                 allowance
             }
@@ -108,7 +111,9 @@ pub async fn process_allowance(
                     error: None,
                 };
                 //allowance is confirmed on web3, update db
-                insert_allowance(conn, &db_allowance).await.map_err(err_from!())?;
+                insert_allowance(conn, &db_allowance)
+                    .await
+                    .map_err(err_from!())?;
             }
             allowance
         }
@@ -138,9 +143,13 @@ pub async fn process_allowance(
             priority_fee,
         )?;
         let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-        let web3_tx_dao = insert_tx(&mut db_transaction, &approve_tx).await.map_err(err_from!())?;
+        let web3_tx_dao = insert_tx(&mut db_transaction, &approve_tx)
+            .await
+            .map_err(err_from!())?;
         allowance.tx_id = Some(web3_tx_dao.id);
-        insert_allowance(&mut db_transaction, &allowance).await.map_err(err_from!())?;
+        insert_allowance(&mut db_transaction, &allowance)
+            .await
+            .map_err(err_from!())?;
 
         db_transaction.commit().await.map_err(err_from!())?;
 
@@ -157,7 +166,9 @@ pub async fn gather_transactions_pre(
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 
-    let mut token_transfers = get_pending_token_transfers(conn).await.map_err(err_from!())?;
+    let mut token_transfers = get_pending_token_transfers(conn)
+        .await
+        .map_err(err_from!())?;
 
     for f in token_transfers.iter_mut() {
         match Address::from_str(&f.from_addr) {
@@ -245,13 +256,15 @@ pub async fn gather_transactions_batch_multi(
                     &format!("{:#x}", multi_contract_address),
                     token_transfer.chain_id,
                 )
-                .await.map_err(err_from!())?;
+                .await
+                .map_err(err_from!())?;
 
                 let mut allowance_not_met = false;
                 match db_allowance {
                     Some(db_allowance) => match db_allowance.confirm_date {
                         Some(_) => {
-                            let allowance = U256::from_dec_str(&db_allowance.allowance).map_err(err_from!())?;
+                            let allowance =
+                                U256::from_dec_str(&db_allowance.allowance).map_err(err_from!())?;
                             if allowance < minimum_allowance {
                                 log::debug!(
                                     "Allowance already confirmed from db, but it is too small"
@@ -326,20 +339,22 @@ pub async fn gather_transactions_batch_multi(
                 )?,
             };
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await.map_err(err_from!())?;
+            let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx)
+                .await
+                .map_err(err_from!())?;
 
             for token_t in &mut *smaller_order {
                 for token_transfer in &mut token_t.token_transfers {
                     token_transfer.tx_id = Some(web3_tx_dao.id);
-                    update_token_transfer(&mut db_transaction, token_transfer).await.map_err(err_from!())?;
+                    update_token_transfer(&mut db_transaction, token_transfer)
+                        .await
+                        .map_err(err_from!())?;
                 }
             }
             db_transaction.commit().await.map_err(err_from!())?;
         }
     } else {
-        return Err(err_create!(CustomError::new(
-            "Not implemented for multi"
-        )));
+        return Err(err_custom_create!("Not implemented for multi"));
     };
 
     Ok(1)
@@ -385,10 +400,14 @@ pub async fn gather_transactions_batch(
         )
     };
     let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-    let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx).await.map_err(err_from!())?;
+    let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx)
+        .await
+        .map_err(err_from!())?;
     for token_transfer in token_transfers.iter_mut() {
         token_transfer.tx_id = Some(web3_tx_dao.id);
-        update_token_transfer(&mut db_transaction, token_transfer).await.map_err(err_from!())?;
+        update_token_transfer(&mut db_transaction, token_transfer)
+            .await
+            .map_err(err_from!())?;
     }
     db_transaction.commit().await.map_err(err_from!())?;
     Ok(1)
@@ -406,9 +425,10 @@ pub async fn gather_transactions_post(
     for pair in token_transfer_map.iter() {
         let token_transfers = pair.1;
         let token_transfer = pair.0;
-        let min_id = token_transfers.iter().map(|f| f.id).min().ok_or_else(|| {
-            err_create!(CustomError::new("Failed algorithm when searching min"))
-        })?;
+        let min_id =
+            token_transfers.iter().map(|f| f.id).min().ok_or_else(|| {
+                err_custom_create!("Failed algorithm when searching min")
+            })?;
         sorted_order.insert(min_id, token_transfer.clone());
     }
     let use_multi = true;
@@ -425,7 +445,7 @@ pub async fn gather_transactions_post(
                 let token_transfer = key.1;
                 let token_transfers =
                     token_transfer_map.get_mut(token_transfer).ok_or_else(|| {
-                        err_create!(CustomError::new("Failed algorithm when getting key"))
+                        err_custom_create!("Failed algorithm when getting key")
                     })?;
 
                 //sum of transfers
@@ -451,7 +471,9 @@ pub async fn gather_transactions_post(
                                 for token_transfer in token_transfers {
                                     token_transfer.error =
                                         Some("Error in gathering transactions".to_string());
-                                    update_token_transfer(conn, token_transfer).await.map_err(err_from!())?;
+                                    update_token_transfer(conn, token_transfer)
+                                        .await
+                                        .map_err(err_from!())?;
                                 }
                                 log::error!("Failed to gather transactions: {:?}", e);
                             }
@@ -478,7 +500,8 @@ pub async fn gather_transactions_post(
                         multi_key,
                         vec![TokenTransferMultiOrder {
                             token_transfers: opt,
-                            receiver: Address::from_str(&key.1.receiver_addr).map_err(err_from!())?,
+                            receiver: Address::from_str(&key.1.receiver_addr)
+                                .map_err(err_from!())?,
                         }],
                     );
                 }
@@ -511,7 +534,9 @@ pub async fn gather_transactions_post(
                                 for token_transfer in multi.token_transfers {
                                     let mut tt = token_transfer.clone();
                                     tt.error = Some("Error in gathering transactions".to_string());
-                                    update_token_transfer(conn, &tt).await.map_err(err_from!())?;
+                                    update_token_transfer(conn, &tt)
+                                        .await
+                                        .map_err(err_from!())?;
                                 }
                             }
                             log::error!("Failed to gather transactions: {:?}", e);
@@ -536,46 +561,65 @@ pub async fn update_token_transfer_result(
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             let token_transfers_count = U256::from(token_transfers.len() as u64);
             for mut token_transfer in token_transfers {
                 if let Some(fee_paid) = tx.fee_paid.clone() {
                     let val = U256::from_dec_str(&fee_paid)
-                        .map_err(|_err| ConversionError::from("failed to parse fee paid".into())).map_err(err_from!())?;
+                        .map_err(|_err| ConversionError::from("failed to parse fee paid".into()))
+                        .map_err(err_from!())?;
                     let val2 = val / token_transfers_count;
                     token_transfer.fee_paid = Some(val2.to_string());
                 } else {
                     token_transfer.fee_paid = None;
                 }
-                update_token_transfer(&mut db_transaction, &token_transfer).await.map_err(err_from!())?;
+                update_token_transfer(&mut db_transaction, &token_transfer)
+                    .await
+                    .map_err(err_from!())?;
             }
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::NeedRetry(err) => {
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             for mut token_transfer in token_transfers {
                 token_transfer.fee_paid = Some("0".to_string());
                 token_transfer.error = Some(err.clone());
-                update_token_transfer(&mut db_transaction, &token_transfer).await.map_err(err_from!())?;
+                update_token_transfer(&mut db_transaction, &token_transfer)
+                    .await
+                    .map_err(err_from!())?;
             }
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::InternalError(err) => {
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let token_transfers = get_token_transfers_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             for mut token_transfer in token_transfers {
                 token_transfer.fee_paid = Some("0".to_string());
                 token_transfer.error = Some(err.clone());
-                update_token_transfer(&mut db_transaction, &token_transfer).await.map_err(err_from!())?;
+                update_token_transfer(&mut db_transaction, &token_transfer)
+                    .await
+                    .map_err(err_from!())?;
             }
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::Unknown => {
@@ -596,30 +640,48 @@ pub async fn update_approve_result(
             tx.processing = 0;
 
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             allowance.fee_paid = tx.fee_paid.clone();
-            update_allowance(&mut db_transaction, &allowance).await.map_err(err_from!())?;
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_allowance(&mut db_transaction, &allowance)
+                .await
+                .map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::NeedRetry(err) => {
             tx.processing = 0;
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
-            update_allowance(&mut db_transaction, &allowance).await.map_err(err_from!())?;
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_allowance(&mut db_transaction, &allowance)
+                .await
+                .map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::InternalError(err) => {
             tx.processing = 0;
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
-            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id).await.map_err(err_from!())?;
+            let mut allowance = get_allowance_by_tx(&mut db_transaction, tx.id)
+                .await
+                .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
-            update_allowance(&mut db_transaction, &allowance).await.map_err(err_from!())?;
-            update_tx(&mut db_transaction, tx).await.map_err(err_from!())?;
+            update_allowance(&mut db_transaction, &allowance)
+                .await
+                .map_err(err_from!())?;
+            update_tx(&mut db_transaction, tx)
+                .await
+                .map_err(err_from!())?;
             db_transaction.commit().await.map_err(err_from!())?;
         }
         ProcessTransactionResult::Unknown => {
@@ -663,7 +725,9 @@ pub async fn process_transactions(
     payment_setup: &PaymentSetup,
 ) -> Result<(), PaymentError> {
     loop {
-        let mut transactions = get_transactions_being_processed(conn).await.map_err(err_from!())?;
+        let mut transactions = get_transactions_being_processed(conn)
+            .await
+            .map_err(err_from!())?;
 
         //TODO - This loop is getting only first element, fix code so only one transaction is taken from db
         #[allow(clippy::never_loop)]

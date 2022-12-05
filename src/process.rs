@@ -1,13 +1,13 @@
 use crate::db::operations::update_tx;
 use crate::error::PaymentError;
+use crate::error::*;
+use crate::{err_create, err_custom_create, err_from};
 use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::time::Duration;
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
-use crate::{err_create, err_from};
-use crate::error::*;
 
 use crate::eth::get_transaction_count;
 use crate::model::Web3TransactionDao;
@@ -55,11 +55,12 @@ pub async fn process_transaction(
             chain_id
         )))
     })?;
-    let from_addr = Address::from_str(&web3_tx_dao.from_addr).map_err(|_e| {
-        err_create!(TransactionFailedError::new("Failed to parse from_addr"))
-    })?;
+    let from_addr = Address::from_str(&web3_tx_dao.from_addr)
+        .map_err(|_e| err_create!(TransactionFailedError::new("Failed to parse from_addr")))?;
     if web3_tx_dao.nonce.is_none() {
-        let nonce = get_transaction_count(from_addr, web3, false).await.map_err(err_from!())?;
+        let nonce = get_transaction_count(from_addr, web3, false)
+            .await
+            .map_err(err_from!())?;
         web3_tx_dao.nonce = Some(nonce as i64);
     }
 
@@ -107,12 +108,14 @@ pub async fn process_transaction(
 
     let mut tx_not_found_count = 0;
     loop {
-        let pending_nonce = get_transaction_count(from_addr, web3, true).await.map_err(err_from!())?;
+        let pending_nonce = get_transaction_count(from_addr, web3, true)
+            .await
+            .map_err(err_from!())?;
         if pending_nonce
             <= web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or_else(|| err_create!(CustomError::new("Nonce not found")))?
+                .ok_or_else(|| err_custom_create!("Nonce not found"))?
         {
             println!(
                 "Resend because pending nonce too low: {:?}",
@@ -124,13 +127,20 @@ pub async fn process_transaction(
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
         }
-        let latest_nonce = get_transaction_count(from_addr, web3, false).await.map_err(err_from!())?;
-        let current_block_number = web3.eth().block_number().await.map_err(err_from!())?.as_u64();
+        let latest_nonce = get_transaction_count(from_addr, web3, false)
+            .await
+            .map_err(err_from!())?;
+        let current_block_number = web3
+            .eth()
+            .block_number()
+            .await
+            .map_err(err_from!())?
+            .as_u64();
         if latest_nonce
             > web3_tx_dao
                 .nonce
                 .map(|n| n as u64)
-                .ok_or_else(|| err_create!(CustomError::new("Nonce not found")))?
+                .ok_or_else(|| err_custom_create!("Nonce not found"))?
         {
             let res = find_receipt(web3, web3_tx_dao).await?;
             if res {

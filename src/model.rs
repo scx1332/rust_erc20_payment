@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
 use web3::types::U256;
 
-
-
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct Allowance {
     pub id: i64,

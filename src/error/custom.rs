@@ -15,9 +15,7 @@ impl CustomError {
     }
 
     pub fn from_owned_string(message: String) -> CustomError {
-        CustomError {
-            message,
-        }
+        CustomError { message }
     }
 }
 impl Error for CustomError {}
@@ -27,7 +25,6 @@ impl Display for CustomError {
         write!(f, "CustomError: {}", self.message)
     }
 }
-
 
 #[derive(Debug)]
 pub struct TransactionFailedError {

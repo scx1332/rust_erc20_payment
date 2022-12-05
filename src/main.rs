@@ -23,7 +23,7 @@ use web3::transports::Http;
 
 use web3::types::Address;
 
-use crate::error::{PaymentError, ErrorBag, CustomError};
+use crate::error::{CustomError, ErrorBag, PaymentError};
 use crate::options::validated_cli;
 use crate::runtime::start_payment_engine;
 
@@ -71,10 +71,7 @@ where
 #[tokio::main]
 async fn main() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
-        return Err(err_custom_create!(
-            "No .env file found: {}",
-            err
-        ));
+        return Err(err_custom_create!("No .env file found: {}", err));
     }
     env_logger::init();
     let cli = validated_cli()?;

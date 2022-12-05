@@ -6,14 +6,14 @@ use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
+use crate::error::*;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
+use crate::{err_create, err_custom_create, err_from};
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::{err_create, err_custom_create, err_from};
-use crate::error::*;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -35,8 +35,12 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallReque
         data: decode_data_to_bytes(web3_tx_dao)?,
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?),
-        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?),
+        max_fee_per_gas: Some(
+            U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?,
+        ),
+        max_priority_fee_per_gas: Some(
+            U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?,
+        ),
     })
 }
 
@@ -57,8 +61,12 @@ pub fn dao_to_transaction(
         chain_id: Some(web3_tx_dao.chain_id as u64),
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?),
-        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?),
+        max_fee_per_gas: Some(
+            U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?,
+        ),
+        max_priority_fee_per_gas: Some(
+            U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?,
+        ),
     })
 }
 
@@ -182,7 +190,9 @@ pub fn create_erc20_transfer(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount).map_err(err_from!())?)),
+        call_data: Some(hex::encode(
+            get_erc20_transfer(erc20_to, erc20_amount).map_err(err_from!())?,
+        )),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         first_processed: None,
@@ -273,10 +283,9 @@ pub fn create_erc20_approve(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_erc20_approve(
-            contract_to_approve,
-            U256::max_value(),
-        ).map_err(err_from!())?)),
+        call_data: Some(hex::encode(
+            get_erc20_approve(contract_to_approve, U256::max_value()).map_err(err_from!())?,
+        )),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         first_processed: None,
@@ -296,14 +305,12 @@ pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
-    log::info!(
-        "check_transaction: {:?}",
-        dao_to_call_request(web3_tx_dao)?
-    );
+    log::info!("check_transaction: {:?}", dao_to_call_request(web3_tx_dao)?);
     let gas_est = web3
         .eth()
         .estimate_gas(dao_to_call_request(web3_tx_dao)?, None)
-        .await.map_err(err_from!())?;
+        .await
+        .map_err(err_from!())?;
 
     let add_gas_safety_margin: U256 = U256::from(20000);
     let gas_limit = gas_est + add_gas_safety_margin;
@@ -324,7 +331,8 @@ pub async fn sign_transaction(
     let signed = web3
         .accounts()
         .sign_transaction(tx_object, secret_key)
-        .await.map_err(err_from!())?;
+        .await
+        .map_err(err_from!())?;
 
     let slice: Vec<u8> = signed.raw_transaction.0;
     web3_tx_dao.signed_raw_data = Some(hex::encode(slice));
@@ -339,17 +347,18 @@ pub async fn send_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
-        let bytes =
-            Bytes(hex::decode(signed_raw_data).map_err(|_err| {
-                ConversionError::from("cannot decode signed_raw_data".to_string())
-            }).map_err(err_from!())?);
+        let bytes = Bytes(
+            hex::decode(signed_raw_data)
+                .map_err(|_err| ConversionError::from("cannot decode signed_raw_data".to_string()))
+                .map_err(err_from!())?,
+        );
         let result = web3.eth().send_raw_transaction(bytes).await;
         web3_tx_dao.broadcast_date = Some(chrono::Utc::now());
         if let Err(e) = result {
             log::error!("Error sending transaction: {:#?}", e);
         }
     } else {
-        return Err(err_create!(CustomError::new("No signed raw data".into())));
+        return Err(err_custom_create!("No signed raw data"));
     }
     Ok(())
 }
@@ -363,8 +372,13 @@ pub async fn find_tx(
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
-            .map_err(|err| ConversionError::from("Failed to convert tx hash".into())).map_err(err_from!())?;
-        let tx = web3.eth().transaction(TransactionId::Hash(tx_hash)).await.map_err(err_from!())?;
+            .map_err(|err| ConversionError::from("Failed to convert tx hash".into()))
+            .map_err(err_from!())?;
+        let tx = web3
+            .eth()
+            .transaction(TransactionId::Hash(tx_hash))
+            .await
+            .map_err(err_from!())?;
         if let Some(tx) = tx {
             web3_tx_dao.block_number = tx.block_number.map(|x| x.as_u64() as i64);
             Ok(true)
@@ -372,7 +386,7 @@ pub async fn find_tx(
             Ok(false)
         }
     } else {
-        Err(err_create!(CustomError::new("No tx hash".into())))
+        Err(err_custom_create!("No tx hash"))
     }
 }
 
@@ -382,8 +396,13 @@ pub async fn find_receipt(
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
-            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string())).map_err(err_from!())?;
-        let receipt = web3.eth().transaction_receipt(tx_hash).await.map_err(err_from!())?;
+            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
+            .map_err(err_from!())?;
+        let receipt = web3
+            .eth()
+            .transaction_receipt(tx_hash)
+            .await
+            .map_err(err_from!())?;
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
@@ -391,10 +410,10 @@ pub async fn find_receipt(
 
             let gas_used = receipt
                 .gas_used
-                .ok_or_else(|| err_create!(CustomError::new("Gas used expected".into())))?;
-            let effective_gas_price = receipt
-                .effective_gas_price
-                .ok_or_else(|| err_create!(CustomError::new("Effective gas price expected".into())))?;
+                .ok_or_else(|| err_custom_create!("Gas used expected"))?;
+            let effective_gas_price = receipt.effective_gas_price.ok_or_else(|| {
+                err_custom_create!("Effective gas price expected")
+            })?;
             web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
             Ok(true)
         } else {
@@ -404,6 +423,6 @@ pub async fn find_receipt(
             Ok(false)
         }
     } else {
-        Err(err_create!(CustomError::new("No tx hash".into())))
+        Err(err_custom_create!("No tx hash"))
     }
 }

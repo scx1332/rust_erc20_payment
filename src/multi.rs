@@ -3,8 +3,8 @@ use web3::types::{Address, Bytes, CallRequest, U256};
 use web3::Web3;
 
 use crate::contracts::get_erc20_allowance;
-use crate::{err_from, err_create, error::ErrorBag};
 use crate::error::{CustomError, PaymentError};
+use crate::{err_create, err_custom_create, err_from, error::ErrorBag};
 
 pub async fn check_allowance(
     web3: &Web3<Http>,
@@ -19,19 +19,23 @@ pub async fn check_allowance(
         gas: None,
         gas_price: None,
         value: None,
-        data: Some(Bytes(get_erc20_allowance(owner, spender).map_err(err_from!())?)),
+        data: Some(Bytes(
+            get_erc20_allowance(owner, spender).map_err(err_from!())?,
+        )),
         transaction_type: None,
         access_list: None,
         max_fee_per_gas: None,
         max_priority_fee_per_gas: None,
     };
-    let res = web3.eth().call(call_request, None).await.map_err(err_from!())?;
+    let res = web3
+        .eth()
+        .call(call_request, None)
+        .await
+        .map_err(err_from!())?;
     if res.0.len() != 32 {
-        return Err(err_create!(
-            CustomError::new(&format!(
-                        "Invalid response from ERC20 allowance check {:?}",
-                        res
-                    ))
+        return Err(err_custom_create!(
+            "Invalid response from ERC20 allowance check {:?}",
+            res
         ));
     };
     let allowance = U256::from_big_endian(&res.0);
@@ -55,9 +59,9 @@ pub fn pack_transfers_for_multi_contract(
     let mut sum = U256::from(0);
     for amount in &amounts {
         if amount > &max_value {
-            return Err(err_create!(CustomError::new(
+            return Err(err_custom_create!(
                 "Amount is too big to use packed error",
-            )));
+            ));
         }
         sum += *amount;
     }

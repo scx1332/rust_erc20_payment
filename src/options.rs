@@ -1,11 +1,11 @@
+use crate::error::CustomError;
+use crate::error::ErrorBag;
 use crate::error::PaymentError;
+use crate::{err_create, err_custom_create, err_from, err_from_msg};
 use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
-use crate::{err_create, err_custom_create, err_from, err_from_msg};
-use crate::error::ErrorBag;
-use crate::error::CustomError;
 
 #[derive(Debug, StructOpt)]
 pub struct ProcessOptions {
@@ -126,29 +126,30 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             let split_pattern = [',', ';'];
             let mut amounts = Vec::<U256>::new();
             for amount in transfer_options.amounts.split(&split_pattern) {
-                let amount = U256::from_dec_str(amount).map_err(err_from_msg!("Invalid amount when parsing input: {amount}"))?;
+                let amount = U256::from_dec_str(amount)
+                    .map_err(err_from_msg!("Invalid amount when parsing input: {amount}"))?;
                 amounts.push(amount);
             }
 
             let mut receivers = Vec::<Address>::new();
             for receiver in transfer_options.receivers.split(&split_pattern) {
-                let receiver = Address::from_str(receiver).map_err(err_from_msg!("Invalid receiver when parsing input: {receiver}"))?;
+                let receiver = Address::from_str(receiver).map_err(err_from_msg!(
+                    "Invalid receiver when parsing input: {receiver}"
+                ))?;
                 receivers.push(receiver);
             }
 
             if receivers.len() != amounts.len() {
-                return Err(err_create!(
-            CustomError::new(&(format!(
-                    "Receivers count and amount count don't match: {} != {}",
-                    receivers.len(),
-                    amounts.len()
-                )))));
+                return Err(err_custom_create!(
+
+                        "Receivers count and amount count don't match: {} != {}",
+                        receivers.len(),
+                        amounts.len()
+                    )
+                );
             };
             if receivers.is_empty() {
-                return Err(err_create!(
-            CustomError::new(
-                    "No receivers specified",
-                )));
+                return Err(err_custom_create!("No receivers specified"));
             };
             if transfer_options.plain_eth && transfer_options.token_addr.is_some() {
                 return Err(err_custom_create!(
@@ -167,7 +168,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 transfer_options
                     .token_addr
                     .map(|s| Address::from_str(&s))
-                    .transpose().map_err(err_from!())?
+                    .transpose()
+                    .map_err(err_from!())?
             };
 
             Ok(ValidatedOptions {
@@ -186,9 +188,7 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             for i in 0..test_options.generate_count {
                 let gen_addr_str = &format!("0x{:040x}", i + 0x10000);
                 let receiver = Address::from_str(gen_addr_str).map_err(|_| {
-                    err_custom_create!(
-                        "Invalid receiver when parsing input: {gen_addr_str}"
-                    )
+                    err_custom_create!("Invalid receiver when parsing input: {gen_addr_str}")
                 })?;
                 receivers.push(receiver);
                 amounts.push(U256::from(i));
