@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
-use crate::{err_create, err_from_msg};
+use crate::{err_create, err_custom_create, err_from, err_from_msg};
 use crate::error::ErrorBag;
 use crate::error::CustomError;
 
@@ -151,13 +151,13 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 )));
             };
             if transfer_options.plain_eth && transfer_options.token_addr.is_some() {
-                return Err(PaymentError::OtherError(
-                    "Can't specify both plain-eth and token-addr".to_string(),
+                return Err(err_custom_create!(
+                    "Can't specify both plain-eth and token-addr",
                 ));
             };
             if !transfer_options.plain_eth && transfer_options.token_addr.is_none() {
-                return Err(PaymentError::OtherError(
-                    "Specify token-addr or set plain-eth true to plain transfer".to_string(),
+                return Err(err_custom_create!(
+                    "Specify token-addr or set plain-eth true to plain transfer",
                 ));
             };
 
@@ -167,7 +167,7 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 transfer_options
                     .token_addr
                     .map(|s| Address::from_str(&s))
-                    .transpose()?
+                    .transpose().map_err(err_from!())?
             };
 
             Ok(ValidatedOptions {
@@ -186,9 +186,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             for i in 0..test_options.generate_count {
                 let gen_addr_str = &format!("0x{:040x}", i + 0x10000);
                 let receiver = Address::from_str(gen_addr_str).map_err(|_| {
-                    PaymentError::OtherError(format!(
+                    err_custom_create!(
                         "Invalid receiver when parsing input: {gen_addr_str}"
-                    ))
+                    )
                 })?;
                 receivers.push(receiver);
                 amounts.push(U256::from(i));

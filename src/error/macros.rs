@@ -12,6 +12,20 @@ macro_rules! err_create {
     };
 }
 
+///This macro creates a new error object with line info
+#[macro_export]
+macro_rules! err_custom_create {
+    ($($t:tt)*) => {
+        PaymentError {
+            inner: ErrorBag::from(CustomError::from_owned_string(format!($($t)*))),
+            msg: None,
+            file: file!(),
+            line: line!(),
+            column: column!(),
+        }
+    };
+}
+
 ///This macro is wrapping error with line + file info without optional message
 #[macro_export]
 macro_rules! err_from {

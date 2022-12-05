@@ -12,13 +12,13 @@ use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::{err_create, err_from};
+use crate::{err_create, err_custom_create, err_from};
 use crate::error::*;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
         let hex_data = hex::decode(data)
-            .map_err(|_err| ConversionError::from("Failed to convert data from hex".into()))?;
+            .map_err(|_err| err_custom_create!("Failed to convert data from hex"))?;
         Some(Bytes(hex_data))
     } else {
         None
@@ -27,16 +27,16 @@ fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes
 
 pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallRequest, PaymentError> {
     Ok(CallRequest {
-        from: Some(Address::from_str(&web3_tx_dao.from_addr)?),
-        to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
+        from: Some(Address::from_str(&web3_tx_dao.from_addr).map_err(err_from!())?),
+        to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
         gas: Some(U256::from(web3_tx_dao.gas_limit)),
         gas_price: None,
-        value: Some(U256::from_dec_str(&web3_tx_dao.val)?),
+        value: Some(U256::from_dec_str(&web3_tx_dao.val).map_err(err_from!())?),
         data: decode_data_to_bytes(web3_tx_dao)?,
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
-        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee)?),
+        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?),
+        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?),
     })
 }
 
@@ -47,18 +47,18 @@ pub fn dao_to_transaction(
         nonce: Some(U256::from(
             web3_tx_dao
                 .nonce
-                .ok_or_else(|| PaymentError::OtherError("Missing nonce".into()))?,
+                .ok_or_else(|| err_custom_create!("Missing nonce"))?,
         )),
-        to: Some(Address::from_str(&web3_tx_dao.to_addr)?),
+        to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
         gas: U256::from(web3_tx_dao.gas_limit),
         gas_price: None,
-        value: U256::from_dec_str(&web3_tx_dao.val)?,
+        value: U256::from_dec_str(&web3_tx_dao.val).map_err(err_from!())?,
         data: decode_data_to_bytes(web3_tx_dao)?.unwrap_or_default(),
         chain_id: Some(web3_tx_dao.chain_id as u64),
         transaction_type: Some(U64::from(2)),
         access_list: None,
-        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas)?),
-        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee)?),
+        max_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.max_fee_per_gas).map_err(err_from!())?),
+        max_priority_fee_per_gas: Some(U256::from_dec_str(&web3_tx_dao.priority_fee).map_err(err_from!())?),
     })
 }
 
@@ -182,7 +182,7 @@ pub fn create_erc20_transfer(
         val: "0".to_string(),
         nonce: None,
         processing: 1,
-        call_data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount)?)),
+        call_data: Some(hex::encode(get_erc20_transfer(erc20_to, erc20_amount).map_err(err_from!())?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         first_processed: None,
@@ -214,12 +214,12 @@ pub fn create_erc20_transfer_multi(
     //todo set method
     let (data, method_str) = if direct {
         (
-            get_multi_direct_packed(packed)?,
+            get_multi_direct_packed(packed).map_err(err_from!())?,
             "MULTI.golemTransferDirectPacked".to_string(),
         )
     } else {
         (
-            get_multi_indirect_packed(packed, sum)?,
+            get_multi_indirect_packed(packed, sum).map_err(err_from!())?,
             "MULTI.golemTransferIndirectPacked".to_string(),
         )
     };
@@ -276,7 +276,7 @@ pub fn create_erc20_approve(
         call_data: Some(hex::encode(get_erc20_approve(
             contract_to_approve,
             U256::max_value(),
-        )?)),
+        ).map_err(err_from!())?)),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
         first_processed: None,
@@ -296,9 +296,9 @@ pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
-    log::error!(
+    log::info!(
         "check_transaction: {:?}",
-        dao_to_call_request(web3_tx_dao).unwrap()
+        dao_to_call_request(web3_tx_dao)?
     );
     let gas_est = web3
         .eth()

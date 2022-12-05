@@ -8,6 +8,8 @@ use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
+use crate::{err_custom_create, err_from};
+use crate::error::{ErrorBag, CustomError};
 
 #[derive(Clone, Debug)]
 pub struct ProviderSetup {
@@ -57,7 +59,7 @@ impl PaymentSetup {
             let mut providers = Vec::new();
             for endp in &chain_config.1.rpc_endpoints {
                 let Ok(transport) = web3::transports::Http::new(endp) else {
-                    return Err(PaymentError::OtherError(format!("Failed to create transport for endpoint: {}", endp)));
+                    return Err(err_custom_create!("Failed to create transport for endpoint: {}", endp));
                 };
                 let provider = Web3::new(transport);
                 providers.push(ProviderSetup {
@@ -69,8 +71,8 @@ impl PaymentSetup {
                 chain_config.1.network_id,
                 ChainSetup {
                     providers,
-                    max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas)?,
-                    priority_fee: gwei_to_u256(chain_config.1.priority_fee)?,
+                    max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas).map_err(err_from!())?,
+                    priority_fee: gwei_to_u256(chain_config.1.priority_fee).map_err(err_from!())?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
                     multi_contract_address: chain_config
                         .1
@@ -92,13 +94,13 @@ impl PaymentSetup {
     }
     pub fn get_chain_setup(&self, chain_id: i64) -> Result<&ChainSetup, PaymentError> {
         self.chain_setup.get(&(chain_id as usize)).ok_or_else(|| {
-            PaymentError::OtherError(format!("No chain setup for chain id: {}", chain_id))
+            err_custom_create!("No chain setup for chain id: {}", chain_id)
         })
     }
 
     pub fn get_provider(&self, chain_id: i64) -> Result<&Web3<Http>, PaymentError> {
         let chain_setup = self.chain_setup.get(&(chain_id as usize)).ok_or_else(|| {
-            PaymentError::OtherError(format!("No chain setup for chain id: {}", chain_id))
+            err_custom_create!("No chain setup for chain id: {}", chain_id)
         })?;
 
         let mut rng = rand::thread_rng();
@@ -106,7 +108,7 @@ impl PaymentSetup {
             .providers
             .get(rng.gen_range(0..chain_setup.providers.len()))
             .ok_or_else(|| {
-                PaymentError::OtherError(format!("No providers found for chain id: {}", chain_id))
+                err_custom_create!("No providers found for chain id: {}", chain_id)
             })?;
         Ok(&provider.provider)
     }

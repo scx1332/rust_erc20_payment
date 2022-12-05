@@ -13,6 +13,12 @@ impl CustomError {
             message: message.to_string(),
         }
     }
+
+    pub fn from_owned_string(message: String) -> CustomError {
+        CustomError {
+            message,
+        }
+    }
 }
 impl Error for CustomError {}
 
