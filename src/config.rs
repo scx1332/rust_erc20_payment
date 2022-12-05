@@ -44,10 +44,10 @@ pub struct Token {
 }
 
 impl Config {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, PaymentError> {
-        match toml::from_slice(&fs::read(path).map_err(err_from!())?) {
+    pub fn load<P: AsRef<Path> + std::fmt::Display>(path: P) -> Result<Self, PaymentError> {
+        match toml::from_slice(&fs::read(&path).map_err(err_from!())?) {
             Ok(config) => Ok(config),
-            Err(e) => Err(err_custom_create!("Failed to parse toml {:?}", e)),
+            Err(e) => Err(err_custom_create!("Failed to parse toml {}: {}", path, e)),
         }
     }
 }

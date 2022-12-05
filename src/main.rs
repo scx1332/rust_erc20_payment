@@ -68,8 +68,7 @@ where
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), PaymentError> {
+async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
         return Err(err_custom_create!("No .env file found: {}", err));
     }
@@ -83,4 +82,15 @@ async fn main() -> Result<(), PaymentError> {
         .await
         .map_err(|e| err_custom_create!("Service loop failed: {:?}", e))?;
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), PaymentError> {
+    match main_internal().await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            Err(e)
+        }
+    }
 }
