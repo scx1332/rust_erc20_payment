@@ -1,0 +1,10 @@
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -u serv.py
+    volumes:
+      - ./conf:/conf
+    ports:
+      - '8080:8080'
