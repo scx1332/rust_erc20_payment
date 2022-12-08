@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python -u serv.py
+    command: python -u setup_chain.py
     volumes:
-      - ./conf:/conf
+      - ./.ethash/:/root/.ethash/
     ports:
       - '8080:8080'
