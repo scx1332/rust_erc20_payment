@@ -41,6 +41,8 @@ pub async fn process_transaction(
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
     const CONFIRMED_BLOCKS: u64 = 0;
 
+    let wait_duration = Duration::from_secs(1);
+
     let chain_id = web3_tx_dao.chain_id;
     let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {
         err_create!(TransactionFailedError::new(&format!(
@@ -124,7 +126,7 @@ pub async fn process_transaction(
             send_transaction(web3, web3_tx_dao).await?;
             web3_tx_dao.broadcast_count += 1;
             update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(wait_duration).await;
             continue;
         }
         let latest_nonce = get_transaction_count(from_addr, web3, false)
@@ -165,7 +167,7 @@ pub async fn process_transaction(
         if !wait_for_confirmation {
             return Ok(ProcessTransactionResult::Unknown);
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(wait_duration).await;
     }
     println!("web3_tx_dao after confirmation: {:?}", web3_tx_dao);
     Ok(ProcessTransactionResult::Confirmed)

@@ -1,11 +1,12 @@
-use crate::error::CustomError;
-use crate::error::ErrorBag;
-use crate::error::PaymentError;
-use crate::{err_custom_create, err_from, err_from_msg};
+use erc20_payment_lib::error::CustomError;
+use erc20_payment_lib::error::ErrorBag;
+use erc20_payment_lib::error::PaymentError;
 use std::fmt::Debug;
 use std::str::FromStr;
 use structopt::StructOpt;
 use web3::types::{Address, U256};
+use erc20_payment_lib::{err_custom_create, err_from, err_from_msg};
+use erc20_payment_lib::runtime::ValidatedOptions;
 
 #[derive(Debug, StructOpt)]
 pub struct ProcessOptions {
@@ -93,30 +94,7 @@ enum CliOptions {
     #[structopt(name = "test")]
     Test(TestOptions),
 }
-#[allow(unused)]
-pub struct ValidatedOptions {
-    pub receivers: Vec<Address>,
-    pub amounts: Vec<U256>,
-    pub chain_id: i64,
-    pub token_addr: Option<Address>,
-    pub keep_running: bool,
-    pub generate_tx_only: bool,
-    pub skip_multi_contract_check: bool,
-}
 
-impl Default for ValidatedOptions {
-    fn default() -> Self {
-        ValidatedOptions {
-            receivers: vec![],
-            amounts: vec![],
-            chain_id: 80001,
-            token_addr: None,
-            keep_running: true,
-            generate_tx_only: false,
-            skip_multi_contract_check: false,
-        }
-    }
-}
 
 #[allow(unused)]
 pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {

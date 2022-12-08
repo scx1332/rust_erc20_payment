@@ -23,7 +23,8 @@ multi-contract = { address="0x7777784f803a7bf1d7f115f849d29ce5706da64a", max-at-
 
 [chain.mumbai]
 network-id=80001
-rpc-endpoints = ["https://rpc-mumbai.maticvigil.com/v1/fd04db1066cae0f44d3461ae6d6a7cbbdd46e4a5", "https://rpc-mumbai.matic.today"]
+rpc-endpoints = ["https://rpc-mumbai.maticvigil.com/v1/fd04db1066cae0f44d3461ae6d6a7cbbdd46e4a5"]
+# rpc-endpoints = ["http://127.0.0.1:8545"]
 currency-symbol="tMATIC"
 priority-fee=1.5111
 max-fee-per-gas=500.0
@@ -40,3 +41,13 @@ max-fee-per-gas=500.0
 transaction-timeout=100
 token = { address = "0x2036807B0B3aaf5b1858EE822D0e111fDdac7018", symbol="tGLM" }
 multi-contract = { address="0x50100d4faf5f3b09987dea36dc2eddd57a3e561b", max-at-once=10 }
+
+[chain.dev]
+network-id=77
+rpc-endpoints = ["http://127.0.0.1:8545"]
+currency-symbol="tETH"
+priority-fee=1.1
+max-fee-per-gas=500.0
+transaction-timeout=100
+token = { address = "0x1469e7B8B7B16110c76ED029DcB2DD0B10D47c6A", symbol="tGLM" }
+multi-contract = { address="0xE73afe06F6627789b03cAAe81D7A8feAa29797a0", max-at-once=10 }

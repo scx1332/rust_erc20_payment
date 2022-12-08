@@ -1,11 +1,23 @@
-[package]
-name = "rust_erc20_payment"
+[workspace]
+members = [
+    "crates/*",
+]
+
+[workspace.package]
+authors = ["Sieciech Czajka <sieciech.czajka@golem.network>"]
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package]
+name = "erc20_processor"
+description = "Payment processor for ERC20 tokens"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
 
-[dependencies]
+[workspace.dependencies]
 web3 = { version = "0.18.0" }
 tokio = { version = "1", features = ["full"] }
 secp256k1 = "0.21.0" # version has to match web3
@@ -21,7 +33,27 @@ thiserror = "1.0.37"
 rustc-hex = "2.1.0"
 structopt = "0.3.26"
 dotenv = "0.15.0"
-serde="1.0.147"
+serde = "1.0.147"
+rust_decimal = { version = "1.26.1", features = ["serde-arbitrary-precision"] }
+toml = "0.5.9"
 
-rust_decimal = {version = "1.26.1", features = ["serde-arbitrary-precision"]}
-toml="0.5.9"
+[dependencies]
+erc20_payment_lib = { path = "crates/erc20_payment_lib" }
+web3 = { workspace = true }
+tokio = { workspace = true }
+secp256k1 = { workspace = true }
+sha3 = { workspace = true }
+lazy_static = { workspace = true }
+hex = { workspace = true }
+chrono = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+rand = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+rustc-hex = { workspace = true }
+structopt = { workspace = true }
+dotenv = { workspace = true }
+serde = { workspace = true }
+rust_decimal = { workspace = true }
+toml = { workspace = true }

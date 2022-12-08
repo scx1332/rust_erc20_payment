@@ -1,18 +1,4 @@
-mod config;
-mod contracts;
-mod db;
-mod error;
-mod eth;
-mod misc;
-mod model;
-mod multi;
-mod options;
-mod process;
-mod runtime;
-mod service;
-mod setup;
-mod transaction;
-mod utils;
+
 
 use secp256k1::SecretKey;
 use std::str::FromStr;
@@ -22,10 +8,13 @@ use web3::contract::Contract;
 use web3::transports::Http;
 
 use web3::types::Address;
+use erc20_payment_lib::{config, err_custom_create};
 
-use crate::error::{CustomError, ErrorBag, PaymentError};
-use crate::options::validated_cli;
-use crate::runtime::start_payment_engine;
+use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
+use options::validated_cli;
+use erc20_payment_lib::runtime::start_payment_engine;
+
+pub mod options;
 
 struct _Web3ChainConfig {
     glm_token: Address,
