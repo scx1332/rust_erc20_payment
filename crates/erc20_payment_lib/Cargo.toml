@@ -15,10 +15,8 @@ lazy_static = { workspace = true }
 hex = { workspace = true }
 chrono = { workspace = true }
 log = { workspace = true }
-env_logger = { workspace = true }
 rand = { workspace = true }
 sqlx = { workspace = true }
-thiserror = { workspace = true }
 rustc-hex = { workspace = true }
 structopt = { workspace = true }
 dotenv = { workspace = true }

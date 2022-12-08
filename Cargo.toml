@@ -10,7 +10,7 @@ edition = "2021"
 license = "MIT"
 
 [package]
-name = "rust_erc20_payment"
+name = "erc20_processor"
 description = "Payment processor for ERC20 tokens"
 version.workspace = true
 edition.workspace = true

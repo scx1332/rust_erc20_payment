@@ -421,7 +421,30 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dotenv",
+ "hex",
+ "lazy_static",
+ "log",
+ "rand",
+ "rust_decimal",
+ "rustc-hex",
+ "secp256k1",
+ "serde",
+ "sha3 0.10.6",
+ "sqlx",
+ "structopt",
+ "tokio",
+ "toml",
+ "web3",
+]
+
+[[package]]
+name = "erc20_processor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dotenv",
  "env_logger",
+ "erc20_payment_lib",
  "hex",
  "lazy_static",
  "log",
@@ -1561,31 +1584,6 @@ dependencies = [
  "num-traits",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "rust_erc20_payment"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "dotenv",
- "env_logger",
- "erc20_payment_lib",
- "hex",
- "lazy_static",
- "log",
- "rand",
- "rust_decimal",
- "rustc-hex",
- "secp256k1",
- "serde",
- "sha3 0.10.6",
- "sqlx",
- "structopt",
- "thiserror",
- "tokio",
- "toml",
- "web3",
 ]
 
 [[package]]
