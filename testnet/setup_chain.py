@@ -3,8 +3,10 @@ import os
 import asyncio
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
+import threading
 import time
 import web3
 from eth_account import Account
@@ -15,6 +17,17 @@ def gen_key_address_pair():
     account_1 = Account.from_key(private_key).address
     return account_1, private_key
 
+
+def threaded_function(process):
+
+    while True:
+        output = process.stdout.readline()
+        if output:
+            print(output.strip())
+        else:
+            break
+
+    process.communicate()
 
 async def main():
     chain_num = 77
@@ -52,7 +65,7 @@ async def main():
             "ArrowGlacierBlock": 0,
             "GrayGlacierBlock": 0,
             "clique": {
-                "period": 0,
+                "period": 5,
                 "epoch": 0
             }
         },
@@ -113,7 +126,27 @@ async def main():
     miner_settings = f"--mine --allow-insecure-unlock --unlock 0x8c50eb7035c7347b48a829fb1592dc199f9a70ae --password {chain_dir}/keystore/testnet_key_pass.txt"
     geth_command = f'geth --datadir {chain_dir} --nodiscover --http --networkid {chain_num} {miner_settings}'
     print(geth_command)
-    os.system(geth_command)
+    # os.system(geth_command)
+
+
+    geth_command_split = geth_command.split(' ')
+    process = subprocess.Popen(geth_command_split, stdout=subprocess.PIPE)
+    thread = threading.Thread(target=process, args=(geth_command,))
+    thread.start()
+    # give the process some time to start http server
+    await asyncio.sleep(2)
+
+    # deploy contracts
+    os.chdir("contracts-web3-create2")
+    os.system("npm run deploy_dev")
+
+    print("Blockchain is ready for testing")
+
+
+    print("Testing complete. Shutdown blockchain")
+
+    process.kill()
+    thread.join()
 
 
 if __name__ == "__main__":
