@@ -7,4 +7,4 @@ services:
     volumes:
       - ./.ethash/:/root/.ethash/
     ports:
-      - '8080:8080'
+      - '8545:8545'
