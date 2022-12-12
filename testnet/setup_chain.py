@@ -124,7 +124,7 @@ async def main():
 
     # clique signer/miner settings
     miner_settings = f"--mine --allow-insecure-unlock --unlock 0x8c50eb7035c7347b48a829fb1592dc199f9a70ae --password {chain_dir}/keystore/testnet_key_pass.txt"
-    geth_command = f'geth --datadir {chain_dir} --nodiscover --http --http.addr 0.0.0.0 --http.corsdomain "*" --networkid {chain_num} {miner_settings}'
+    geth_command = f'geth --datadir {chain_dir} --nodiscover --http --http.addr 0.0.0.0 --http.corsdomain "*" --http.api eth,net,web3,debug --networkid {chain_num} {miner_settings}'
     print(geth_command)
     # os.system(geth_command)
 
