@@ -147,6 +147,8 @@ async def main():
     # thread.join()
     # print(geth_command)
 
+    while True:
+        await asyncio.sleep(2)
 
 if __name__ == "__main__":
     if sys.platform == 'win32':
