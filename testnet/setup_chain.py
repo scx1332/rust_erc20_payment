@@ -45,9 +45,11 @@ async def main():
     # (address1, private_key1) = gen_key_address_pair()
     # (address2, private_key2) = gen_key_address_pair()
     (address1, private_key1) = (
-    "0x30a3b4e1a03360820f437b62e6ec6919F41a29BE", "0xee565091929f51d02c504f4c37ecc79abd5caa7a67c8917d862d4393c8992519")
+        "0x30a3b4e1a03360820f437b62e6ec6919F41a29BE",
+        "0xee565091929f51d02c504f4c37ecc79abd5caa7a67c8917d862d4393c8992519")
     (address2, private_key2) = (
-    "0xD13F0d5042542107a05b9074a6ACCdf3eE9582c0", "0xce254ba6ed14cb112a3b1bafa245f33090245cc558faa41b1b3c3eb2c97de5c8")
+        "0xD13F0d5042542107a05b9074a6ACCdf3eE9582c0",
+        "0xce254ba6ed14cb112a3b1bafa245f33090245cc558faa41b1b3c3eb2c97de5c8")
 
     genesis = {
         "config": {
@@ -81,8 +83,6 @@ async def main():
             address2: {"balance": '1000000000000000000'}
         }
     }
-
-
 
     with open(addresses_file, 'w') as f:
         f.write(json.dumps(
@@ -128,7 +128,6 @@ async def main():
     print(geth_command)
     # os.system(geth_command)
 
-
     geth_command_split = geth_command.split(' ')
     process = subprocess.Popen(geth_command_split, stdout=subprocess.PIPE)
     thread = threading.Thread(target=process, args=(geth_command,))
@@ -142,11 +141,11 @@ async def main():
 
     print("Blockchain is ready for testing")
 
-
     print("Testing complete. Shutdown blockchain")
 
-    process.kill()
-    thread.join()
+    # process.kill()
+    # thread.join()
+    # print(geth_command)
 
 
 if __name__ == "__main__":
