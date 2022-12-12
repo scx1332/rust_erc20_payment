@@ -46,7 +46,7 @@ async def main():
     main_account = os.environ['MAIN_ACCOUNT_PRIVATE_KEY']
     signer_account = os.environ['SIGNER_ACCOUNT_PRIVATE_KEY']
     keystore_password = os.environ['SIGNER_ACCOUNT_KEYSTORE_PASSWORD']
-    keep_running = os.environ['KEEP_RUNNING'] == 1
+    keep_running = int(os.environ['KEEP_RUNNING']) == 1
 
     (address1, private_key1) = (
         Account.from_key(main_account).address,
