@@ -133,7 +133,7 @@ async def main():
                    f'--http.vhosts "*" ' \
                    f'--http.corsdomain "*" ' \
                    f'--http.api eth,net,web3,debug ' \
-                   f'--networkid {chain_num} {miner_settings} '
+                   f'--networkid {chain_num} {miner_settings}'
     print(geth_command)
     # os.system(geth_command)
 
