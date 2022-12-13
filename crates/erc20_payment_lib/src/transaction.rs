@@ -308,7 +308,7 @@ pub async fn check_transaction(
 ) -> Result<(), PaymentError> {
     let mut call_request = dao_to_call_request(web3_tx_dao)?;
     call_request.gas = None;
-    log::info!("check_transaction 2: {:?}", call_request);
+    log::debug!("check_transaction 2: {:?}", call_request);
     let gas_est = web3
         .eth()
         .estimate_gas(call_request, None)
@@ -317,7 +317,7 @@ pub async fn check_transaction(
 
     let add_gas_safety_margin: U256 = U256::from(20000);
     let gas_limit = gas_est + add_gas_safety_margin;
-    println!("Set gas limit basing on gas estimation: {gas_est}. Setting {gas_limit} increased by {add_gas_safety_margin} for safe execution.");
+    log::info!("Set gas limit basing on gas estimation: {gas_est}");
     web3_tx_dao.gas_limit = gas_limit.as_u64() as i64;
 
     Ok(())
@@ -418,7 +418,7 @@ pub async fn find_receipt(
         if let Some(receipt) = receipt {
             web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
             web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
-            log::warn!("receipt: {:?}", receipt);
+            //log::info!("Receipt found for tx {}", web3_tx_dao.id);
 
             let gas_used = receipt
                 .gas_used

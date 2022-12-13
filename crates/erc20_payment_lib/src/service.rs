@@ -66,7 +66,7 @@ pub async fn process_allowance(
                 U256::from_dec_str(&db_allowance.allowance).map_err(err_from!())?
             }
             None => {
-                log::debug!("Allowance not confirmed in db, check on chain");
+                log::info!("Checking allowance on chain owner: {}", &allowance_request.owner);
                 let allowance = check_allowance(
                     web3,
                     Address::from_str(&allowance_request.owner).map_err(err_from!())?,
@@ -88,7 +88,7 @@ pub async fn process_allowance(
             }
         },
         None => {
-            log::debug!("No db entry, check allowance on chain");
+            log::info!("No db entry, check allowance on chain");
             let allowance = check_allowance(
                 web3,
                 Address::from_str(&allowance_request.owner).map_err(err_from!())?,
@@ -97,7 +97,7 @@ pub async fn process_allowance(
             )
             .await?;
             if allowance > minimum_allowance {
-                log::debug!("Allowance found on chain, add entry to db");
+                log::info!("Allowance found on chain, add entry to db");
                 let db_allowance = Allowance {
                     id: 0,
                     owner: allowance_request.owner.clone(),
@@ -828,7 +828,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 Err(e) => {
                     match &e.inner {
                         ErrorBag::NoAllowanceFound(allowance_request) => {
-                            log::error!("No allowance found for: {:?}", allowance_request);
+                            log::info!("No allowance found for contract {} to spend token {} for owner: {}", allowance_request.spender_addr, allowance_request.token_addr, allowance_request.owner);
                             match process_allowance(conn, payment_setup, allowance_request).await {
                                 Ok(_) => {
                                     //process transaction instantly

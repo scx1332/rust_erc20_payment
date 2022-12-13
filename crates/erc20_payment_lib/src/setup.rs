@@ -27,6 +27,7 @@ pub struct ChainSetup {
     pub multi_contract_max_at_once: usize,
     pub transaction_timeout: u64,
     pub skip_multi_contract_check: bool,
+    pub confirmation_blocks: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +89,7 @@ impl PaymentSetup {
                         .unwrap_or(1),
                     transaction_timeout: chain_config.1.transaction_timeout,
                     skip_multi_contract_check,
+                    confirmation_blocks: chain_config.1.confirmation_blocks,
                 },
             );
         }

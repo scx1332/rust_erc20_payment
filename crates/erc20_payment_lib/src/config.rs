@@ -4,10 +4,7 @@ use std::collections::btree_map::BTreeMap as Map;
 use std::fs;
 use std::path::Path;
 
-use crate::error::PaymentError;
-
-use crate::error::CustomError;
-use crate::error::ErrorBag;
+use crate::error::*;
 use crate::{err_custom_create, err_from};
 use web3::types::Address;
 
@@ -34,6 +31,7 @@ pub struct Chain {
     pub token: Option<Token>,
     pub multi_contract: Option<MultiContractSettings>,
     pub transaction_timeout: u64,
+    pub confirmation_blocks: u64,
 }
 
 #[derive(Deserialize, Debug, Clone)]
