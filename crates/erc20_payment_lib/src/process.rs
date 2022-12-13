@@ -101,11 +101,19 @@ pub async fn process_transaction(
     }
 
     if web3_tx_dao.broadcast_date.is_none() {
-        log::info!("Sending transaction {} with nonce {}", web3_tx_dao.id, transaction_nonce);
+        log::info!(
+            "Sending transaction {} with nonce {}",
+            web3_tx_dao.id,
+            transaction_nonce
+        );
         send_transaction(web3, web3_tx_dao).await?;
         web3_tx_dao.broadcast_count += 1;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
-        log::info!("Transaction {} sent, tx hash: {}", web3_tx_dao.id, web3_tx_dao.tx_hash.clone().unwrap_or_default());
+        log::info!(
+            "Transaction {} sent, tx hash: {}",
+            web3_tx_dao.id,
+            web3_tx_dao.tx_hash.clone().unwrap_or_default()
+        );
     }
 
     if web3_tx_dao.confirm_date.is_some() {
@@ -115,7 +123,11 @@ pub async fn process_transaction(
 
     let mut tx_not_found_count = 0;
     loop {
-        log::info!("Checking latest nonce tx: {}, expected nonce: {}", web3_tx_dao.id, transaction_nonce + 1);
+        log::info!(
+            "Checking latest nonce tx: {}, expected nonce: {}",
+            web3_tx_dao.id,
+            transaction_nonce + 1
+        );
         let latest_nonce = get_transaction_count(from_addr, web3, false)
             .await
             .map_err(err_from!())?;
@@ -134,16 +146,27 @@ pub async fn process_transaction(
             let res = find_receipt(web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
-                    log::info!("Receipt found: tx {} tx_hash: {}", web3_tx_dao.id, web3_tx_dao.tx_hash.clone().unwrap_or_default());
+                    log::info!(
+                        "Receipt found: tx {} tx_hash: {}",
+                        web3_tx_dao.id,
+                        web3_tx_dao.tx_hash.clone().unwrap_or_default()
+                    );
                     if block_number + chain_setup.confirmation_blocks <= current_block_number {
                         web3_tx_dao.confirm_date = Some(chrono::Utc::now());
-                        log::info!("Transaction confirmed: tx: {} tx_hash: {}", web3_tx_dao.id, web3_tx_dao.tx_hash.clone().unwrap_or_default());
+                        log::info!(
+                            "Transaction confirmed: tx: {} tx_hash: {}",
+                            web3_tx_dao.id,
+                            web3_tx_dao.tx_hash.clone().unwrap_or_default()
+                        );
                         break;
                     } else {
                         log::info!("Waiting for confirmations: tx: {}. Current block {}, expected at least: {}", web3_tx_dao.id, current_block_number, block_number + chain_setup.confirmation_blocks);
                     }
                 } else {
-                    return Err(err_custom_create!("Block number not found on dao for tx: {}", web3_tx_dao.id));
+                    return Err(err_custom_create!(
+                        "Block number not found on dao for tx: {}",
+                        web3_tx_dao.id
+                    ));
                 }
             } else {
                 tx_not_found_count += 1;
@@ -155,17 +178,25 @@ pub async fn process_transaction(
                 }
             }
         } else {
-            log::info!("Latest nonce is not yet reached: {} vs {}", latest_nonce, transaction_nonce + 1);
+            log::info!(
+                "Latest nonce is not yet reached: {} vs {}",
+                latest_nonce,
+                transaction_nonce + 1
+            );
         }
-        log::info!("Checking pending nonce tx: {}, expected nonce: {}", web3_tx_dao.id, transaction_nonce + 1);
+        log::info!(
+            "Checking pending nonce tx: {}, expected nonce: {}",
+            web3_tx_dao.id,
+            transaction_nonce + 1
+        );
         let pending_nonce = get_transaction_count(from_addr, web3, true)
             .await
             .map_err(err_from!())?;
         if pending_nonce
             <= web3_tx_dao
-            .nonce
-            .map(|n| n as u64)
-            .ok_or_else(|| err_custom_create!("Nonce not found"))?
+                .nonce
+                .map(|n| n as u64)
+                .ok_or_else(|| err_custom_create!("Nonce not found"))?
         {
             // this resend is safe because all tx data is the same,
             // it's just attempt of sending the same transaction

@@ -88,9 +88,10 @@ pub async fn start_payment_engine(
         cli.generate_tx_only,
         cli.skip_multi_contract_check,
     )?;
-    log::debug!("Payment setup: {:?}", payment_setup);
+    log::debug!("Starting payment engine: {:#?}", payment_setup);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
+    log::info!("connecting to sqlite file db: {}", db_conn);
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
     let conn2 = create_sqlite_connection(&db_conn, false).await?;
 
