@@ -43,11 +43,11 @@ token = { address = "0x2036807B0B3aaf5b1858EE822D0e111fDdac7018", symbol="tGLM" 
 multi-contract = { address="0x50100d4faf5f3b09987dea36dc2eddd57a3e561b", max-at-once=10 }
 
 [chain.dev]
-network-id=77
-rpc-endpoints = ["http://127.0.0.1:8545"]
+network-id=987789
+rpc-endpoints = ["http://145.239.69.80:8545"]
 currency-symbol="tETH"
 priority-fee=1.1
 max-fee-per-gas=500.0
 transaction-timeout=100
-token = { address = "0x1469e7B8B7B16110c76ED029DcB2DD0B10D47c6A", symbol="tGLM" }
-multi-contract = { address="0xE73afe06F6627789b03cAAe81D7A8feAa29797a0", max-at-once=10 }
+token = { address = "0xEC9F23c207018A444f9351dF3D7937f609870667", symbol="tGLM" }
+multi-contract = { address="0xBCfe9736A4f5bF2E43620061fF3001eA0D003c0F", max-at-once=10 }
