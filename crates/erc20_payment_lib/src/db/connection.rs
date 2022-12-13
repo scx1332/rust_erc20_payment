@@ -46,8 +46,6 @@ pub async fn create_sqlite_connection(
 ) -> Result<SqliteConnection, PaymentError> {
     let url = format!("sqlite://{}", file_name);
 
-    log::info!("connecting to db using url {}", url);
-
     let mut conn = SqliteConnectOptions::from_str(&url)
         .map_err(err_from!())?
         .create_if_missing(true)

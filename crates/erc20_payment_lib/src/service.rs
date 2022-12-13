@@ -66,7 +66,10 @@ pub async fn process_allowance(
                 U256::from_dec_str(&db_allowance.allowance).map_err(err_from!())?
             }
             None => {
-                log::debug!("Allowance not confirmed in db, check on chain");
+                log::info!(
+                    "Checking allowance on chain owner: {}",
+                    &allowance_request.owner
+                );
                 let allowance = check_allowance(
                     web3,
                     Address::from_str(&allowance_request.owner).map_err(err_from!())?,
@@ -88,7 +91,7 @@ pub async fn process_allowance(
             }
         },
         None => {
-            log::debug!("No db entry, check allowance on chain");
+            log::info!("No db entry, check allowance on chain");
             let allowance = check_allowance(
                 web3,
                 Address::from_str(&allowance_request.owner).map_err(err_from!())?,
@@ -97,7 +100,7 @@ pub async fn process_allowance(
             )
             .await?;
             if allowance > minimum_allowance {
-                log::debug!("Allowance found on chain, add entry to db");
+                log::info!("Allowance found on chain, add entry to db");
                 let db_allowance = Allowance {
                     id: 0,
                     owner: allowance_request.owner.clone(),
@@ -138,7 +141,7 @@ pub async fn process_allowance(
             Address::from_str(&allowance_request.token_addr).map_err(err_from!())?,
             Address::from_str(&allowance_request.spender_addr).map_err(err_from!())?,
             allowance_request.chain_id as u64,
-            1000,
+            None,
             max_fee_per_gas,
             priority_fee,
         )?;
@@ -316,27 +319,38 @@ pub async fn gather_transactions_batch_multi(
                 0 => {
                     return Ok(0);
                 }
-                1 => create_erc20_transfer(
-                    Address::from_str(&token_transfer.from_addr).map_err(err_from!())?,
-                    Address::from_str(token_addr).map_err(err_from!())?,
-                    erc20_to[0],
-                    erc20_amounts[0],
-                    token_transfer.chain_id as u64,
-                    1000,
-                    max_fee_per_gas,
-                    priority_fee,
-                )?,
-                _ => create_erc20_transfer_multi(
-                    Address::from_str(&token_transfer.from_addr).map_err(err_from!())?,
-                    chain_setup.multi_contract_address.unwrap(),
-                    erc20_to,
-                    erc20_amounts,
-                    token_transfer.chain_id as u64,
-                    1000,
-                    max_fee_per_gas,
-                    priority_fee,
-                    false,
-                )?,
+                1 => {
+                    log::info!(
+                        "Inserting transaction stub for ERC20 transfer to: {:?}",
+                        erc20_to[0]
+                    );
+
+                    create_erc20_transfer(
+                        Address::from_str(&token_transfer.from_addr).map_err(err_from!())?,
+                        Address::from_str(token_addr).map_err(err_from!())?,
+                        erc20_to[0],
+                        erc20_amounts[0],
+                        token_transfer.chain_id as u64,
+                        None,
+                        max_fee_per_gas,
+                        priority_fee,
+                    )?
+                }
+                _ => {
+                    log::info!("Inserting transaction stub for ERC20 multi transfer contract: {:?} for {} distinct transfers", chain_setup.multi_contract_address.unwrap(), erc20_to.len());
+
+                    create_erc20_transfer_multi(
+                        Address::from_str(&token_transfer.from_addr).map_err(err_from!())?,
+                        chain_setup.multi_contract_address.unwrap(),
+                        erc20_to,
+                        erc20_amounts,
+                        token_transfer.chain_id as u64,
+                        None,
+                        max_fee_per_gas,
+                        priority_fee,
+                        false,
+                    )?
+                }
             };
             let mut db_transaction = conn.begin().await.map_err(err_from!())?;
             let web3_tx_dao = insert_tx(&mut db_transaction, &web3tx)
@@ -384,7 +398,7 @@ pub async fn gather_transactions_batch(
             Address::from_str(&token_transfer.receiver_addr).map_err(err_from!())?,
             sum,
             token_transfer.chain_id as u64,
-            1000,
+            None,
             max_fee_per_gas,
             priority_fee,
         )?
@@ -393,7 +407,7 @@ pub async fn gather_transactions_batch(
             Address::from_str(&token_transfer.from_addr).map_err(err_from!())?,
             Address::from_str(&token_transfer.receiver_addr).map_err(err_from!())?,
             token_transfer.chain_id as u64,
-            1000,
+            None,
             max_fee_per_gas,
             priority_fee,
             sum,
@@ -761,7 +775,7 @@ pub async fn process_transactions(
         if transactions.is_empty() {
             break;
         }
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
     }
     Ok(())
 }
@@ -809,12 +823,12 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
         if current_time
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
         {
-            log::debug!("Gathering transfers...");
+            log::info!("Gathering transfers...");
             let mut token_transfer_map = match gather_transactions_pre(conn, payment_setup).await {
                 Ok(token_transfer_map) => token_transfer_map,
                 Err(e) => {
                     log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
                     continue;
                 }
             };
@@ -828,7 +842,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 Err(e) => {
                     match &e.inner {
                         ErrorBag::NoAllowanceFound(allowance_request) => {
-                            log::error!("No allowance found for: {:?}", allowance_request);
+                            log::info!("No allowance found for contract {} to spend token {} for owner: {}", allowance_request.spender_addr, allowance_request.token_addr, allowance_request.owner);
                             match process_allowance(conn, payment_setup, allowance_request).await {
                                 Ok(_) => {
                                     //process transaction instantly
@@ -858,6 +872,6 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
             }
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
     }
 }

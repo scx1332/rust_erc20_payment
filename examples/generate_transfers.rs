@@ -1,11 +1,12 @@
-use erc20_payment_lib::{config, err_custom_create, err_from};
 use erc20_payment_lib::db::create_sqlite_connection;
+use erc20_payment_lib::{config, err_custom_create, err_from};
 
 use erc20_payment_lib::error::PaymentError;
 use erc20_payment_lib::eth::get_eth_addr_from_secret;
 
 use secp256k1::SecretKey;
 
+use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{
     create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
 };
@@ -13,7 +14,6 @@ use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
-use erc20_payment_lib::error::{ErrorBag, CustomError};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
@@ -32,10 +32,7 @@ struct TestOptions {
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
-        return Err(err_custom_create!(
-            "No .env file found: {}",
-            err
-        ));
+        return Err(err_custom_create!("No .env file found: {}", err));
     }
     env_logger::init();
 
@@ -62,7 +59,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         amount_pool,
         cli.generate_count,
     )
-        .await?;
+    .await?;
 
     conn.close().await.map_err(err_from!())?; //it is needed to process all the transactions before closing the connection
     Ok(())

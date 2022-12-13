@@ -39,8 +39,8 @@ pub async fn check_allowance(
         ));
     };
     let allowance = U256::from_big_endian(&res.0);
-    log::info!(
-        "Allowance: owner: {:?}, token: {:?}, contract: {:?}, allowance: {:?}",
+    log::debug!(
+        "Check allowance: owner: {:?}, token: {:?}, contract: {:?}, allowance: {:?}",
         owner,
         token,
         spender,

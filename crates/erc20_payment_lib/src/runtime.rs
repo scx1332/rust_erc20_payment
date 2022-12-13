@@ -28,6 +28,8 @@ pub struct ValidatedOptions {
     pub keep_running: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
+    pub service_sleep: u64,
+    pub process_sleep: u64,
 }
 
 impl Default for ValidatedOptions {
@@ -40,6 +42,8 @@ impl Default for ValidatedOptions {
             keep_running: true,
             generate_tx_only: false,
             skip_multi_contract_check: false,
+            service_sleep: 10,
+            process_sleep: 10,
         }
     }
 }
@@ -87,10 +91,13 @@ pub async fn start_payment_engine(
         !cli.keep_running,
         cli.generate_tx_only,
         cli.skip_multi_contract_check,
+        cli.service_sleep,
+        cli.process_sleep,
     )?;
-    log::debug!("Payment setup: {:?}", payment_setup);
+    log::debug!("Starting payment engine: {:#?}", payment_setup);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
+    log::info!("connecting to sqlite file db: {}", db_conn);
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
     let conn2 = create_sqlite_connection(&db_conn, false).await?;
 

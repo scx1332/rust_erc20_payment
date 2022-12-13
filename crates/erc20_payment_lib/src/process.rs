@@ -39,9 +39,8 @@ pub async fn process_transaction(
     wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
-    const CONFIRMED_BLOCKS: u64 = 0;
 
-    let wait_duration = Duration::from_secs(1);
+    let wait_duration = Duration::from_secs(payment_setup.process_sleep);
 
     let chain_id = web3_tx_dao.chain_id;
     let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {
@@ -59,12 +58,15 @@ pub async fn process_transaction(
     })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| err_create!(TransactionFailedError::new("Failed to parse from_addr")))?;
-    if web3_tx_dao.nonce.is_none() {
+    let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
+        nonce
+    } else {
         let nonce = get_transaction_count(from_addr, web3, false)
             .await
-            .map_err(err_from!())?;
-        web3_tx_dao.nonce = Some(nonce as i64);
-    }
+            .map_err(err_from!())? as i64;
+        web3_tx_dao.nonce = Some(nonce);
+        nonce
+    };
 
     //timeout transaction when it is not confirmed after transaction_timeout seconds
     if let Some(first_processed) = web3_tx_dao.first_processed {
@@ -85,6 +87,7 @@ pub async fn process_transaction(
     }
 
     if web3_tx_dao.signed_raw_data.is_none() {
+        log::info!("Checking transaction {}", web3_tx_dao.id);
         match check_transaction(web3, web3_tx_dao).await {
             Ok(_) => {}
             Err(err) => {
@@ -92,43 +95,39 @@ pub async fn process_transaction(
                 return Err(err);
             }
         }
-
-        println!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
+        log::debug!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
         sign_transaction(web3, web3_tx_dao, &payment_setup.secret_key).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
 
     if web3_tx_dao.broadcast_date.is_none() {
+        log::info!(
+            "Sending transaction {} with nonce {}",
+            web3_tx_dao.id,
+            transaction_nonce
+        );
         send_transaction(web3, web3_tx_dao).await?;
         web3_tx_dao.broadcast_count += 1;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
+        log::info!(
+            "Transaction {} sent, tx hash: {}",
+            web3_tx_dao.id,
+            web3_tx_dao.tx_hash.clone().unwrap_or_default()
+        );
     }
 
     if web3_tx_dao.confirm_date.is_some() {
+        log::info!("Transaction already confirmed {}", web3_tx_dao.id);
         return Ok(ProcessTransactionResult::Confirmed);
     }
 
     let mut tx_not_found_count = 0;
     loop {
-        let pending_nonce = get_transaction_count(from_addr, web3, true)
-            .await
-            .map_err(err_from!())?;
-        if pending_nonce
-            <= web3_tx_dao
-                .nonce
-                .map(|n| n as u64)
-                .ok_or_else(|| err_custom_create!("Nonce not found"))?
-        {
-            println!(
-                "Resend because pending nonce too low: {:?}",
-                web3_tx_dao.tx_hash
-            );
-            send_transaction(web3, web3_tx_dao).await?;
-            web3_tx_dao.broadcast_count += 1;
-            update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
-            tokio::time::sleep(wait_duration).await;
-            continue;
-        }
+        log::info!(
+            "Checking latest nonce tx: {}, expected nonce: {}",
+            web3_tx_dao.id,
+            transaction_nonce + 1
+        );
         let latest_nonce = get_transaction_count(from_addr, web3, false)
             .await
             .map_err(err_from!())?;
@@ -147,12 +146,27 @@ pub async fn process_transaction(
             let res = find_receipt(web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
-                    log::debug!("Receipt found: {:?}", web3_tx_dao.tx_hash);
-                    if block_number + CONFIRMED_BLOCKS <= current_block_number {
+                    log::info!(
+                        "Receipt found: tx {} tx_hash: {}",
+                        web3_tx_dao.id,
+                        web3_tx_dao.tx_hash.clone().unwrap_or_default()
+                    );
+                    if block_number + chain_setup.confirmation_blocks <= current_block_number {
                         web3_tx_dao.confirm_date = Some(chrono::Utc::now());
-                        log::debug!("Transaction confirmed: {:?}", web3_tx_dao.tx_hash);
+                        log::info!(
+                            "Transaction confirmed: tx: {} tx_hash: {}",
+                            web3_tx_dao.id,
+                            web3_tx_dao.tx_hash.clone().unwrap_or_default()
+                        );
                         break;
+                    } else {
+                        log::info!("Waiting for confirmations: tx: {}. Current block {}, expected at least: {}", web3_tx_dao.id, current_block_number, block_number + chain_setup.confirmation_blocks);
                     }
+                } else {
+                    return Err(err_custom_create!(
+                        "Block number not found on dao for tx: {}",
+                        web3_tx_dao.id
+                    ));
                 }
             } else {
                 tx_not_found_count += 1;
@@ -163,12 +177,45 @@ pub async fn process_transaction(
                     ));
                 }
             }
+        } else {
+            log::info!(
+                "Latest nonce is not yet reached: {} vs {}",
+                latest_nonce,
+                transaction_nonce + 1
+            );
+        }
+        log::info!(
+            "Checking pending nonce tx: {}, expected nonce: {}",
+            web3_tx_dao.id,
+            transaction_nonce + 1
+        );
+        let pending_nonce = get_transaction_count(from_addr, web3, true)
+            .await
+            .map_err(err_from!())?;
+        if pending_nonce
+            <= web3_tx_dao
+                .nonce
+                .map(|n| n as u64)
+                .ok_or_else(|| err_custom_create!("Nonce not found"))?
+        {
+            // this resend is safe because all tx data is the same,
+            // it's just attempt of sending the same transaction
+            log::warn!(
+                "Resend because pending nonce too low. tx: {} tx_hash: {:?}",
+                web3_tx_dao.id,
+                web3_tx_dao.tx_hash.clone().unwrap_or_default()
+            );
+            send_transaction(web3, web3_tx_dao).await?;
+            web3_tx_dao.broadcast_count += 1;
+            update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
+            tokio::time::sleep(wait_duration).await;
+            continue;
         }
         if !wait_for_confirmation {
             return Ok(ProcessTransactionResult::Unknown);
         }
         tokio::time::sleep(wait_duration).await;
     }
-    println!("web3_tx_dao after confirmation: {:?}", web3_tx_dao);
+    log::debug!("web3_tx_dao after confirmation: {:?}", web3_tx_dao);
     Ok(ProcessTransactionResult::Confirmed)
 }

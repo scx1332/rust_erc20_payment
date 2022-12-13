@@ -34,7 +34,7 @@ pub struct Web3TransactionDao {
     pub from_addr: String,
     pub to_addr: String,
     pub chain_id: i64,
-    pub gas_limit: i64,
+    pub gas_limit: Option<i64>,
     pub max_fee_per_gas: String,
     pub priority_fee: String,
     pub val: String,

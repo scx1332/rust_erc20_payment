@@ -5,7 +5,7 @@ CREATE TABLE "tx" (
     from_addr           TEXT        NOT NULL,
     to_addr             TEXT        NOT NULL,
     chain_id            INTEGER     NOT NULL,
-    gas_limit           INTEGER     NOT NULL,
+    gas_limit           INTEGER     NULL,
     max_fee_per_gas     TEXT        NOT NULL,
     priority_fee        TEXT        NOT NULL,
     val                 TEXT        NOT NULL,

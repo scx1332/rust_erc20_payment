@@ -1,5 +1,6 @@
 use crate::db::operations::insert_token_transfer;
 use std::str::FromStr;
+use std::time::Instant;
 
 use crate::transaction::create_token_transfer;
 
@@ -58,6 +59,10 @@ pub async fn generate_transaction_batch(
 ) -> Result<(), PaymentError> {
     //thread rng
     let mut rng = rand::thread_rng();
+    let max_block_db_interval = std::time::Duration::from_secs(1);
+    let release_db_interval = std::time::Duration::from_secs(1);
+
+    let mut last_time = Instant::now();
     for transaction_no in 0..number_of_transfers {
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
@@ -71,6 +76,12 @@ pub async fn generate_transaction_batch(
             transaction_no,
             number_of_transfers
         );
+        let curr_time = Instant::now();
+        if curr_time - last_time > max_block_db_interval {
+            log::info!("Waiting for db to release");
+            tokio::time::sleep(release_db_interval).await;
+            last_time = Instant::now();
+        }
     }
     Ok(())
 }

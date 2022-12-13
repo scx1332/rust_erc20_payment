@@ -1,5 +1,3 @@
-
-
 use secp256k1::SecretKey;
 use std::str::FromStr;
 use std::{env, fmt};
@@ -7,12 +5,12 @@ use std::{env, fmt};
 use web3::contract::Contract;
 use web3::transports::Http;
 
-use web3::types::Address;
 use erc20_payment_lib::{config, err_custom_create};
+use web3::types::Address;
 
 use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
-use options::validated_cli;
 use erc20_payment_lib::runtime::start_payment_engine;
+use options::validated_cli;
 
 pub mod options;
 
