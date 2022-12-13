@@ -38,6 +38,8 @@ pub struct PaymentSetup {
     pub finish_when_done: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
+    pub service_sleep: u64,
+    pub process_sleep: u64,
 }
 
 impl PaymentSetup {
@@ -47,6 +49,8 @@ impl PaymentSetup {
         finish_when_done: bool,
         generate_txs_only: bool,
         skip_multi_contract_check: bool,
+        service_sleep: u64,
+        process_sleep: u64,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
@@ -55,6 +59,8 @@ impl PaymentSetup {
             finish_when_done,
             generate_tx_only: generate_txs_only,
             skip_multi_contract_check,
+            service_sleep,
+            process_sleep,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();

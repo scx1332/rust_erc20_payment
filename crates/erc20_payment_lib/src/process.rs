@@ -40,7 +40,7 @@ pub async fn process_transaction(
 ) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
 
-    let wait_duration = Duration::from_secs(1);
+    let wait_duration = Duration::from_secs(payment_setup.process_sleep);
 
     let chain_id = web3_tx_dao.chain_id;
     let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {

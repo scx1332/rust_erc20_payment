@@ -27,6 +27,20 @@ pub struct ProcessOptions {
         help = "Skip multi contract check when generating txs"
     )]
     skip_multi_contract_check: bool,
+
+    #[structopt(
+    long = "service-sleep",
+    help = "Sleep time between service loops in seconds",
+    default_value = "10"
+    )]
+    service_sleep: u64,
+
+    #[structopt(
+    long = "process-sleep",
+    help = "Sleep time between process loops in seconds",
+    default_value = "10"
+    )]
+    process_sleep: u64,
 }
 
 #[derive(Debug, StructOpt)]
@@ -69,6 +83,20 @@ struct TransferOptions {
         help = "Skip multi contract check when generating txs"
     )]
     skip_multi_contract_check: bool,
+
+    #[structopt(
+        long = "service-sleep",
+        help = "Sleep time between service loops in seconds",
+        default_value = "10"
+    )]
+    service_sleep: u64,
+
+    #[structopt(
+        long = "process-sleep",
+        help = "Sleep time between process loops in seconds",
+        default_value = "10"
+    )]
+    process_sleep: u64,
 }
 
 #[derive(Debug, StructOpt)]
@@ -155,6 +183,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 keep_running: transfer_options.keep_running,
                 generate_tx_only: transfer_options.generate_tx_only,
                 skip_multi_contract_check: transfer_options.skip_multi_contract_check,
+                service_sleep: transfer_options.service_sleep,
+                process_sleep: transfer_options.process_sleep,
             })
         }
         CliOptions::Test(test_options) => {
@@ -176,6 +206,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 keep_running: false,
                 generate_tx_only: false,
                 skip_multi_contract_check: false,
+                service_sleep: 10,
+                process_sleep: 10,
             })
         }
         CliOptions::Process(process_options) => Ok(ValidatedOptions {
@@ -186,6 +218,8 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             keep_running: process_options.keep_running,
             generate_tx_only: process_options.generate_tx_only,
             skip_multi_contract_check: process_options.skip_multi_contract_check,
+            service_sleep: process_options.service_sleep,
+            process_sleep: process_options.process_sleep,
         }),
     }
 }

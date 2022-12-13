@@ -28,6 +28,8 @@ pub struct ValidatedOptions {
     pub keep_running: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
+    pub service_sleep: u64,
+    pub process_sleep: u64,
 }
 
 impl Default for ValidatedOptions {
@@ -40,6 +42,8 @@ impl Default for ValidatedOptions {
             keep_running: true,
             generate_tx_only: false,
             skip_multi_contract_check: false,
+            service_sleep: 10,
+            process_sleep: 10,
         }
     }
 }
@@ -87,6 +91,8 @@ pub async fn start_payment_engine(
         !cli.keep_running,
         cli.generate_tx_only,
         cli.skip_multi_contract_check,
+        cli.service_sleep,
+        cli.process_sleep,
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 

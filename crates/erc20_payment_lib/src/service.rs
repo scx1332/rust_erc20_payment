@@ -775,7 +775,7 @@ pub async fn process_transactions(
         if transactions.is_empty() {
             break;
         }
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
     }
     Ok(())
 }
@@ -828,7 +828,7 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 Ok(token_transfer_map) => token_transfer_map,
                 Err(e) => {
                     log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
                     continue;
                 }
             };
@@ -872,6 +872,6 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
             }
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
     }
 }
