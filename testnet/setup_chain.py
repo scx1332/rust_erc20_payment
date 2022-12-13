@@ -18,7 +18,7 @@ def gen_key_address_pair():
     return account_1, private_key
 
 
-def threaded_function(process):
+def capture_output(process):
     while True:
         output = process.stdout.readline()
         if output:
@@ -36,12 +36,6 @@ async def main():
     genesis_file = f"{tmp_dir}/genesis{chain_num}.json"
     addresses_file = f"{tmp_dir}/addresses{chain_num}.json"
 
-    if os.path.exists(tmp_dir):
-        shutil.rmtree(tmp_dir)
-        if sys.platform == 'win32':
-            time.sleep(0.5)
-    os.makedirs(tmp_dir)
-
     # get private key from env
     main_account = os.environ['MAIN_ACCOUNT_PRIVATE_KEY']
     signer_account = os.environ['SIGNER_ACCOUNT_PRIVATE_KEY']
@@ -58,51 +52,59 @@ async def main():
         Account.from_key(signer_account).address,
         signer_account)
 
-    print(f"Loaded signer account: {signer_address}")
+    deploy_contracts = False
+    if not os.path.exists(tmp_dir):
+        deploy_contracts = True
 
-    genesis = {
-        "config": {
-            "chainId": chain_num,
-            "homesteadBlock": 0,
-            "eip150Block": 0,
-            "eip155Block": 0,
-            "eip158Block": 0,
-            "byzantiumBlock": 0,
-            "constantinopleBlock": 0,
-            "petersburgBlock": 0,
-            "istanbulBlock": 0,
-            "berlinBlock": 0,
-            "londonBlock": 0,
-            "ArrowGlacierBlock": 0,
-            "GrayGlacierBlock": 0,
-            "clique": {
-                "period": 5,
-                "epoch": 0
+        os.makedirs(tmp_dir)
+
+
+
+        print(f"Loaded signer account: {signer_address}")
+
+        genesis = {
+            "config": {
+                "chainId": chain_num,
+                "homesteadBlock": 0,
+                "eip150Block": 0,
+                "eip155Block": 0,
+                "eip158Block": 0,
+                "byzantiumBlock": 0,
+                "constantinopleBlock": 0,
+                "petersburgBlock": 0,
+                "istanbulBlock": 0,
+                "berlinBlock": 0,
+                "londonBlock": 0,
+                "ArrowGlacierBlock": 0,
+                "GrayGlacierBlock": 0,
+                "clique": {
+                    "period": 5,
+                    "epoch": 0
+                }
+            },
+            "difficulty": "1",
+            "gasLimit": "30000000",
+            # Signer address for clique
+            "extradata": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                         + f"{signer_address}".lower().replace("0x", "")
+                         + "000000000000000000000000000000000000000000000000000000000000000000"
+                         + "0000000000000000000000000000000000000000000000000000000000000000",
+            "alloc": {
+                address1: {"balance": '1000000000000000000000000000'},
             }
-        },
-        "difficulty": "1",
-        "gasLimit": "30000000",
-        # Signer address for clique
-        "extradata": "0x0000000000000000000000000000000000000000000000000000000000000000"
-                     + f"{signer_address}".lower().replace("0x", "")
-                     + "000000000000000000000000000000000000000000000000000000000000000000"
-                     + "0000000000000000000000000000000000000000000000000000000000000000",
-        "alloc": {
-            address1: {"balance": '1000000000000000000000000000'},
         }
-    }
 
-    with open(f'{genesis_file}', 'w') as f:
-        json.dump(genesis, f, indent=4)
+        with open(f'{genesis_file}', 'w') as f:
+            json.dump(genesis, f, indent=4)
 
-    os.system(f'geth --datadir {chain_dir} init {genesis_file}')
+        os.system(f'geth --datadir {chain_dir} init {genesis_file}')
 
-    keystore = Account.encrypt(signer_account, keystore_password)
+        keystore = Account.encrypt(signer_account, keystore_password)
 
-    with open(f'{chain_dir}/keystore/testnet_key', 'w') as f:
-        f.write(json.dumps(keystore, indent=4))
-    with open(f'{chain_dir}/keystore/testnet_key_pass.txt', 'w') as f:
-        f.write(keystore_password)
+        with open(f'{chain_dir}/keystore/testnet_key', 'w') as f:
+            f.write(json.dumps(keystore, indent=4))
+        with open(f'{chain_dir}/keystore/testnet_key_pass.txt', 'w') as f:
+            f.write(keystore_password)
 
     # clique signer/miner settings
     miner_settings = f"--mine --allow-insecure-unlock --unlock {signer_address} --password {chain_dir}/keystore/testnet_key_pass.txt"
@@ -121,26 +123,26 @@ async def main():
 
     geth_command_split = geth_command.split(' ')
     process = subprocess.Popen(geth_command_split, stdout=subprocess.PIPE)
-    thread = threading.Thread(target=process, args=(geth_command,))
+    thread = threading.Thread(target=capture_output, args=(process,))
     thread.start()
     # give the process some time to start http server
     await asyncio.sleep(2)
 
-    # deploy contracts
-    os.chdir("contracts-web3-create2")
-    os.system("npm run deploy_dev")
+    if deploy_contracts:
+        # deploy contracts
+        os.chdir("contracts-web3-create2")
+        os.system("npm run deploy_dev")
 
     print("Blockchain is ready for testing")
 
-    print("Testing complete. Shutdown blockchain")
-
     if not keep_running:
+        print("Testing complete. Shutdown blockchain")
         process.kill()
         thread.join()
         print(geth_command)
-
-    while True:
-        await asyncio.sleep(2)
+    else:
+        while True:
+            await asyncio.sleep(2)
 
 
 if __name__ == "__main__":
