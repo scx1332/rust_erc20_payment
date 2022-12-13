@@ -7,6 +7,7 @@ use secp256k1::SecretKey;
 use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
 use crate::error::*;
+use crate::eth::get_eth_addr_from_secret;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
@@ -14,7 +15,6 @@ use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
-use crate::eth::get_eth_addr_from_secret;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -328,10 +328,13 @@ pub async fn sign_transaction(
     web3_tx_dao: &mut Web3TransactionDao,
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
-    let public_addr = get_eth_addr_from_secret(&secret_key);
+    let public_addr = get_eth_addr_from_secret(secret_key);
     if web3_tx_dao.from_addr.to_lowercase() != format!("{:#x}", public_addr) {
-        return Err(err_custom_create!("From addr not match with secret key {} != {:#x}",
-            web3_tx_dao.from_addr.to_lowercase(), public_addr));
+        return Err(err_custom_create!(
+            "From addr not match with secret key {} != {:#x}",
+            web3_tx_dao.from_addr.to_lowercase(),
+            public_addr
+        ));
     }
 
     let tx_object = dao_to_transaction(web3_tx_dao)?;
