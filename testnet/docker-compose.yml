@@ -1,0 +1,18 @@
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -u setup_chain.py
+    volumes:
+      - ./genesis/:/runtime/tmp
+    ports:
+      - '8545:8545'
+    environment:
+      - CHAIN_ID=987789
+      - CHAIN_NAME=Golem test chain
+      - CHAIN_TYPE=local
+      - KEEP_RUNNING=1
+      - SIGNER_ACCOUNT_PRIVATE_KEY=${SIGNER_ACCOUNT_PRIVATE_KEY}
+      - MAIN_ACCOUNT_PRIVATE_KEY=${MAIN_ACCOUNT_PRIVATE_KEY}
+      - SIGNER_ACCOUNT_KEYSTORE_PASSWORD=${SIGNER_ACCOUNT_KEYSTORE_PASSWORD}
