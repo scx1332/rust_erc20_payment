@@ -2,9 +2,9 @@ use erc20_payment_lib::db::create_sqlite_connection;
 use erc20_payment_lib::{config, err_custom_create, err_from};
 
 use erc20_payment_lib::error::PaymentError;
-use erc20_payment_lib::eth::get_eth_addr_from_secret;
 
-use secp256k1::SecretKey;
+
+
 
 use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{
@@ -13,7 +13,7 @@ use erc20_payment_lib::misc::{
 };
 use sqlx::Connection;
 use std::env;
-use std::str::FromStr;
+
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

@@ -1,15 +1,15 @@
-use secp256k1::SecretKey;
-use std::str::FromStr;
-use std::{env, fmt};
 
-use web3::contract::Contract;
-use web3::transports::Http;
 
-use erc20_payment_lib::{config, err_custom_create, err_from};
-use web3::types::Address;
+use std::{env};
+
+
+
+
+use erc20_payment_lib::{config, err_custom_create};
+
 
 use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
-use erc20_payment_lib::eth::get_eth_addr_from_secret;
+
 use erc20_payment_lib::misc::{display_private_keys, load_private_keys};
 use erc20_payment_lib::runtime::start_payment_engine;
 use options::validated_cli;
