@@ -7,9 +7,7 @@ use erc20_payment_lib::eth::get_eth_addr_from_secret;
 use secp256k1::SecretKey;
 
 use erc20_payment_lib::error::{CustomError, ErrorBag};
-use erc20_payment_lib::misc::{
-    create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
-};
+use erc20_payment_lib::misc::{create_test_amount_pool, display_private_keys, generate_transaction_batch, load_private_keys, ordered_address_pool};
 use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
@@ -39,9 +37,9 @@ async fn main_internal() -> Result<(), PaymentError> {
     let cli: TestOptions = TestOptions::from_args();
 
     let config = config::Config::load("config-payments.toml")?;
-    let private_key = env::var("ETH_PRIVATE_KEY").unwrap();
-    let secret_key = SecretKey::from_str(&private_key).unwrap();
-    let public_addr = get_eth_addr_from_secret(&secret_key);
+
+    let (private_keys, public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
+    display_private_keys(&private_keys);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
@@ -53,7 +51,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     generate_transaction_batch(
         &mut conn,
         c.network_id as u64,
-        public_addr,
+        public_addrs,
         Some(c.token.clone().unwrap().address),
         addr_pool,
         amount_pool,

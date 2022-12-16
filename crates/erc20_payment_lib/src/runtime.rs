@@ -54,6 +54,7 @@ pub struct PaymentRuntime {
     pub conn: Arc<Mutex<SqliteConnection>>,
 }
 
+/*
 async fn process_cli(
     conn: &mut SqliteConnection,
     cli: &ValidatedOptions,
@@ -78,16 +79,17 @@ async fn process_cli(
 
     //service_loop(&mut conn, &web3, &secret_key).await;
 }
+*/
 
 pub async fn start_payment_engine(
     cli: Option<ValidatedOptions>,
-    secret_key: &SecretKey,
+    secret_keys: &[SecretKey],
     config: config::Config,
 ) -> Result<PaymentRuntime, PaymentError> {
     let cli = cli.unwrap_or_default();
     let payment_setup = PaymentSetup::new(
         &config,
-        secret_key,
+        secret_keys.to_vec(),
         !cli.keep_running,
         cli.generate_tx_only,
         cli.skip_multi_contract_check,
@@ -101,7 +103,7 @@ pub async fn start_payment_engine(
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
     let conn2 = create_sqlite_connection(&db_conn, false).await?;
 
-    process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
+    //process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
     let ps = payment_setup.clone();
 

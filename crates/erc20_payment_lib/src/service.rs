@@ -181,11 +181,13 @@ pub async fn gather_transactions_pre(
                     update_token_transfer(conn, f).await.map_err(err_from!())?;
                     continue;
                 }
+                //@TODO: check if from_addr is in a wallet
+                /*
                 if from_addr != payment_setup.pub_address {
                     f.error = Some("no from_addr in wallet".to_string());
                     update_token_transfer(conn, f).await.map_err(err_from!())?;
                     continue;
-                }
+                }*/
             }
             Err(_err) => {
                 f.error = Some("Invalid from address".to_string());

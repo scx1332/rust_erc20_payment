@@ -33,8 +33,8 @@ pub struct ChainSetup {
 #[derive(Clone, Debug)]
 pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
-    pub secret_key: SecretKey,
-    pub pub_address: Address,
+    pub secret_keys: Vec<SecretKey>,
+    //pub pub_address: Address,
     pub finish_when_done: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
@@ -45,7 +45,7 @@ pub struct PaymentSetup {
 impl PaymentSetup {
     pub fn new(
         config: &Config,
-        secret_key: &SecretKey,
+        secret_keys: Vec<SecretKey>,
         finish_when_done: bool,
         generate_txs_only: bool,
         skip_multi_contract_check: bool,
@@ -54,8 +54,8 @@ impl PaymentSetup {
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
-            secret_key: *secret_key,
-            pub_address: get_eth_addr_from_secret(secret_key),
+            secret_keys: secret_keys,
+            //pub_address: get_eth_addr_from_secret(secret_key),
             finish_when_done,
             generate_tx_only: generate_txs_only,
             skip_multi_contract_check,

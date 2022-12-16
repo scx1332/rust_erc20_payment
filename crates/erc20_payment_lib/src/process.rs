@@ -9,7 +9,7 @@ use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
 
-use crate::eth::get_transaction_count;
+use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
 use crate::model::Web3TransactionDao;
 use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;
@@ -58,6 +58,15 @@ pub async fn process_transaction(
     })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| err_create!(TransactionFailedError::new("Failed to parse from_addr")))?;
+
+    let private_key = payment_setup.secret_keys.iter().find(|sk| {
+        get_eth_addr_from_secret(sk) == from_addr
+    }).ok_or(err_create!(TransactionFailedError::new(&format!(
+            "Failed to find private key for address: {}",
+            from_addr
+        )))
+    )?;
+
     let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
         nonce
     } else {
@@ -96,7 +105,7 @@ pub async fn process_transaction(
             }
         }
         log::debug!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-        sign_transaction(web3, web3_tx_dao, &payment_setup.secret_key).await?;
+        sign_transaction(web3, web3_tx_dao, private_key).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
 
