@@ -51,10 +51,10 @@ async fn main_internal() -> Result<(), PaymentError> {
     generate_transaction_batch(
         &mut conn,
         c.network_id as u64,
-        public_addrs,
+        &public_addrs,
         Some(c.token.clone().unwrap().address),
-        addr_pool,
-        amount_pool,
+        &addr_pool,
+        &amount_pool,
         cli.generate_count,
     )
     .await?;

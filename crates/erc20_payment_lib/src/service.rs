@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use std::str::FromStr;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
 
 use crate::db::operations::{
     find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
@@ -22,6 +24,7 @@ use crate::{err_create, err_custom_create, err_from};
 
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
+use crate::runtime::SharedState;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -782,7 +785,7 @@ pub async fn process_transactions(
     Ok(())
 }
 
-pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
+pub async fn service_loop(shared_state: Arc<Mutex<SharedState>>, conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
     let mut last_update_time1 =
@@ -841,6 +844,8 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 Ok(count) => {
                     if count > 0 {
                         process_tx_needed = true;
+                    } else {
+                        log::info!("No new transfers to process");
                     }
                 }
                 Err(e) => {
@@ -852,8 +857,8 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                                     //process transaction instantly
                                     process_tx_needed = true;
                                     process_tx_instantly = true;
+                                    shared_state.lock().await.idling = false;
                                     continue;
-                                    //process_tx_needed = true;
                                 }
                                 Err(e) => {
                                     log::error!("Error in process allowance: {}", e);
@@ -873,6 +878,12 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
             if payment_setup.finish_when_done && !process_tx_needed {
                 log::info!("No more work to do, exiting...");
                 break;
+            }
+            if !process_tx_needed {
+                log::info!("No work found for now...");
+                shared_state.lock().await.idling = true;
+            } else {
+                shared_state.lock().await.idling = false;
             }
         }
 

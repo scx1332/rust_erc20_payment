@@ -53,10 +53,10 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
 pub async fn generate_transaction_batch(
     conn: &mut SqliteConnection,
     chain_id: u64,
-    from_addr_pool: Vec<Address>,
+    from_addr_pool: &[Address],
     token_addr: Option<Address>,
-    addr_pool: Vec<Address>,
-    amount_pool: Vec<U256>,
+    addr_pool: &[Address],
+    amount_pool: &[U256],
     number_of_transfers: usize,
 ) -> Result<(), PaymentError> {
     //thread rng
@@ -74,8 +74,9 @@ pub async fn generate_transaction_batch(
             .await
             .map_err(err_from!())?;
         log::info!(
-            "Generated token transfer: {:?} {}/{}",
-            token_transfer,
+            "Generated token transfer: from: {} to: {} {}/{}",
+            token_transfer.from_addr,
+            token_transfer.receiver_addr,
             transaction_no,
             number_of_transfers
         );

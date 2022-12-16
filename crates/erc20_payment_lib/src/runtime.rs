@@ -5,11 +5,10 @@ use crate::error::PaymentError;
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
 
-use crate::{config};
+use crate::config;
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
-
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -18,6 +17,7 @@ use web3::types::{Address, U256};
 
 pub struct SharedState {
     pub inserted: usize,
+    pub idling: bool,
 }
 #[allow(unused)]
 pub struct ValidatedOptions {
@@ -107,9 +107,9 @@ pub async fn start_payment_engine(
 
     let ps = payment_setup.clone();
 
-    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0 }));
-
-    let jh = tokio::spawn(async move { service_loop(&mut conn, &ps).await });
+    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0, idling: false }));
+    let shared_state_clone = shared_state.clone();
+    let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });
 
     Ok(PaymentRuntime {
         runtime_handle: jh,

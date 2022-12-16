@@ -1,14 +1,13 @@
+mod options;
+
 use std::env;
-
-use erc20_payment_lib::{config, err_custom_create};
-
-use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
-
-use erc20_payment_lib::misc::{display_private_keys, load_private_keys};
-use erc20_payment_lib::runtime::start_payment_engine;
-use options::validated_cli;
-
-pub mod options;
+use erc20_payment_lib::{
+    config, err_custom_create,
+    error::{CustomError, ErrorBag, PaymentError},
+    misc::{display_private_keys, load_private_keys},
+    runtime::start_payment_engine,
+};
+use crate::options::validated_cli;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
