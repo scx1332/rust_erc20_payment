@@ -2,7 +2,6 @@ use crate::db::operations::update_tx;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::{err_create, err_custom_create, err_from};
-use rust_decimal::Decimal;
 use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::time::Duration;
@@ -88,7 +87,7 @@ pub async fn process_transaction(
             .balance(from_addr, None)
             .await
             .map_err(err_from!())?;
-        let expected_gas_balance = U256::from(chain_setup.max_fee_per_gas)
+        let expected_gas_balance = chain_setup.max_fee_per_gas
             * U256::from(chain_setup.gas_left_warning_limit);
         if gas_balance < expected_gas_balance {
             let msg = if gas_balance.is_zero() {
