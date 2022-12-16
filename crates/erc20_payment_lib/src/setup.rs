@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::error::{CustomError, ErrorBag};
-use crate::eth::get_eth_addr_from_secret;
+
 use crate::utils::gwei_to_u256;
 use crate::{err_custom_create, err_from};
 use rand::Rng;

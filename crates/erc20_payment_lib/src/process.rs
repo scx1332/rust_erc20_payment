@@ -87,8 +87,8 @@ pub async fn process_transaction(
             .balance(from_addr, None)
             .await
             .map_err(err_from!())?;
-        let expected_gas_balance = chain_setup.max_fee_per_gas
-            * U256::from(chain_setup.gas_left_warning_limit);
+        let expected_gas_balance =
+            chain_setup.max_fee_per_gas * U256::from(chain_setup.gas_left_warning_limit);
         if gas_balance < expected_gas_balance {
             let msg = if gas_balance.is_zero() {
                 format!("Account {} gas balance", chain_setup.currency_symbol)

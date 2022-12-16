@@ -310,7 +310,7 @@ pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
-    let mut call_request = dao_to_call_request(web3_tx_dao)?;
+    let call_request = dao_to_call_request(web3_tx_dao)?;
     if let Some(gas) = call_request.gas {
         log::debug!(
             "Check transaction without gas estimation: {:?}",

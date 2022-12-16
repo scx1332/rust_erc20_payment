@@ -3,9 +3,6 @@ use erc20_payment_lib::{config, err_custom_create, err_from};
 
 use erc20_payment_lib::error::PaymentError;
 
-
-
-
 use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{
     create_test_amount_pool, display_private_keys, generate_transaction_batch, load_private_keys,

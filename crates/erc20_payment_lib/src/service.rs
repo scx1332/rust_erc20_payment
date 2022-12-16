@@ -165,7 +165,7 @@ type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
 
 pub async fn gather_transactions_pre(
     conn: &mut SqliteConnection,
-    payment_setup: &PaymentSetup,
+    _payment_setup: &PaymentSetup,
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 

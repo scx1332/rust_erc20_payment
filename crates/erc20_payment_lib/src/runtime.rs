@@ -1,16 +1,16 @@
 use crate::db::create_sqlite_connection;
-use crate::db::operations::insert_token_transfer;
+
 use crate::error::PaymentError;
-use crate::eth::get_eth_addr_from_secret;
+
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
-use crate::transaction::create_token_transfer;
-use crate::{config, err_from};
+
+use crate::{config};
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
 
-use crate::error::ErrorBag;
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
