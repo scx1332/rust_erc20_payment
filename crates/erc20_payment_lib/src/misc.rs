@@ -103,9 +103,11 @@ pub fn load_private_keys(str: &str) -> Result<(Vec<SecretKey>, Vec<Address>), Pa
 
 pub fn display_private_keys(keys: &[SecretKey]) {
     let mut account_no = 1;
-    if keys.len() > 0 {
+    if keys.is_empty() {
+        log::info!("No Eth accounts loaded");
+    } else {
         for key in keys {
-            let public_addr = get_eth_addr_from_secret(&key);
+            let public_addr = get_eth_addr_from_secret(key);
             if keys.len() >= 10 {
                 log::info!("Eth account loaded {:02}: {:?}", account_no, public_addr);
             } else {
@@ -113,7 +115,5 @@ pub fn display_private_keys(keys: &[SecretKey]) {
             }
             account_no += 1;
         }
-    } else {
-        log::info!("No Eth accounts loaded");
     }
 }

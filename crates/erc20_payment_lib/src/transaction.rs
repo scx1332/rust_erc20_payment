@@ -30,7 +30,7 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallReque
     Ok(CallRequest {
         from: Some(Address::from_str(&web3_tx_dao.from_addr).map_err(err_from!())?),
         to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
-        gas: web3_tx_dao.gas_limit.map(|gas_limit| U256::from(gas_limit)),
+        gas: web3_tx_dao.gas_limit.map(U256::from),
         gas_price: None,
         value: Some(U256::from_dec_str(&web3_tx_dao.val).map_err(err_from!())?),
         data: decode_data_to_bytes(web3_tx_dao)?,
