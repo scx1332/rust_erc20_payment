@@ -57,12 +57,6 @@ where
     }
 }
 
-
-
-
-
-
-
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
         return Err(err_custom_create!("No .env file found: {}", err));
@@ -70,10 +64,8 @@ async fn main_internal() -> Result<(), PaymentError> {
     env_logger::init();
     let cli = validated_cli()?;
 
-
     let (private_keys, _public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
     display_private_keys(&private_keys);
-
 
     let config = config::Config::load("config-payments.toml")?;
 

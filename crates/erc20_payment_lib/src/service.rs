@@ -824,13 +824,15 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
 
         if current_time
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
+            && !process_tx_needed
         {
             log::info!("Gathering transfers...");
             let mut token_transfer_map = match gather_transactions_pre(conn, payment_setup).await {
                 Ok(token_transfer_map) => token_transfer_map,
                 Err(e) => {
                     log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);
-                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep))
+                        .await;
                     continue;
                 }
             };

@@ -9,10 +9,10 @@ use sqlx::SqliteConnection;
 use crate::err_from;
 use crate::error::PaymentError;
 use crate::error::*;
+use crate::eth::get_eth_addr_from_secret;
 use rand::Rng;
 use secp256k1::SecretKey;
 use web3::types::{Address, U256};
-use crate::eth::get_eth_addr_from_secret;
 
 #[allow(unused)]
 pub fn null_address_pool() -> Result<Vec<Address>, PaymentError> {

@@ -20,7 +20,9 @@ pub struct ProviderSetup {
 #[derive(Clone, Debug)]
 pub struct ChainSetup {
     pub providers: Vec<ProviderSetup>,
+    pub currency_symbol: String,
     pub max_fee_per_gas: U256,
+    pub gas_left_warning_limit: u64,
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<Address>,
@@ -96,6 +98,8 @@ impl PaymentSetup {
                     transaction_timeout: chain_config.1.transaction_timeout,
                     skip_multi_contract_check,
                     confirmation_blocks: chain_config.1.confirmation_blocks,
+                    gas_left_warning_limit: chain_config.1.gas_left_warning_limit,
+                    currency_symbol: chain_config.1.currency_symbol.clone(),
                 },
             );
         }

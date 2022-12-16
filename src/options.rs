@@ -29,16 +29,16 @@ pub struct ProcessOptions {
     skip_multi_contract_check: bool,
 
     #[structopt(
-    long = "service-sleep",
-    help = "Sleep time between service loops in seconds",
-    default_value = "10"
+        long = "service-sleep",
+        help = "Sleep time between service loops in seconds",
+        default_value = "10"
     )]
     service_sleep: u64,
 
     #[structopt(
-    long = "process-sleep",
-    help = "Sleep time between process loops in seconds",
-    default_value = "10"
+        long = "process-sleep",
+        help = "Sleep time between process loops in seconds",
+        default_value = "10"
     )]
     process_sleep: u64,
 }

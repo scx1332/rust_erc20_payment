@@ -7,7 +7,10 @@ use erc20_payment_lib::eth::get_eth_addr_from_secret;
 use secp256k1::SecretKey;
 
 use erc20_payment_lib::error::{CustomError, ErrorBag};
-use erc20_payment_lib::misc::{create_test_amount_pool, display_private_keys, generate_transaction_batch, load_private_keys, ordered_address_pool};
+use erc20_payment_lib::misc::{
+    create_test_amount_pool, display_private_keys, generate_transaction_batch, load_private_keys,
+    ordered_address_pool,
+};
 use sqlx::Connection;
 use std::env;
 use std::str::FromStr;

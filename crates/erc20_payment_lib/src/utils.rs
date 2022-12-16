@@ -48,7 +48,6 @@ pub fn gwei_to_u256(gas: f64) -> Result<U256, ConversionError> {
     Ok(U256::from((gas * GWEI) as u64))
 }
 
-#[allow(unused)]
 ///good from one gwei up to at least one billion ethers
 pub fn rust_dec_to_u256(
     dec_amount: rust_decimal::Decimal,
@@ -88,6 +87,28 @@ pub fn rust_dec_to_u256(
         ConversionError::from(format!("Number cannot be converted to u128 {}", dec_mul))
     })?;
     Ok(U256::from(u128))
+}
+
+pub fn u256_to_rust_dec(
+    amount: U256,
+    decimals: Option<u32>,
+) -> Result<rust_decimal::Decimal, ConversionError> {
+    let num_decimals = decimals.unwrap_or(18);
+    if num_decimals > 18 {
+        return Err(ConversionError {
+            msg: format!("Decimals: {num_decimals} cannot be greater than 18"),
+        });
+    }
+
+    let dec_base = if num_decimals == 18 {
+        Decimal::new(1000000000000000000, 0)
+    } else if num_decimals == 6 {
+        Decimal::new(1000000, 0)
+    } else {
+        Decimal::from(10_u128.pow(num_decimals as u32))
+    };
+
+    Ok(Decimal::from(amount.as_u128()) / dec_base)
 }
 
 #[cfg(test)]
