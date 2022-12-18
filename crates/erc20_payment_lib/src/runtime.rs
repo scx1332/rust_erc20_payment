@@ -107,7 +107,10 @@ pub async fn start_payment_engine(
 
     let ps = payment_setup.clone();
 
-    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0, idling: false }));
+    let shared_state = Arc::new(Mutex::new(SharedState {
+        inserted: 0,
+        idling: false,
+    }));
     let shared_state_clone = shared_state.clone();
     let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });
 

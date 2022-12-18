@@ -1,13 +1,15 @@
-use std::env;
+use erc20_payment_lib::db::create_sqlite_connection;
+use erc20_payment_lib::misc::{
+    create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
+};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
     misc::{display_private_keys, load_private_keys},
     runtime::start_payment_engine,
 };
+use std::env;
 use structopt::StructOpt;
-use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::misc::{create_test_amount_pool, generate_transaction_batch, ordered_address_pool};
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
@@ -23,7 +25,6 @@ struct TestOptions {
     #[structopt(long = "amounts-pool-size", default_value = "10")]
     amounts_pool_size: usize,
 }
-
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -47,9 +48,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     let sp = start_payment_engine(None, &private_keys, config).await?;
     loop {
         {
-            let idling = {
-                sp.shared_state.lock().await.idling
-            };
+            let idling = { sp.shared_state.lock().await.idling };
             let ignore_idling = true;
             if idling || ignore_idling {
                 generate_transaction_batch(
@@ -60,7 +59,8 @@ async fn main_internal() -> Result<(), PaymentError> {
                     &addr_pool,
                     &amount_pool,
                     cli.generate_count,
-                ).await?;
+                )
+                .await?;
             }
             tokio::time::sleep(std::time::Duration::from_secs(10)).await;
         }

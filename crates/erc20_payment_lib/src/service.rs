@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use std::str::FromStr;
-use std::sync::{Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::db::operations::{
@@ -22,9 +22,9 @@ use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
 
+use crate::runtime::SharedState;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
-use crate::runtime::SharedState;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -785,7 +785,11 @@ pub async fn process_transactions(
     Ok(())
 }
 
-pub async fn service_loop(shared_state: Arc<Mutex<SharedState>>, conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
+pub async fn service_loop(
+    shared_state: Arc<Mutex<SharedState>>,
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
     let mut last_update_time1 =
