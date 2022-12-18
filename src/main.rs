@@ -3,7 +3,9 @@ mod options;
 use crate::options::validated_cli;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{accounts, allowances, greet, transfers, ServerData};
+use erc20_payment_lib::server::{
+    accounts, allowances, greet, transactions, transfers, tx_details, ServerData,
+};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -44,6 +46,8 @@ async fn main_internal() -> Result<(), PaymentError> {
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
             .route("/allowances", web::get().to(allowances))
+            .route("/transactions", web::get().to(transactions))
+            .route("/tx/{tx_id}", web::get().to(tx_details))
             .route("/transfers", web::get().to(transfers))
             .route("/transfers/{tx_id}", web::get().to(transfers))
             .route("/accounts", web::get().to(accounts))
