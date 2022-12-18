@@ -1,16 +1,15 @@
 use crate::db::create_sqlite_connection;
-use crate::db::operations::insert_token_transfer;
+
 use crate::error::PaymentError;
-use crate::eth::get_eth_addr_from_secret;
+
 use crate::service::service_loop;
 use crate::setup::PaymentSetup;
-use crate::transaction::create_token_transfer;
-use crate::{config, err_from};
+
+use crate::config;
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
 
-use crate::error::ErrorBag;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -18,6 +17,7 @@ use web3::types::{Address, U256};
 
 pub struct SharedState {
     pub inserted: usize,
+    pub idling: bool,
 }
 #[allow(unused)]
 pub struct ValidatedOptions {
@@ -54,6 +54,7 @@ pub struct PaymentRuntime {
     pub conn: Arc<Mutex<SqliteConnection>>,
 }
 
+/*
 async fn process_cli(
     conn: &mut SqliteConnection,
     cli: &ValidatedOptions,
@@ -78,16 +79,17 @@ async fn process_cli(
 
     //service_loop(&mut conn, &web3, &secret_key).await;
 }
+*/
 
 pub async fn start_payment_engine(
     cli: Option<ValidatedOptions>,
-    secret_key: &SecretKey,
+    secret_keys: &[SecretKey],
     config: config::Config,
 ) -> Result<PaymentRuntime, PaymentError> {
     let cli = cli.unwrap_or_default();
     let payment_setup = PaymentSetup::new(
         &config,
-        secret_key,
+        secret_keys.to_vec(),
         !cli.keep_running,
         cli.generate_tx_only,
         cli.skip_multi_contract_check,
@@ -101,13 +103,13 @@ pub async fn start_payment_engine(
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
     let conn2 = create_sqlite_connection(&db_conn, false).await?;
 
-    process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
+    //process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
     let ps = payment_setup.clone();
 
-    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0 }));
-
-    let jh = tokio::spawn(async move { service_loop(&mut conn, &ps).await });
+    let shared_state = Arc::new(Mutex::new(SharedState { inserted: 0, idling: false }));
+    let shared_state_clone = shared_state.clone();
+    let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });
 
     Ok(PaymentRuntime {
         runtime_handle: jh,

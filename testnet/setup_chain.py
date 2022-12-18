@@ -10,6 +10,7 @@ import threading
 import time
 import web3
 from eth_account import Account
+from dotenv import load_dotenv
 
 
 def gen_key_address_pair():
@@ -30,6 +31,7 @@ def capture_output(process):
 
 
 async def main():
+    load_dotenv()
     chain_num = 987789
     tmp_dir = 'tmp/tmp'
     chain_dir = f"{tmp_dir}/chain{chain_num}"
@@ -57,8 +59,6 @@ async def main():
         deploy_contracts = True
 
         os.makedirs(tmp_dir)
-
-
 
         print(f"Loaded signer account: {signer_address}")
 
@@ -91,6 +91,16 @@ async def main():
                          + "0000000000000000000000000000000000000000000000000000000000000000",
             "alloc": {
                 address1: {"balance": '1000000000000000000000000000'},
+                "0x001066290077e38f222cc6009c0c7a91d5192303": {"balance": '1000000000000000000000000000'},
+                "0x00203654961340f35726ce63eb4bf6912a62022e": {"balance": '1000000000000000000000000000'},
+                "0x003047f2f6b0c66a07e60f149276211dc2ff7489": {"balance": '1000000000000000000000000000'},
+                "0x0040bcefcb706641104a9feb95ad59830c30671b": {"balance": '1000000000000000000000000000'},
+                "0x005014c6eea59620aea92298f8af003bed130ad0": {"balance": '1000000000000000000000000000'},
+                "0x0060967f2181b0e496b1a1a0389b9c2f3d8dc2a9": {"balance": '1000000000000000000000000000'},
+                "0x0070619c46c4b2738c0ce73d63bbe061391fd80f": {"balance": '1000000000000000000000000000'},
+                "0x0080dc12044e18c8f53c7ccced0ef776d4b3bfd8": {"balance": '1000000000000000000000000000'},
+                "0x0090167b580b0b3c79e24f6b919762b9e5cf0a05": {"balance": '1000000000000000000000000000'},
+                "0x0100652743be2dc18637c05bf5e49cfc87f30243": {"balance": '1000000000000000000000000000'}
             }
         }
 

@@ -1,59 +1,13 @@
-use secp256k1::SecretKey;
-use std::str::FromStr;
-use std::{env, fmt};
+mod options;
 
-use web3::contract::Contract;
-use web3::transports::Http;
-
-use erc20_payment_lib::{config, err_custom_create};
-use web3::types::Address;
-
-use erc20_payment_lib::error::{CustomError, ErrorBag, PaymentError};
-use erc20_payment_lib::runtime::start_payment_engine;
-use options::validated_cli;
-
-pub mod options;
-
-struct _Web3ChainConfig {
-    glm_token: Address,
-    chain_id: u64,
-    erc20_contract: Contract<Http>,
-}
-
-struct HexSlice<'a>(&'a [u8]);
-
-impl<'a> HexSlice<'a> {
-    fn new<T>(data: &'a T) -> HexSlice<'a>
-    where
-        T: ?Sized + AsRef<[u8]> + 'a,
-    {
-        HexSlice(data.as_ref())
-    }
-}
-
-// You can choose to implement multiple traits, like Lower and UpperHex
-impl fmt::Display for HexSlice<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for byte in self.0 {
-            // Decide if you want to pad the value or have spaces inbetween, etc.
-            write!(f, "{:X} ", byte)?;
-        }
-        Ok(())
-    }
-}
-
-trait HexDisplayExt {
-    fn hex_display(&self) -> HexSlice<'_>;
-}
-
-impl<T> HexDisplayExt for T
-where
-    T: ?Sized + AsRef<[u8]>,
-{
-    fn hex_display(&self) -> HexSlice<'_> {
-        HexSlice::new(self)
-    }
-}
+use std::env;
+use erc20_payment_lib::{
+    config, err_custom_create,
+    error::{CustomError, ErrorBag, PaymentError},
+    misc::{display_private_keys, load_private_keys},
+    runtime::start_payment_engine,
+};
+use crate::options::validated_cli;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -61,10 +15,13 @@ async fn main_internal() -> Result<(), PaymentError> {
     }
     env_logger::init();
     let cli = validated_cli()?;
-    let private_key = SecretKey::from_str(&env::var("ETH_PRIVATE_KEY").unwrap()).unwrap();
+
+    let (private_keys, _public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
+    display_private_keys(&private_keys);
+
     let config = config::Config::load("config-payments.toml")?;
 
-    let sp = start_payment_engine(Some(cli), &private_key, config).await?;
+    let sp = start_payment_engine(Some(cli), &private_keys, config).await?;
     sp.runtime_handle
         .await
         .map_err(|e| err_custom_create!("Service loop failed: {:?}", e))?;

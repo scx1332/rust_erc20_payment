@@ -9,7 +9,9 @@ use sqlx::SqliteConnection;
 use crate::err_from;
 use crate::error::PaymentError;
 use crate::error::*;
+use crate::eth::get_eth_addr_from_secret;
 use rand::Rng;
+use secp256k1::SecretKey;
 use web3::types::{Address, U256};
 
 #[allow(unused)]
@@ -51,10 +53,10 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
 pub async fn generate_transaction_batch(
     conn: &mut SqliteConnection,
     chain_id: u64,
-    from: Address,
+    from_addr_pool: &[Address],
     token_addr: Option<Address>,
-    addr_pool: Vec<Address>,
-    amount_pool: Vec<U256>,
+    addr_pool: &[Address],
+    amount_pool: &[U256],
     number_of_transfers: usize,
 ) -> Result<(), PaymentError> {
     //thread rng
@@ -66,13 +68,15 @@ pub async fn generate_transaction_batch(
     for transaction_no in 0..number_of_transfers {
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
+        let from = from_addr_pool[rng.gen_range(0..from_addr_pool.len())];
         let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
         let _token_transfer = insert_token_transfer(conn, &token_transfer)
             .await
             .map_err(err_from!())?;
         log::info!(
-            "Generated token transfer: {:?} {}/{}",
-            token_transfer,
+            "Generated token transfer: from: {} to: {} {}/{}",
+            token_transfer.from_addr,
+            token_transfer.receiver_addr,
             transaction_no,
             number_of_transfers
         );
@@ -84,4 +88,33 @@ pub async fn generate_transaction_batch(
         }
     }
     Ok(())
+}
+
+pub fn load_private_keys(str: &str) -> Result<(Vec<SecretKey>, Vec<Address>), PaymentError> {
+    let mut keys = Vec::new();
+    let mut addrs = Vec::new();
+    for key in str.split(',') {
+        let secret = SecretKey::from_str(key).unwrap();
+        let public_addr = get_eth_addr_from_secret(&secret);
+        keys.push(secret);
+        addrs.push(public_addr);
+    }
+    Ok((keys, addrs))
+}
+
+pub fn display_private_keys(keys: &[SecretKey]) {
+    let mut account_no = 1;
+    if keys.is_empty() {
+        log::info!("No Eth accounts loaded");
+    } else {
+        for key in keys {
+            let public_addr = get_eth_addr_from_secret(key);
+            if keys.len() >= 10 {
+                log::info!("Eth account loaded {:02}: {:?}", account_no, public_addr);
+            } else {
+                log::info!("Eth account loaded {}: {:?}", account_no, public_addr);
+            }
+            account_no += 1;
+        }
+    }
 }

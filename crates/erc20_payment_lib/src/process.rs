@@ -6,16 +6,17 @@ use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::time::Duration;
 use web3::transports::Http;
-use web3::types::Address;
+use web3::types::{Address, U256};
 use web3::Web3;
 
-use crate::eth::get_transaction_count;
+use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
 use crate::model::Web3TransactionDao;
 use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;
 use crate::transaction::find_receipt;
 use crate::transaction::send_transaction;
 use crate::transaction::sign_transaction;
+use crate::utils::u256_to_rust_dec;
 
 #[derive(Debug)]
 pub enum ProcessTransactionResult {
@@ -58,6 +59,16 @@ pub async fn process_transaction(
     })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| err_create!(TransactionFailedError::new("Failed to parse from_addr")))?;
+
+    let private_key = payment_setup
+        .secret_keys
+        .iter()
+        .find(|sk| get_eth_addr_from_secret(sk) == from_addr)
+        .ok_or(err_create!(TransactionFailedError::new(&format!(
+            "Failed to find private key for address: {}",
+            from_addr
+        ))))?;
+
     let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
         nonce
     } else {
@@ -67,6 +78,37 @@ pub async fn process_transaction(
         web3_tx_dao.nonce = Some(nonce);
         nonce
     };
+
+    //this block is optional, just to warn user about low gas
+    let perform_balance_check = true;
+    if perform_balance_check {
+        let gas_balance = web3
+            .eth()
+            .balance(from_addr, None)
+            .await
+            .map_err(err_from!())?;
+        let expected_gas_balance =
+            chain_setup.max_fee_per_gas * U256::from(chain_setup.gas_left_warning_limit);
+        if gas_balance < expected_gas_balance {
+            let msg = if gas_balance.is_zero() {
+                format!("Account {} gas balance", chain_setup.currency_symbol)
+            } else {
+                format!(
+                    "Account {} gas balance is very low",
+                    chain_setup.currency_symbol
+                )
+            };
+
+            log::warn!(
+                "{} on chain {}, account: {:?}, gas_balance: {}, expected_gas_balance: {}",
+                msg,
+                chain_id,
+                from_addr,
+                u256_to_rust_dec(gas_balance, Some(18)).map_err(err_from!())?,
+                u256_to_rust_dec(expected_gas_balance, Some(18)).map_err(err_from!())?
+            );
+        }
+    }
 
     //timeout transaction when it is not confirmed after transaction_timeout seconds
     if let Some(first_processed) = web3_tx_dao.first_processed {
@@ -91,12 +133,24 @@ pub async fn process_transaction(
         match check_transaction(web3, web3_tx_dao).await {
             Ok(_) => {}
             Err(err) => {
+                let err_msg = format!("{}", err);
+                if err_msg
+                    .to_lowercase()
+                    .contains("insufficient funds for transfer")
+                {
+                    log::error!(
+                        "Insufficient {} for tx id: {}",
+                        chain_setup.currency_symbol,
+                        web3_tx_dao.id
+                    );
+                    return Err(err);
+                }
                 log::error!("Error while checking transaction: {}", err);
                 return Err(err);
             }
         }
         log::debug!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-        sign_transaction(web3, web3_tx_dao, &payment_setup.secret_key).await?;
+        sign_transaction(web3, web3_tx_dao, private_key).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
 

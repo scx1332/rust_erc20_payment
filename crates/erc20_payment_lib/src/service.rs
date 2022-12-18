@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use std::str::FromStr;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
 
 use crate::db::operations::{
     find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
@@ -22,6 +24,7 @@ use crate::{err_create, err_custom_create, err_from};
 
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
+use crate::runtime::SharedState;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -165,7 +168,7 @@ type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
 
 pub async fn gather_transactions_pre(
     conn: &mut SqliteConnection,
-    payment_setup: &PaymentSetup,
+    _payment_setup: &PaymentSetup,
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 
@@ -181,11 +184,13 @@ pub async fn gather_transactions_pre(
                     update_token_transfer(conn, f).await.map_err(err_from!())?;
                     continue;
                 }
+                //@TODO: check if from_addr is in a wallet
+                /*
                 if from_addr != payment_setup.pub_address {
                     f.error = Some("no from_addr in wallet".to_string());
                     update_token_transfer(conn, f).await.map_err(err_from!())?;
                     continue;
-                }
+                }*/
             }
             Err(_err) => {
                 f.error = Some("Invalid from address".to_string());
@@ -780,7 +785,7 @@ pub async fn process_transactions(
     Ok(())
 }
 
-pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
+pub async fn service_loop(shared_state: Arc<Mutex<SharedState>>, conn: &mut SqliteConnection, payment_setup: &PaymentSetup) {
     let process_transactions_interval = 5;
     let gather_transactions_interval = 20;
     let mut last_update_time1 =
@@ -822,13 +827,15 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
 
         if current_time
             > last_update_time2 + chrono::Duration::seconds(gather_transactions_interval)
+            && !process_tx_needed
         {
             log::info!("Gathering transfers...");
             let mut token_transfer_map = match gather_transactions_pre(conn, payment_setup).await {
                 Ok(token_transfer_map) => token_transfer_map,
                 Err(e) => {
                     log::error!("Error in gather transactions, driver will be stuck, Fix DB to continue {:?}", e);
-                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep))
+                        .await;
                     continue;
                 }
             };
@@ -837,6 +844,8 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                 Ok(count) => {
                     if count > 0 {
                         process_tx_needed = true;
+                    } else {
+                        log::info!("No new transfers to process");
                     }
                 }
                 Err(e) => {
@@ -848,8 +857,8 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
                                     //process transaction instantly
                                     process_tx_needed = true;
                                     process_tx_instantly = true;
+                                    shared_state.lock().await.idling = false;
                                     continue;
-                                    //process_tx_needed = true;
                                 }
                                 Err(e) => {
                                     log::error!("Error in process allowance: {}", e);
@@ -869,6 +878,12 @@ pub async fn service_loop(conn: &mut SqliteConnection, payment_setup: &PaymentSe
             if payment_setup.finish_when_done && !process_tx_needed {
                 log::info!("No more work to do, exiting...");
                 break;
+            }
+            if !process_tx_needed {
+                log::info!("No work found for now...");
+                shared_state.lock().await.idling = true;
+            } else {
+                shared_state.lock().await.idling = false;
             }
         }
 

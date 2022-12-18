@@ -25,9 +25,10 @@ pub struct MultiContractSettings {
 pub struct Chain {
     pub network_id: usize,
     pub rpc_endpoints: Vec<String>,
-    pub currency_symbol: Option<String>,
+    pub currency_symbol: String,
     pub priority_fee: f64,
     pub max_fee_per_gas: f64,
+    pub gas_left_warning_limit: u64,
     pub token: Option<Token>,
     pub multi_contract: Option<MultiContractSettings>,
     pub transaction_timeout: u64,

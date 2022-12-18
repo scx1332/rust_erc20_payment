@@ -30,7 +30,7 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallReque
     Ok(CallRequest {
         from: Some(Address::from_str(&web3_tx_dao.from_addr).map_err(err_from!())?),
         to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
-        gas: web3_tx_dao.gas_limit.map(|gas_limit| U256::from(gas_limit)),
+        gas: web3_tx_dao.gas_limit.map(U256::from),
         gas_price: None,
         value: Some(U256::from_dec_str(&web3_tx_dao.val).map_err(err_from!())?),
         data: decode_data_to_bytes(web3_tx_dao)?,
@@ -55,9 +55,11 @@ pub fn dao_to_transaction(
                 .ok_or_else(|| err_custom_create!("Missing nonce"))?,
         )),
         to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
-        gas: U256::from(web3_tx_dao.gas_limit.ok_or(err_custom_create!(
-            "Missing gas limit"
-        ))?),
+        gas: U256::from(
+            web3_tx_dao
+                .gas_limit
+                .ok_or(err_custom_create!("Missing gas limit"))?,
+        ),
         gas_price: None,
         value: U256::from_dec_str(&web3_tx_dao.val).map_err(err_from!())?,
         data: decode_data_to_bytes(web3_tx_dao)?.unwrap_or_default(),
@@ -308,21 +310,35 @@ pub async fn check_transaction(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
 ) -> Result<(), PaymentError> {
-    let mut call_request = dao_to_call_request(web3_tx_dao)?;
-    call_request.gas = None;
-    log::debug!("check_transaction 2: {:?}", call_request);
-    let gas_est = web3
-        .eth()
-        .estimate_gas(call_request, None)
-        .await
-        .map_err(err_from!())?;
+    let call_request = dao_to_call_request(web3_tx_dao)?;
+    if let Some(gas) = call_request.gas {
+        log::debug!(
+            "Check transaction without gas estimation: {:?}",
+            call_request
+        );
+        let _resp = web3
+            .eth()
+            .call(call_request, None)
+            .await
+            .map_err(err_from!())?;
 
-    let add_gas_safety_margin: U256 = U256::from(20000);
-    let gas_limit = gas_est + add_gas_safety_margin;
-    log::info!("Set gas limit basing on gas estimation: {gas_est}");
-    web3_tx_dao.gas_limit = Some(gas_limit.as_u64() as i64);
+        log::info!("Using already set gas limit: {gas}");
+        Ok(())
+    } else {
+        log::debug!("Check transaction with gas estimation: {:?}", call_request);
+        let gas_est = web3
+            .eth()
+            .estimate_gas(call_request, None)
+            .await
+            .map_err(err_from!())?;
 
-    Ok(())
+        let add_gas_safety_margin: U256 = U256::from(20000);
+        let gas_limit = gas_est + add_gas_safety_margin;
+        log::info!("Set gas limit basing on gas estimation: {gas_est}");
+        web3_tx_dao.gas_limit = Some(gas_limit.as_u64() as i64);
+
+        Ok(())
+    }
 }
 
 pub async fn sign_transaction(

@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::error::PaymentError;
 use crate::error::{CustomError, ErrorBag};
-use crate::eth::get_eth_addr_from_secret;
+
 use crate::utils::gwei_to_u256;
 use crate::{err_custom_create, err_from};
 use rand::Rng;
@@ -20,7 +20,9 @@ pub struct ProviderSetup {
 #[derive(Clone, Debug)]
 pub struct ChainSetup {
     pub providers: Vec<ProviderSetup>,
+    pub currency_symbol: String,
     pub max_fee_per_gas: U256,
+    pub gas_left_warning_limit: u64,
     pub priority_fee: U256,
     pub glm_address: Option<Address>,
     pub multi_contract_address: Option<Address>,
@@ -33,8 +35,8 @@ pub struct ChainSetup {
 #[derive(Clone, Debug)]
 pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
-    pub secret_key: SecretKey,
-    pub pub_address: Address,
+    pub secret_keys: Vec<SecretKey>,
+    //pub pub_address: Address,
     pub finish_when_done: bool,
     pub generate_tx_only: bool,
     pub skip_multi_contract_check: bool,
@@ -45,7 +47,7 @@ pub struct PaymentSetup {
 impl PaymentSetup {
     pub fn new(
         config: &Config,
-        secret_key: &SecretKey,
+        secret_keys: Vec<SecretKey>,
         finish_when_done: bool,
         generate_txs_only: bool,
         skip_multi_contract_check: bool,
@@ -54,8 +56,8 @@ impl PaymentSetup {
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
-            secret_key: *secret_key,
-            pub_address: get_eth_addr_from_secret(secret_key),
+            secret_keys,
+            //pub_address: get_eth_addr_from_secret(secret_key),
             finish_when_done,
             generate_tx_only: generate_txs_only,
             skip_multi_contract_check,
@@ -96,6 +98,8 @@ impl PaymentSetup {
                     transaction_timeout: chain_config.1.transaction_timeout,
                     skip_multi_contract_check,
                     confirmation_blocks: chain_config.1.confirmation_blocks,
+                    gas_left_warning_limit: chain_config.1.gas_left_warning_limit,
+                    currency_symbol: chain_config.1.currency_symbol.clone(),
                 },
             );
         }
