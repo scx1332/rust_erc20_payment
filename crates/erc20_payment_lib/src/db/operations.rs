@@ -1,6 +1,5 @@
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
-use actix_web::web::BufMut;
-use sqlx::{SqliteConnection, Transaction};
+use sqlx::{SqliteConnection};
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,

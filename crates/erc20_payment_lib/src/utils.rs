@@ -48,6 +48,16 @@ pub fn gwei_to_u256(gas: f64) -> Result<U256, ConversionError> {
     Ok(U256::from((gas * GWEI) as u64))
 }
 
+fn compute_base(num_decimals: u32) -> rust_decimal::Decimal {
+    if num_decimals == 18 {
+        Decimal::new(1000000000000000000, 0)
+    } else if num_decimals == 6 {
+        Decimal::new(1000000, 0)
+    } else {
+        Decimal::from(10_u128.pow(num_decimals))
+    }
+}
+
 ///good from one gwei up to at least one billion ethers
 pub fn rust_dec_to_u256(
     dec_amount: rust_decimal::Decimal,
@@ -60,13 +70,7 @@ pub fn rust_dec_to_u256(
         });
     }
 
-    let dec_base = if num_decimals == 18 {
-        Decimal::new(1000000000000000000, 0)
-    } else if num_decimals == 6 {
-        Decimal::new(1000000, 0)
-    } else {
-        Decimal::from(10_u128.pow(num_decimals as u32))
-    };
+    let dec_base = compute_base(num_decimals);
     //println!("dec: {}, number scale: {}", dec_base, dec_base.scale());
 
     let dec_mul = dec_amount.checked_mul(dec_base).ok_or(ConversionError {
@@ -100,13 +104,7 @@ pub fn u256_to_rust_dec(
         });
     }
 
-    let dec_base = if num_decimals == 18 {
-        Decimal::new(1000000000000000000, 0)
-    } else if num_decimals == 6 {
-        Decimal::new(1000000, 0)
-    } else {
-        Decimal::from(10_u128.pow(num_decimals as u32))
-    };
+    let dec_base = compute_base(num_decimals);
 
     Ok(Decimal::from(amount.as_u128()) / dec_base)
 }

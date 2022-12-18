@@ -3,10 +3,10 @@ use crate::db::operations::{
     get_transaction,
 };
 use crate::eth::get_eth_addr_from_secret;
-use crate::runtime::{PaymentRuntime, SharedState};
+use crate::runtime::{SharedState};
 use crate::setup::PaymentSetup;
 use actix_web::web::Data;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
 use sqlx::SqliteConnection;
 use std::str::FromStr;
@@ -86,7 +86,7 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
     }))
 }
 
-pub async fn allowances(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
     let mut my_data = data.shared_state.lock().await;
     my_data.inserted += 1;
 
@@ -124,8 +124,8 @@ pub async fn allowances(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
     }))
 }
 
-pub async fn transactions(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
-    let mut my_data = data.shared_state.lock().await;
+pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
+    //let my_data = data.shared_state.lock().await;
 
     //todo: fix limits
     let txs = {
@@ -167,7 +167,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
         .map(|tx_id| i64::from_str(tx_id).ok())
         .unwrap_or(None);
 
-    let mut my_data = data.shared_state.lock().await;
+    //let my_data = data.shared_state.lock().await;
 
     let transfers = {
         let mut db_conn = data.db_connection.lock().await;
@@ -213,10 +213,10 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
     }))
 }
 
-pub async fn accounts(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
-    let name = req.match_info().get("name").unwrap_or("World");
-    let mut my_data = data.shared_state.lock().await;
-    my_data.inserted += 1;
+pub async fn accounts(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
+    //let name = req.match_info().get("name").unwrap_or("World");
+    //let mut my_data = data.shared_state.lock().await;
+    //my_data.inserted += 1;
 
     let public_addr = data
         .payment_setup
@@ -230,10 +230,10 @@ pub async fn accounts(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Res
     .to_string()
 }
 
-pub async fn greet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
     let name = req.match_info().get("name").unwrap_or("World");
-    let mut my_data = data.shared_state.lock().await;
-    my_data.inserted += 1;
+    //let mut my_data = data.shared_state.lock().await;
+    //my_data.inserted += 1;
 
-    format!("Hello {}!", my_data.inserted)
+    format!("Hello {}!", name)
 }
