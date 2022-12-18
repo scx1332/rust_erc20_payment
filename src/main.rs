@@ -34,7 +34,7 @@ async fn main_internal() -> Result<(), PaymentError> {
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     log::info!("connecting to sqlite file db: {}", db_conn);
-    let mut conn = create_sqlite_connection(&db_conn, true).await?;
+    let conn = create_sqlite_connection(&db_conn, true).await?;
 
     let server_data = web::Data::new(Box::new(ServerData {
         shared_state: sp.shared_state.clone(),
