@@ -41,6 +41,29 @@ pub struct ProcessOptions {
         default_value = "10"
     )]
     process_sleep: u64,
+
+    #[structopt(
+    long = "http-threads",
+    help = "Number of threads to use for the server",
+    default_value = "2"
+    )]
+    http_threads: u64,
+
+    #[structopt(
+    long = "http-port",
+    help = "Port number of the server",
+    default_value = "8080"
+    )]
+    http_port: u16,
+
+    #[structopt(
+    long = "http-addr",
+    help = "Bind address of the server",
+    default_value = "127.0.0.1"
+    )]
+    http_addr: String,
+
+
 }
 
 #[derive(Debug, StructOpt)]
@@ -185,6 +208,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 skip_multi_contract_check: transfer_options.skip_multi_contract_check,
                 service_sleep: transfer_options.service_sleep,
                 process_sleep: transfer_options.process_sleep,
+                http_port: 0,
+                http_addr: String::new(),
+                http_threads: 0,
             })
         }
         CliOptions::Test(test_options) => {
@@ -208,6 +234,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
                 skip_multi_contract_check: false,
                 service_sleep: 10,
                 process_sleep: 10,
+                http_port: 0,
+                http_addr: String::new(),
+                http_threads: 0,
             })
         }
         CliOptions::Process(process_options) => Ok(ValidatedOptions {
@@ -220,6 +249,9 @@ pub fn validated_cli() -> Result<ValidatedOptions, PaymentError> {
             skip_multi_contract_check: process_options.skip_multi_contract_check,
             service_sleep: process_options.service_sleep,
             process_sleep: process_options.process_sleep,
+            http_port: process_options.http_port,
+            http_addr: process_options.http_addr,
+            http_threads: process_options.http_threads,
         }),
     }
 }

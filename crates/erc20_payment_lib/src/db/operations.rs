@@ -1,5 +1,5 @@
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
-use sqlx::{SqliteConnection};
+use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,

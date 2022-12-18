@@ -30,7 +30,7 @@ async fn main_internal() -> Result<(), PaymentError> {
 
     let config = config::Config::load("config-payments.toml")?;
 
-    let sp = start_payment_engine(Some(cli), &private_keys, config).await?;
+    let sp = start_payment_engine(Some(cli.clone()), &private_keys, config).await?;
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     log::info!("connecting to sqlite file db: {}", db_conn);
@@ -41,6 +41,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         db_connection: Arc::new(Mutex::new(conn)),
         payment_setup: sp.setup.clone(),
     }));
+
     let server = HttpServer::new(move || {
         App::new()
             .app_data(server_data.clone())
@@ -53,7 +54,8 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route("/accounts", web::get().to(accounts))
             .route("/{name}", web::get().to(greet))
     })
-    .bind(("127.0.0.1", 8080))
+    .workers(cli.http_threads as usize)
+    .bind((cli.http_addr.as_str(), cli.http_port))
     .expect("Cannot run server")
     .run();
 

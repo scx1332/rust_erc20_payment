@@ -3,7 +3,7 @@ use crate::db::operations::{
     get_transaction,
 };
 use crate::eth::get_eth_addr_from_secret;
-use crate::runtime::{SharedState};
+use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
@@ -44,7 +44,6 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
         }
     };
 
-
     let transfers = {
         let mut db_conn = data.db_connection.lock().await;
         match get_token_transfers_by_tx(&mut db_conn, tx_id).await {
@@ -57,20 +56,20 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
         }
     };
     /*let json_transfers = transfers
-        .iter()
-        .map(|transfer| {
-            json!({
-                "id": transfer.id,
-                "chain_id": transfer.chain_id,
-                "tx_id": transfer.tx_id,
-                "from": transfer.from_addr,
-                "receiver": transfer.receiver_addr,
-                "token": transfer.token_addr,
-                "amount": transfer.token_amount,
-                "fee_paid": transfer.fee_paid,
-            })
+    .iter()
+    .map(|transfer| {
+        json!({
+            "id": transfer.id,
+            "chain_id": transfer.chain_id,
+            "tx_id": transfer.tx_id,
+            "from": transfer.from_addr,
+            "receiver": transfer.receiver_addr,
+            "token": transfer.token_addr,
+            "amount": transfer.token_amount,
+            "fee_paid": transfer.fee_paid,
         })
-        .collect::<Vec<_>>();*/
+    })
+    .collect::<Vec<_>>();*/
 
     web::Json(json!({
         "tx": tx,
@@ -185,22 +184,22 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
     };
 
     /*
-    let json_transfers = transfers
-        .iter()
-        .map(|transfer| {
-            json!({
-                "id": transfer.id,
-                "chain_id": transfer.chain_id,
-                "tx_id": transfer.tx_id,
-                "from": transfer.from_addr,
-                "receiver": transfer.receiver_addr,
-                "token": transfer.token_addr,
-                "amount": transfer.token_amount,
-                "fee_paid": transfer.fee_paid,
+        let json_transfers = transfers
+            .iter()
+            .map(|transfer| {
+                json!({
+                    "id": transfer.id,
+                    "chain_id": transfer.chain_id,
+                    "tx_id": transfer.tx_id,
+                    "from": transfer.from_addr,
+                    "receiver": transfer.receiver_addr,
+                    "token": transfer.token_addr,
+                    "amount": transfer.token_amount,
+                    "fee_paid": transfer.fee_paid,
+                })
             })
-        })
-        .collect::<Vec<_>>();
-*/
+            .collect::<Vec<_>>();
+    */
     web::Json(json!({
         "transfers": transfers,
     }))

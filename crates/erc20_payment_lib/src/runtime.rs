@@ -19,7 +19,8 @@ pub struct SharedState {
     pub inserted: usize,
     pub idling: bool,
 }
-#[allow(unused)]
+
+#[derive(Clone)]
 pub struct ValidatedOptions {
     pub receivers: Vec<Address>,
     pub amounts: Vec<U256>,
@@ -30,6 +31,9 @@ pub struct ValidatedOptions {
     pub skip_multi_contract_check: bool,
     pub service_sleep: u64,
     pub process_sleep: u64,
+    pub http_threads: u64,
+    pub http_port: u16,
+    pub http_addr: String,
 }
 
 impl Default for ValidatedOptions {
@@ -44,6 +48,9 @@ impl Default for ValidatedOptions {
             skip_multi_contract_check: false,
             service_sleep: 10,
             process_sleep: 10,
+            http_threads: 2,
+            http_port: 8080,
+            http_addr: "127.0.0.1".to_string()
         }
     }
 }
