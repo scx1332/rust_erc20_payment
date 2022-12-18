@@ -93,6 +93,9 @@ pub async fn generate_transaction_batch(
 pub fn load_private_keys(str: &str) -> Result<(Vec<SecretKey>, Vec<Address>), PaymentError> {
     let mut keys = Vec::new();
     let mut addrs = Vec::new();
+    if str.is_empty() {
+        return Ok((keys, addrs));
+    }
     for key in str.split(',') {
         let secret = SecretKey::from_str(key).unwrap();
         let public_addr = get_eth_addr_from_secret(&secret);
