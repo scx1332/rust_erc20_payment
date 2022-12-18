@@ -48,6 +48,9 @@ async fn main_internal() -> Result<(), PaymentError> {
     let sp = start_payment_engine(None, &private_keys, config).await?;
     loop {
         {
+            if sp.runtime_handle.try_join().is_ok() {
+                break;
+            }
             let idling = { sp.shared_state.lock().await.idling };
             let ignore_idling = true;
             if idling || ignore_idling {

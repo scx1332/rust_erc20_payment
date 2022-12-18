@@ -1,4 +1,5 @@
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
+use actix_web::web::BufMut;
 use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(
@@ -91,7 +92,6 @@ WHERE id = $1
     Ok(())
 }
 
-#[allow(unused)]
 pub async fn get_all_allowances(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Allowance>, sqlx::Error> {
@@ -168,13 +168,16 @@ WHERE id = $1
     Ok(token_transfer.clone())
 }
 
-#[allow(unused)]
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
+    limit: i64,
 ) -> Result<Vec<TokenTransfer>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer")
-        .fetch_all(conn)
-        .await?;
+    let rows = sqlx::query_as::<_, TokenTransfer>(
+        r"SELECT * FROM token_transfer ORDER by id DESC LIMIT $1",
+    )
+    .bind(limit)
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
 
