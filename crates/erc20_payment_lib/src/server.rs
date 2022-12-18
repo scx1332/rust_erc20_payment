@@ -44,14 +44,6 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
         }
     };
 
-    let tx = json!({
-        "tx_id": tx.id,
-        "tx_hash": tx.tx_hash,
-        "block_number": tx.block_number,
-        "from": tx.from_addr,
-        "to": tx.to_addr,
-        "method": tx.method,
-    });
 
     let transfers = {
         let mut db_conn = data.db_connection.lock().await;
@@ -64,7 +56,7 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
             }
         }
     };
-    let json_transfers = transfers
+    /*let json_transfers = transfers
         .iter()
         .map(|transfer| {
             json!({
@@ -78,11 +70,11 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
                 "fee_paid": transfer.fee_paid,
             })
         })
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>();*/
 
     web::Json(json!({
         "tx": tx,
-        "transfers": json_transfers,
+        "transfers": transfers,
     }))
 }
 
@@ -192,6 +184,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
         }
     };
 
+    /*
     let json_transfers = transfers
         .iter()
         .map(|transfer| {
@@ -207,9 +200,9 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
             })
         })
         .collect::<Vec<_>>();
-
+*/
     web::Json(json!({
-        "transfers": json_transfers,
+        "transfers": transfers,
     }))
 }
 
