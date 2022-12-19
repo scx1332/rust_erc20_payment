@@ -1,3 +1,7 @@
+[engine]
+service-sleep = 10
+process-sleep = 10
+
 [chain.rinkeby]
 network-id = 4
 rpc-endpoints = ["http://1.geth.testnet.golem.network:55555"]

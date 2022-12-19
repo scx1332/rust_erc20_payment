@@ -10,6 +10,7 @@ use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
 use std::env;
 
+use crate::config::AdditionalOptions;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -50,7 +51,7 @@ impl Default for ValidatedOptions {
             process_sleep: 10,
             http_threads: 2,
             http_port: 8080,
-            http_addr: "127.0.0.1".to_string()
+            http_addr: "127.0.0.1".to_string(),
         }
     }
 }
@@ -89,19 +90,19 @@ async fn process_cli(
 */
 
 pub async fn start_payment_engine(
-    cli: Option<ValidatedOptions>,
     secret_keys: &[SecretKey],
     config: config::Config,
+    options: Option<AdditionalOptions>,
 ) -> Result<PaymentRuntime, PaymentError> {
-    let cli = cli.unwrap_or_default();
+    let options = options.unwrap_or_default();
     let payment_setup = PaymentSetup::new(
         &config,
         secret_keys.to_vec(),
-        !cli.keep_running,
-        cli.generate_tx_only,
-        cli.skip_multi_contract_check,
-        cli.service_sleep,
-        cli.process_sleep,
+        !options.keep_running,
+        options.generate_tx_only,
+        options.skip_multi_contract_check,
+        config.engine.service_sleep,
+        config.engine.process_sleep,
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
