@@ -121,7 +121,7 @@ pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> imp
     //todo: fix limits
     let txs = {
         let mut db_conn = data.db_connection.lock().await;
-        match get_all_transactions(&mut db_conn, 100).await {
+        match get_all_transactions(&mut db_conn, None).await {
             Ok(allowances) => allowances,
             Err(err) => {
                 return web::Json(json!({
@@ -131,23 +131,8 @@ pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> imp
         }
     };
 
-    let json_txs = txs
-        .iter()
-        .map(|tx| {
-            json!({
-            "id": tx.id,
-            "chain_id": tx.chain_id,
-            "tx_hash": tx.tx_hash,
-            "to": tx.to_addr,
-            "from": tx.from_addr,
-            "nonce": tx.nonce,
-            "confirm_date": tx.confirm_date,
-            })
-        })
-        .collect::<Vec<_>>();
-
     web::Json(json!({
-        "txs": json_txs,
+        "txs": txs,
     }))
 }
 
@@ -172,7 +157,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
                 }
             }
         } else {
-            match get_all_token_transfers(&mut db_conn, 100).await {
+            match get_all_token_transfers(&mut db_conn, None).await {
                 Ok(allowances) => allowances,
                 Err(err) => {
                     return web::Json(json!({

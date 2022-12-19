@@ -17,7 +17,6 @@ use std::env;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use web3::ethabi::Token::Address;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {

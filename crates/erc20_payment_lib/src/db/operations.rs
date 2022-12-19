@@ -169,8 +169,9 @@ WHERE id = $1
 
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
-    limit: i64,
+    limit: Option<i64>,
 ) -> Result<Vec<TokenTransfer>, sqlx::Error> {
+    let limit = limit.unwrap_or(i64::MAX);
     let rows = sqlx::query_as::<_, TokenTransfer>(
         r"SELECT * FROM token_transfer ORDER by id DESC LIMIT $1",
     )
@@ -182,8 +183,9 @@ pub async fn get_all_token_transfers(
 
 pub async fn get_all_transactions(
     conn: &mut SqliteConnection,
-    limit: i64,
+    limit: Option<i64>,
 ) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
+    let limit = limit.unwrap_or(i64::MAX);
     let rows =
         sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx ORDER by id DESC LIMIT $1")
             .bind(limit)
