@@ -8,9 +8,37 @@ use crate::error::*;
 use crate::{err_custom_create, err_from};
 use web3::types::Address;
 
+pub struct AdditionalOptions {
+    ///Set to keep running when finished processing transactions
+    pub keep_running: bool,
+    ///Do not send or process transactions, only generate stubs
+    pub generate_tx_only: bool,
+    ///Skip multi contract check when generating txs
+    pub skip_multi_contract_check: bool,
+}
+
+impl Default for AdditionalOptions {
+    fn default() -> Self {
+        AdditionalOptions {
+            keep_running: true,
+            generate_tx_only: false,
+            skip_multi_contract_check: false,
+        }
+    }
+}
+
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct Engine {
+    pub service_sleep: u64,
+    pub process_sleep: u64,
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub chain: Map<String, Chain>,
+    pub engine: Engine,
 }
 
 #[derive(Deserialize, Debug, Clone)]

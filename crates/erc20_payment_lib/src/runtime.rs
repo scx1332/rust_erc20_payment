@@ -14,6 +14,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use web3::types::{Address, U256};
+use crate::config::AdditionalOptions;
 
 pub struct SharedState {
     pub inserted: usize,
@@ -82,19 +83,19 @@ async fn process_cli(
 */
 
 pub async fn start_payment_engine(
-    cli: Option<ValidatedOptions>,
     secret_keys: &[SecretKey],
     config: config::Config,
+    options: Option<AdditionalOptions>,
 ) -> Result<PaymentRuntime, PaymentError> {
-    let cli = cli.unwrap_or_default();
+    let options = options.unwrap_or_default();
     let payment_setup = PaymentSetup::new(
         &config,
         secret_keys.to_vec(),
-        !cli.keep_running,
-        cli.generate_tx_only,
-        cli.skip_multi_contract_check,
-        cli.service_sleep,
-        cli.process_sleep,
+        !options.keep_running,
+        options.generate_tx_only,
+        options.skip_multi_contract_check,
+        config.engine.service_sleep,
+        config.engine.process_sleep,
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
