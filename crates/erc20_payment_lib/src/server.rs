@@ -1,7 +1,4 @@
-use crate::db::operations::{
-    get_all_allowances, get_all_token_transfers, get_all_transactions, get_token_transfers_by_tx,
-    get_transaction,
-};
+use crate::db::operations::{get_all_allowances, get_all_token_transfers, get_all_transactions, get_token_transfers_by_tx, get_transaction, get_transaction_count, get_transfer_count, TRANSACTION_FILTER_ALL, TRANSACTION_FILTER_DONE, TRANSACTION_FILTER_PROCESSING, TRANSFER_FILTER_DONE, TRANSFER_FILTER_PROCESSING, TRANSFER_FILTER_QUEUED};
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
@@ -17,6 +14,19 @@ pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
     pub db_connection: Arc<Mutex<SqliteConnection>>,
     pub payment_setup: PaymentSetup,
+}
+
+macro_rules! return_on_error {
+    ( $e:expr ) => {
+        match $e {
+            Ok(x) => x,
+            Err(err) => {
+                return web::Json(json!({
+                    "error": err.to_string()
+                }))
+            },
+        }
+    }
 }
 
 pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
@@ -112,6 +122,41 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
 
     web::Json(json!({
         "allowances": json_allowances,
+    }))
+}
+
+
+
+pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
+    let queued_tx_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_PROCESSING)).await)
+    };
+    let done_tx_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_DONE)).await)
+    };
+
+    let queued_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED)).await)
+    };
+    let processed_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING)).await)
+    };
+    let done_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE)).await)
+    };
+
+
+    web::Json(json!({
+        "transfers_queued": queued_tx_count,
+        "transfers_processing": processed_transfer_count,
+        "transfers_done": done_transfer_count,
+        "tx_queued": queued_tx_count,
+        "tx_done": done_tx_count,
     }))
 }
 

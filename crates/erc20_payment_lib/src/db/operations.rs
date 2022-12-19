@@ -230,6 +230,41 @@ pub async fn get_token_transfers_by_tx(
     Ok(rows)
 }
 
+pub const TRANSFER_FILTER_ALL: &str = "id >= 0";
+pub const TRANSFER_FILTER_QUEUED: &str = "tx_id is null AND error is null";
+pub const TRANSFER_FILTER_PROCESSING: &str = "tx_id is not null AND fee_paid is null";
+pub const TRANSFER_FILTER_DONE: &str = "fee_paid is not null";
+
+pub async fn get_transfer_count(
+    conn: &mut SqliteConnection,
+    transfer_filter: Option<&str>,
+) -> Result<usize, sqlx::Error> {
+    let transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
+    let count = sqlx::query_scalar::<_, i64>(
+        format!(r"SELECT COUNT(*) FROM token_transfer WHERE {}", transfer_filter).as_str(),
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(count as usize)
+}
+
+pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0";
+pub const TRANSACTION_FILTER_ALL: &str = "id >= 0";
+pub const TRANSACTION_FILTER_DONE: &str = "confirm_date IS NOT NULL";
+
+pub async fn get_transaction_count(
+    conn: &mut SqliteConnection,
+    transaction_filter: Option<&str>,
+) -> Result<usize, sqlx::Error> {
+    let transaction_filter = transaction_filter.unwrap_or(TRANSACTION_FILTER_ALL);
+    let count = sqlx::query_scalar::<_, i64>(
+        format!(r"SELECT COUNT(*) FROM tx WHERE {}", transaction_filter).as_str(),
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(count as usize)
+}
+
 pub async fn get_transactions_being_processed(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
