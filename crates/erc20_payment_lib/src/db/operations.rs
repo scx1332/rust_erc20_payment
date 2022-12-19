@@ -181,16 +181,32 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
-pub async fn get_all_transactions(
+pub const TRANSACTION_FILTER_QUEUED: &str = "processing > 0 AND first_processed IS NULL";
+pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0 AND first_processed IS NOT NULL";
+pub const TRANSACTION_FILTER_TO_PROCESS: &str = "processing > 0";
+pub const TRANSACTION_FILTER_ALL: &str = "id >= 0";
+pub const TRANSACTION_FILTER_DONE: &str = "processing = 0";
+pub const TRANSACTION_ORDER_BY_CREATE_DATE: &str = "created_date ASC";
+pub const TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC: &str = "confirm_date DESC";
+
+pub async fn get_transactions(
     conn: &mut SqliteConnection,
+    filter: Option<&str>,
     limit: Option<i64>,
+    order: Option<&str>,
 ) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
-    let rows =
-        sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx ORDER by id DESC LIMIT $1")
-            .bind(limit)
-            .fetch_all(conn)
-            .await?;
+    let filter = filter.unwrap_or(TRANSACTION_FILTER_ALL);
+    let order = order.unwrap_or("id DESC");
+    let rows = sqlx::query_as::<_, Web3TransactionDao>(
+        format!(
+            r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
+            filter, order, limit
+        )
+        .as_str(),
+    )
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
 
@@ -241,16 +257,16 @@ pub async fn get_transfer_count(
 ) -> Result<usize, sqlx::Error> {
     let transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
     let count = sqlx::query_scalar::<_, i64>(
-        format!(r"SELECT COUNT(*) FROM token_transfer WHERE {}", transfer_filter).as_str(),
+        format!(
+            r"SELECT COUNT(*) FROM token_transfer WHERE {}",
+            transfer_filter
+        )
+        .as_str(),
     )
     .fetch_one(conn)
     .await?;
     Ok(count as usize)
 }
-
-pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0";
-pub const TRANSACTION_FILTER_ALL: &str = "id >= 0";
-pub const TRANSACTION_FILTER_DONE: &str = "confirm_date IS NOT NULL";
 
 pub async fn get_transaction_count(
     conn: &mut SqliteConnection,
@@ -265,15 +281,16 @@ pub async fn get_transaction_count(
     Ok(count as usize)
 }
 
-pub async fn get_transactions_being_processed(
+pub async fn get_next_transactions_to_process(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, Web3TransactionDao>(
-        r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC",
+    get_transactions(
+        conn,
+        Some(TRANSACTION_FILTER_TO_PROCESS),
+        Some(1),
+        Some(TRANSACTION_ORDER_BY_CREATE_DATE),
     )
-    .fetch_all(conn)
-    .await?;
-    Ok(rows)
+    .await
 }
 
 pub async fn insert_tx(

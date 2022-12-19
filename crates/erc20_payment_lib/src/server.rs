@@ -1,4 +1,4 @@
-use crate::db::operations::{get_all_allowances, get_all_token_transfers, get_all_transactions, get_token_transfers_by_tx, get_transaction, get_transaction_count, get_transfer_count, TRANSACTION_FILTER_ALL, TRANSACTION_FILTER_DONE, TRANSACTION_FILTER_PROCESSING, TRANSFER_FILTER_DONE, TRANSFER_FILTER_PROCESSING, TRANSFER_FILTER_QUEUED};
+use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
@@ -125,12 +125,10 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
     }))
 }
 
-
-
 pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
     let queued_tx_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_PROCESSING)).await)
+        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_QUEUED)).await)
     };
     let done_tx_count = {
         let mut db_conn = data.db_connection.lock().await;
@@ -150,7 +148,6 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
         return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE)).await)
     };
 
-
     web::Json(json!({
         "transfers_queued": queued_tx_count,
         "transfers_processing": processed_transfer_count,
@@ -161,21 +158,82 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
 }
 
 pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
-    //let my_data = data.shared_state.lock().await;
-
-    //todo: fix limits
+    //todo: add limits
     let txs = {
         let mut db_conn = data.db_connection.lock().await;
-        match get_all_transactions(&mut db_conn, None).await {
-            Ok(allowances) => allowances,
-            Err(err) => {
-                return web::Json(json!({
-                    "error": err.to_string()
-                }))
-            }
-        }
+        return_on_error!(get_transactions(&mut db_conn, None, None, None).await)
     };
+    web::Json(json!({
+        "txs": txs,
+    }))
+}
 
+pub async fn transactions_next(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let limit = req
+        .match_info()
+        .get("count")
+        .map(|tx_id| i64::from_str(tx_id).ok())
+        .unwrap_or(Some(10));
+
+    let txs = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(
+            get_transactions(
+                &mut db_conn,
+                Some(TRANSACTION_FILTER_QUEUED),
+                limit,
+                Some(TRANSACTION_ORDER_BY_CREATE_DATE)
+            )
+            .await
+        )
+    };
+    web::Json(json!({
+        "txs": txs,
+    }))
+}
+pub async fn transactions_current(
+    data: Data<Box<ServerData>>,
+    _req: HttpRequest,
+) -> impl Responder {
+    let txs = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(
+            get_transactions(
+                &mut db_conn,
+                Some(TRANSACTION_FILTER_PROCESSING),
+                None,
+                Some(TRANSACTION_ORDER_BY_CREATE_DATE)
+            )
+            .await
+        )
+    };
+    web::Json(json!({
+        "txs": txs,
+    }))
+}
+
+pub async fn transactions_last_processed(
+    data: Data<Box<ServerData>>,
+    req: HttpRequest,
+) -> impl Responder {
+    let limit = req
+        .match_info()
+        .get("count")
+        .map(|tx_id| i64::from_str(tx_id).ok())
+        .unwrap_or(Some(10));
+
+    let txs = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(
+            get_transactions(
+                &mut db_conn,
+                Some(TRANSACTION_FILTER_DONE),
+                limit,
+                Some(TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC)
+            )
+            .await
+        )
+    };
     web::Json(json!({
         "txs": txs,
     }))

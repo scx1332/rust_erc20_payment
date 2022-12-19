@@ -5,8 +5,8 @@ use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
 use erc20_payment_lib::server::{
-    accounts, allowances, greet, transactions, transactions_count, transfers, tx_details,
-    ServerData,
+    accounts, allowances, greet, transactions, transactions_count, transactions_current,
+    transactions_last_processed, transactions_next, transfers, tx_details, ServerData,
 };
 use erc20_payment_lib::{
     config, err_custom_create,
@@ -57,6 +57,20 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route("/allowances", web::get().to(allowances))
             .route("/transactions", web::get().to(transactions))
             .route("/transactions/count", web::get().to(transactions_count))
+            .route("/transactions/next", web::get().to(transactions_next))
+            .route(
+                "/transactions/next/{count}",
+                web::get().to(transactions_next),
+            )
+            .route("/transactions/current", web::get().to(transactions_current))
+            .route(
+                "/transactions/last",
+                web::get().to(transactions_last_processed),
+            )
+            .route(
+                "/transactions/last/{count}",
+                web::get().to(transactions_last_processed),
+            )
             .route("/tx/{tx_id}", web::get().to(tx_details))
             .route("/transfers", web::get().to(transfers))
             .route("/transfers/{tx_id}", web::get().to(transfers))

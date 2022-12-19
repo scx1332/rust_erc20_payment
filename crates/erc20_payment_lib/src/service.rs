@@ -5,9 +5,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::db::operations::{
-    find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
-    get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
-    update_token_transfer, update_tx,
+    find_allowance, get_allowance_by_tx, get_next_transactions_to_process,
+    get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance, insert_tx,
+    update_allowance, update_token_transfer, update_tx,
 };
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
@@ -744,7 +744,7 @@ pub async fn process_transactions(
     payment_setup: &PaymentSetup,
 ) -> Result<(), PaymentError> {
     loop {
-        let mut transactions = get_transactions_being_processed(conn)
+        let mut transactions = get_next_transactions_to_process(conn)
             .await
             .map_err(err_from!())?;
 
