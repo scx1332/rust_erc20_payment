@@ -51,7 +51,13 @@ async fn main_internal() -> Result<(), PaymentError> {
     }));
 
     let server = HttpServer::new(move || {
+        let cors = actix_cors::Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
         App::new()
+            .wrap(cors)
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
             .route("/allowances", web::get().to(allowances))
