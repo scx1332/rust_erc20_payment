@@ -4,10 +4,7 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{
-    accounts, allowances, greet, transactions, transactions_count, transactions_current,
-    transactions_last_processed, transactions_next, transfers, tx_details, ServerData,
-};
+use erc20_payment_lib::server::{accounts, allowances, greet, transactions, transactions_count, transactions_current, transactions_last_processed, transactions_next, transfers, tx_details, ServerData, config_endpoint, transactions_feed};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -61,10 +58,14 @@ async fn main_internal() -> Result<(), PaymentError> {
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
             .route("/allowances", web::get().to(allowances))
+            .route("/config", web::get().to(config_endpoint))
             .route("/transactions", web::get().to(transactions))
             .route("/transactions/count", web::get().to(transactions_count))
             .route("/transactions/next", web::get().to(transactions_next))
             .route(
+                "/transactions/feed/{prev}/{next}",
+                web::get().to(transactions_feed),
+            )            .route(
                 "/transactions/next/{count}",
                 web::get().to(transactions_next),
             )

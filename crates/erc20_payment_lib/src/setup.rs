@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
+use serde::Serialize;
 
 #[derive(Clone, Debug)]
 pub struct ProviderSetup {
@@ -17,8 +18,9 @@ pub struct ProviderSetup {
     pub number_of_calls: u64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct ChainSetup {
+    #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
     pub currency_symbol: String,
     pub max_fee_per_gas: U256,
@@ -32,9 +34,10 @@ pub struct ChainSetup {
     pub confirmation_blocks: u64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
+    #[serde(skip_serializing)]
     pub secret_keys: Vec<SecretKey>,
     //pub pub_address: Address,
     pub finish_when_done: bool,

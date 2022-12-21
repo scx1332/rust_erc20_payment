@@ -9,6 +9,7 @@ use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use sqlx::Connection;
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -54,6 +55,7 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
         }
     };
 
+    /*
     let transfers = {
         let mut db_conn = data.db_connection.lock().await;
         match get_token_transfers_by_tx(&mut db_conn, tx_id).await {
@@ -64,7 +66,7 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
                 }))
             }
         }
-    };
+    };*/
     /*let json_transfers = transfers
     .iter()
     .map(|transfer| {
@@ -83,7 +85,6 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
 
     web::Json(json!({
         "tx": tx,
-        "transfers": transfers,
     }))
 }
 
@@ -149,11 +150,19 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
     };
 
     web::Json(json!({
-        "transfers_queued": queued_tx_count,
-        "transfers_processing": processed_transfer_count,
-        "transfers_done": done_transfer_count,
-        "tx_queued": queued_tx_count,
-        "tx_done": done_tx_count,
+        "transfersQueued": queued_tx_count,
+        "transfersProcessing": processed_transfer_count,
+        "transfersDone": done_transfer_count,
+        "txQueued": queued_tx_count,
+        "txDone": done_tx_count,
+    }))
+}
+
+pub async fn config_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
+    let payment_setup = data.payment_setup.clone();
+
+    web::Json(json!({
+        "config": data.payment_setup,
     }))
 }
 
@@ -234,6 +243,61 @@ pub async fn transactions_last_processed(
             .await
         )
     };
+    web::Json(json!({
+        "txs": txs,
+    }))
+}
+
+pub async fn transactions_feed( data: Data<Box<ServerData>>,
+                                req: HttpRequest) -> impl Responder {
+    let limitPrev = req
+        .match_info()
+        .get("prev")
+        .map(|tx_id| i64::from_str(tx_id).ok())
+        .unwrap_or(Some(10));
+    let limitNext = req
+        .match_info()
+        .get("next")
+        .map(|tx_id| i64::from_str(tx_id).ok())
+        .unwrap_or(Some(10));
+    let txs = {
+        let mut db_conn = data.db_connection.lock().await;
+        let mut db_transaction = return_on_error!(db_conn.begin().await);
+        let mut txs = return_on_error!(
+            get_transactions(
+                &mut db_transaction,
+                Some(TRANSACTION_FILTER_DONE),
+                limitPrev,
+                Some(TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC)
+            )
+            .await
+        );
+        let txs_current = return_on_error!(
+            get_transactions(
+                &mut db_transaction,
+                Some(TRANSACTION_FILTER_PROCESSING),
+                None,
+                Some(TRANSACTION_ORDER_BY_CREATE_DATE)
+            )
+            .await
+        );
+        let mut tx_next = return_on_error!(
+            get_transactions(
+                &mut db_transaction,
+                Some(TRANSACTION_FILTER_QUEUED),
+                limitNext,
+                Some(TRANSACTION_ORDER_BY_CREATE_DATE)
+            )
+            .await
+        );
+        return_on_error!(db_transaction.commit().await);
+        //join transactions
+        txs.reverse();
+        txs.extend(txs_current);
+        txs.extend(tx_next);
+        txs
+    };
+
     web::Json(json!({
         "txs": txs,
     }))
