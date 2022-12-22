@@ -1,4 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::format;
+use std::ops::Deref;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -22,7 +24,7 @@ use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
 
-use crate::runtime::SharedState;
+use crate::runtime::{SharedInfoTx, SharedState};
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
 
@@ -617,6 +619,8 @@ pub async fn update_token_transfer_result(
                     .await
                     .map_err(err_from!())?;
             }
+            tx.error = Some(err.clone());
+
             update_tx(&mut db_transaction, tx)
                 .await
                 .map_err(err_from!())?;
@@ -636,6 +640,8 @@ pub async fn update_token_transfer_result(
                     .await
                     .map_err(err_from!())?;
             }
+            tx.error = Some(err.clone());
+
             update_tx(&mut db_transaction, tx)
                 .await
                 .map_err(err_from!())?;
@@ -679,6 +685,7 @@ pub async fn update_approve_result(
                 .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
+            tx.error = Some(err.clone());
             update_allowance(&mut db_transaction, &allowance)
                 .await
                 .map_err(err_from!())?;
@@ -695,6 +702,7 @@ pub async fn update_approve_result(
                 .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
+            tx.error = Some(err.clone());
             update_allowance(&mut db_transaction, &allowance)
                 .await
                 .map_err(err_from!())?;
@@ -740,27 +748,35 @@ pub async fn update_tx_result(
 }
 
 pub async fn process_transactions(
+    shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
 ) -> Result<(), PaymentError> {
+    //remove tx from current processing infos
+
     loop {
-        let mut transactions = get_next_transactions_to_process(conn)
+        let mut transactions = get_next_transactions_to_process(conn, 1)
             .await
             .map_err(err_from!())?;
 
-        //TODO - This loop is getting only first element, fix code so only one transaction is taken from db
-        #[allow(clippy::never_loop)]
-        for tx in &mut transactions {
-            let process_t_res = match process_transaction(conn, tx, payment_setup, false).await {
-                Ok(process_result) => process_result,
-                Err(err) => match err.inner {
-                    ErrorBag::TransactionFailedError(err) => {
-                        ProcessTransactionResult::InternalError(format!("{}", err))
-                    }
-                    _ => {
-                        return Err(err);
-                    }
-                },
+        if let Some(tx) = transactions.get_mut(0) {
+            let process_t_res = if shared_state.lock().await.IsSkipped(tx.id) {
+                ProcessTransactionResult::InternalError(format!("Transaction skipped by user"))
+            } else {
+                shared_state.lock().await.SetTxMessage(tx.id, "Processing".to_string());
+                match process_transaction(shared_state.clone(), conn, tx, payment_setup, false).await {
+                    Ok(process_result) => process_result,
+                    Err(err) => match err.inner {
+                        ErrorBag::TransactionFailedError(err) => {
+                            shared_state.lock().await.SetTxError(tx.id, Some(err.message.clone()));
+                            ProcessTransactionResult::InternalError(format!("{}", &err))
+                        }
+                        _ => {
+                            shared_state.lock().await.SetTxError(tx.id, Some(format!("{}", err.inner)));
+                            return Err(err);
+                        }
+                    },
+                }
             };
             if tx.method.starts_with("MULTI.golemTransfer")
                 || tx.method == "ERC20.transfer"
@@ -774,6 +790,8 @@ pub async fn process_transactions(
             } else {
                 update_tx_result(conn, tx, process_t_res).await?;
             }
+            shared_state.lock().await.current_tx_info.remove(&tx.id);
+
             //process only one transaction at once
             break;
         }
@@ -816,7 +834,7 @@ pub async fn service_loop(
                 log::warn!("Skipping processing transactions...");
                 process_tx_needed = false;
             } else {
-                match process_transactions(conn, payment_setup).await {
+                match process_transactions(shared_state.clone(), conn, payment_setup).await {
                     Ok(_) => {
                         //all pending transactions processed
                         process_tx_needed = false;

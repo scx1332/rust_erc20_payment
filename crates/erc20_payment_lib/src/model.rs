@@ -59,4 +59,8 @@ pub struct Web3TransactionDao {
     pub chain_status: Option<i64>,
     pub fee_paid: Option<String>,
     pub error: Option<String>,
+    #[sqlx(default)]
+    pub engine_message: Option<String>,
+    #[sqlx(default)]
+    pub engine_error: Option<String>
 }

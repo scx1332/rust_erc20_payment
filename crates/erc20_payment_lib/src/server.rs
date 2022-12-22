@@ -150,7 +150,7 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
     };
 
     web::Json(json!({
-        "transfersQueued": queued_tx_count,
+        "transfersQueued": queued_transfer_count,
         "transfersProcessing": processed_transfer_count,
         "transfersDone": done_transfer_count,
         "txQueued": queued_tx_count,
@@ -159,10 +159,11 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
 }
 
 pub async fn config_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
-    let payment_setup = data.payment_setup.clone();
+    let mut payment_setup = data.payment_setup.clone();
+    payment_setup.secret_keys = vec![];
 
     web::Json(json!({
-        "config": data.payment_setup,
+        "config": payment_setup,
     }))
 }
 
@@ -175,6 +176,29 @@ pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> imp
     web::Json(json!({
         "txs": txs,
     }))
+}
+
+pub async fn skip_pending_operation(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let tx_id = req
+        .match_info()
+        .get("tx_id")
+        .map(|tx_id| i64::from_str(tx_id).ok())
+        .unwrap_or(None);
+    if let Some(tx_id) = tx_id {
+        if data.shared_state.lock().await.SkipTx(tx_id) {
+            web::Json(json!({
+                "success": "true",
+            }))
+        } else {
+            web::Json(json!({
+                "error": "Tx not found",
+            }))
+        }
+    } else {
+        web::Json(json!({
+            "error": "failed to parse tx_id",
+        }))
+    }
 }
 
 pub async fn transactions_next(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
@@ -238,7 +262,7 @@ pub async fn transactions_last_processed(
                 &mut db_conn,
                 Some(TRANSACTION_FILTER_DONE),
                 limit,
-                Some(TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC)
+                Some(TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC)
             )
             .await
         )
@@ -250,25 +274,25 @@ pub async fn transactions_last_processed(
 
 pub async fn transactions_feed( data: Data<Box<ServerData>>,
                                 req: HttpRequest) -> impl Responder {
-    let limitPrev = req
+    let limit_prev = req
         .match_info()
         .get("prev")
         .map(|tx_id| i64::from_str(tx_id).ok())
         .unwrap_or(Some(10));
-    let limitNext = req
+    let limit_next = req
         .match_info()
         .get("next")
         .map(|tx_id| i64::from_str(tx_id).ok())
         .unwrap_or(Some(10));
-    let txs = {
+    let mut txs = {
         let mut db_conn = data.db_connection.lock().await;
         let mut db_transaction = return_on_error!(db_conn.begin().await);
         let mut txs = return_on_error!(
             get_transactions(
                 &mut db_transaction,
                 Some(TRANSACTION_FILTER_DONE),
-                limitPrev,
-                Some(TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC)
+                limit_prev,
+                Some(TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC)
             )
             .await
         );
@@ -281,11 +305,11 @@ pub async fn transactions_feed( data: Data<Box<ServerData>>,
             )
             .await
         );
-        let mut tx_next = return_on_error!(
+        let tx_next = return_on_error!(
             get_transactions(
                 &mut db_transaction,
                 Some(TRANSACTION_FILTER_QUEUED),
-                limitNext,
+                limit_next,
                 Some(TRANSACTION_ORDER_BY_CREATE_DATE)
             )
             .await
@@ -298,8 +322,18 @@ pub async fn transactions_feed( data: Data<Box<ServerData>>,
         txs
     };
 
+    let current_tx = data.shared_state.lock().await.current_tx_info.clone();
+    for tx in txs.iter_mut() {
+        if let Some(tx_info) = current_tx.get(&tx.id) {
+            tx.engine_error = tx_info.error.clone();
+            tx.engine_message = Some(tx_info.message.clone());
+        }
+    }
+
+
     web::Json(json!({
         "txs": txs,
+        "current": current_tx,
     }))
 }
 

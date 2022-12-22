@@ -22,7 +22,7 @@ impl Display for CustomError {
 
 #[derive(Debug)]
 pub struct TransactionFailedError {
-    message: String,
+    pub message: String,
 }
 
 impl TransactionFailedError {

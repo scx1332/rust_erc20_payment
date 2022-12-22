@@ -45,6 +45,7 @@ pub struct PaymentSetup {
     pub skip_multi_contract_check: bool,
     pub service_sleep: u64,
     pub process_sleep: u64,
+    pub automatic_recover: bool
 }
 
 impl PaymentSetup {
@@ -56,6 +57,7 @@ impl PaymentSetup {
         skip_multi_contract_check: bool,
         service_sleep: u64,
         process_sleep: u64,
+        automatic_recover: bool
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
@@ -66,6 +68,7 @@ impl PaymentSetup {
             skip_multi_contract_check,
             service_sleep,
             process_sleep,
+            automatic_recover
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();

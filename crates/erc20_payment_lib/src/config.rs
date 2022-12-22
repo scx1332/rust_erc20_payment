@@ -32,6 +32,7 @@ impl Default for AdditionalOptions {
 pub struct Engine {
     pub service_sleep: u64,
     pub process_sleep: u64,
+    pub automatic_recover: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]

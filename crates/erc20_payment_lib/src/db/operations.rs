@@ -1,5 +1,6 @@
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use sqlx::SqliteConnection;
+use web3::Transport;
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
@@ -187,7 +188,7 @@ pub const TRANSACTION_FILTER_TO_PROCESS: &str = "processing > 0";
 pub const TRANSACTION_FILTER_ALL: &str = "id >= 0";
 pub const TRANSACTION_FILTER_DONE: &str = "processing = 0";
 pub const TRANSACTION_ORDER_BY_CREATE_DATE: &str = "created_date ASC";
-pub const TRANSACTION_ORDER_BY_CONFIRM_DATE_DESC: &str = "confirm_date DESC";
+pub const TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC: &str = "first_processed DESC";
 
 pub async fn get_transactions(
     conn: &mut SqliteConnection,
@@ -283,14 +284,28 @@ pub async fn get_transaction_count(
 
 pub async fn get_next_transactions_to_process(
     conn: &mut SqliteConnection,
+    limit: i64,
 ) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
     get_transactions(
         conn,
         Some(TRANSACTION_FILTER_TO_PROCESS),
-        Some(1),
+        Some(limit),
         Some(TRANSACTION_ORDER_BY_CREATE_DATE),
     )
     .await
+}
+
+pub async fn force_tx_error(
+    conn: &mut SqliteConnection,
+    tx: &Web3TransactionDao,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r"UPDATE tx SET error = 'forced error' WHERE id = $1",
+    )
+    .bind(tx.id)
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 pub async fn insert_tx(
@@ -330,6 +345,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .await?;
     Ok(res)
 }
+
 
 pub async fn update_tx(
     conn: &mut SqliteConnection,

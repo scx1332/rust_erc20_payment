@@ -131,6 +131,8 @@ pub fn create_eth_transfer(
         chain_status: None,
         fee_paid: None,
         error: None,
+        engine_message: None,
+        engine_error: None,
     }
 }
 
@@ -169,6 +171,8 @@ pub fn create_eth_transfer_str(
         chain_status: None,
         fee_paid: None,
         error: None,
+        engine_message: None,
+        engine_error: None,
     }
 }
 
@@ -210,6 +214,8 @@ pub fn create_erc20_transfer(
         chain_status: None,
         fee_paid: None,
         error: None,
+        engine_message: None,
+        engine_error: None,
     })
 }
 
@@ -264,6 +270,8 @@ pub fn create_erc20_transfer_multi(
         chain_status: None,
         fee_paid: None,
         error: None,
+        engine_message: None,
+        engine_error: None,
     })
 }
 
@@ -303,6 +311,8 @@ pub fn create_erc20_approve(
         chain_status: None,
         fee_paid: None,
         error: None,
+        engine_message: None,
+        engine_error: None,
     })
 }
 

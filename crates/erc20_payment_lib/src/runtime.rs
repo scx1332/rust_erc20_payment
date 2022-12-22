@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::db::create_sqlite_connection;
 
 use crate::error::PaymentError;
@@ -15,10 +16,56 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use web3::types::{Address, U256};
+use serde::Serialize;
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SharedInfoTx {
+    pub message: String,
+    pub error: Option<String>,
+    pub skip: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SharedState {
+    /// Additional engine info about processed transactions
+    pub current_tx_info: BTreeMap<i64, SharedInfoTx>,
     pub inserted: usize,
     pub idling: bool,
+}
+
+impl SharedState {
+    pub fn SetTxMessage(&mut self, id: i64, message: String) {
+        if let Some(info) = self.current_tx_info.get_mut(&id) {
+            info.message = message;
+        } else {
+            self.current_tx_info.insert(id, SharedInfoTx { message, error: None, skip: false });
+        }
+    }
+    pub fn SetTxError(&mut self, id: i64, error: Option<String>) {
+        if let Some(info) = self.current_tx_info.get_mut(&id) {
+            info.error = error;
+        } else {
+            self.current_tx_info.insert(id, SharedInfoTx { message: "".to_string(), error, skip: false });
+        }
+    }
+    pub fn SkipTx(&mut self, id: i64) -> bool {
+        if let Some(info) = self.current_tx_info.get_mut(&id) {
+            info.skip = true;
+            true
+        } else {
+            false
+        }
+    }
+    pub fn IsSkipped(&mut self, id: i64) -> bool {
+        if let Some(info) = self.current_tx_info.get_mut(&id) {
+            info.skip
+        } else {
+            false
+        }
+    }
+    pub fn DeleteTxInfo(&mut self, id: i64) {
+        self.current_tx_info.remove(&id);
+    }
 }
 
 #[derive(Clone)]
@@ -103,6 +150,7 @@ pub async fn start_payment_engine(
         options.skip_multi_contract_check,
         config.engine.service_sleep,
         config.engine.process_sleep,
+        config.engine.automatic_recover,
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
@@ -118,6 +166,7 @@ pub async fn start_payment_engine(
     let shared_state = Arc::new(Mutex::new(SharedState {
         inserted: 0,
         idling: false,
+        current_tx_info: BTreeMap::new(),
     }));
     let shared_state_clone = shared_state.clone();
     let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });
