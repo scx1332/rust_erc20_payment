@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use crate::db::create_sqlite_connection;
+use std::collections::BTreeMap;
 
 use crate::error::PaymentError;
 
@@ -12,11 +12,11 @@ use sqlx::SqliteConnection;
 use std::env;
 
 use crate::config::AdditionalOptions;
+use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use web3::types::{Address, U256};
-use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SharedInfoTx {
@@ -34,21 +34,35 @@ pub struct SharedState {
 }
 
 impl SharedState {
-    pub fn SetTxMessage(&mut self, id: i64, message: String) {
+    pub fn set_tx_message(&mut self, id: i64, message: String) {
         if let Some(info) = self.current_tx_info.get_mut(&id) {
             info.message = message;
         } else {
-            self.current_tx_info.insert(id, SharedInfoTx { message, error: None, skip: false });
+            self.current_tx_info.insert(
+                id,
+                SharedInfoTx {
+                    message,
+                    error: None,
+                    skip: false,
+                },
+            );
         }
     }
-    pub fn SetTxError(&mut self, id: i64, error: Option<String>) {
+    pub fn set_tx_error(&mut self, id: i64, error: Option<String>) {
         if let Some(info) = self.current_tx_info.get_mut(&id) {
             info.error = error;
         } else {
-            self.current_tx_info.insert(id, SharedInfoTx { message: "".to_string(), error, skip: false });
+            self.current_tx_info.insert(
+                id,
+                SharedInfoTx {
+                    message: "".to_string(),
+                    error,
+                    skip: false,
+                },
+            );
         }
     }
-    pub fn SkipTx(&mut self, id: i64) -> bool {
+    pub fn skip_tx(&mut self, id: i64) -> bool {
         if let Some(info) = self.current_tx_info.get_mut(&id) {
             info.skip = true;
             true
@@ -56,14 +70,14 @@ impl SharedState {
             false
         }
     }
-    pub fn IsSkipped(&mut self, id: i64) -> bool {
+    pub fn is_skipped(&mut self, id: i64) -> bool {
         if let Some(info) = self.current_tx_info.get_mut(&id) {
             info.skip
         } else {
             false
         }
     }
-    pub fn DeleteTxInfo(&mut self, id: i64) {
+    pub fn delete_tx_info(&mut self, id: i64) {
         self.current_tx_info.remove(&id);
     }
 }

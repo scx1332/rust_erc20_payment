@@ -6,11 +6,11 @@ use crate::utils::gwei_to_u256;
 use crate::{err_custom_create, err_from};
 use rand::Rng;
 use secp256k1::SecretKey;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
-use serde::Serialize;
 
 #[derive(Clone, Debug)]
 pub struct ProviderSetup {
@@ -45,10 +45,11 @@ pub struct PaymentSetup {
     pub skip_multi_contract_check: bool,
     pub service_sleep: u64,
     pub process_sleep: u64,
-    pub automatic_recover: bool
+    pub automatic_recover: bool,
 }
 
 impl PaymentSetup {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: &Config,
         secret_keys: Vec<SecretKey>,
@@ -57,7 +58,7 @@ impl PaymentSetup {
         skip_multi_contract_check: bool,
         service_sleep: u64,
         process_sleep: u64,
-        automatic_recover: bool
+        automatic_recover: bool,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
@@ -68,7 +69,7 @@ impl PaymentSetup {
             skip_multi_contract_check,
             service_sleep,
             process_sleep,
-            automatic_recover
+            automatic_recover,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();

@@ -1,6 +1,4 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fmt::format;
-use std::ops::Deref;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -24,7 +22,7 @@ use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
 
-use crate::runtime::{SharedInfoTx, SharedState};
+use crate::runtime::SharedState;
 use sqlx::{Connection, SqliteConnection};
 use web3::types::{Address, U256};
 
@@ -760,19 +758,30 @@ pub async fn process_transactions(
             .map_err(err_from!())?;
 
         if let Some(tx) = transactions.get_mut(0) {
-            let process_t_res = if shared_state.lock().await.IsSkipped(tx.id) {
-                ProcessTransactionResult::InternalError(format!("Transaction skipped by user"))
+            let process_t_res = if shared_state.lock().await.is_skipped(tx.id) {
+                ProcessTransactionResult::InternalError("Transaction skipped by user".into())
             } else {
-                shared_state.lock().await.SetTxMessage(tx.id, "Processing".to_string());
-                match process_transaction(shared_state.clone(), conn, tx, payment_setup, false).await {
+                shared_state
+                    .lock()
+                    .await
+                    .set_tx_message(tx.id, "Processing".to_string());
+                match process_transaction(shared_state.clone(), conn, tx, payment_setup, false)
+                    .await
+                {
                     Ok(process_result) => process_result,
                     Err(err) => match err.inner {
                         ErrorBag::TransactionFailedError(err) => {
-                            shared_state.lock().await.SetTxError(tx.id, Some(err.message.clone()));
+                            shared_state
+                                .lock()
+                                .await
+                                .set_tx_error(tx.id, Some(err.message.clone()));
                             ProcessTransactionResult::InternalError(format!("{}", &err))
                         }
                         _ => {
-                            shared_state.lock().await.SetTxError(tx.id, Some(format!("{}", err.inner)));
+                            shared_state
+                                .lock()
+                                .await
+                                .set_tx_error(tx.id, Some(format!("{}", err.inner)));
                             return Err(err);
                         }
                     },

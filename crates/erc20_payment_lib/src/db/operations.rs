@@ -1,6 +1,5 @@
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use sqlx::SqliteConnection;
-use web3::Transport;
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
@@ -299,12 +298,10 @@ pub async fn force_tx_error(
     conn: &mut SqliteConnection,
     tx: &Web3TransactionDao,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r"UPDATE tx SET error = 'forced error' WHERE id = $1",
-    )
-    .bind(tx.id)
-    .execute(conn)
-    .await?;
+    sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
+        .bind(tx.id)
+        .execute(conn)
+        .await?;
     Ok(())
 }
 
@@ -345,7 +342,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .await?;
     Ok(res)
 }
-
 
 pub async fn update_tx(
     conn: &mut SqliteConnection,

@@ -76,7 +76,10 @@ pub async fn process_transaction(
     let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
         nonce
     } else {
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Obtaining transaction nonce".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Obtaining transaction nonce".to_string());
 
         let nonce = get_transaction_count(from_addr, web3, false)
             .await
@@ -88,7 +91,10 @@ pub async fn process_transaction(
     //this block is optional, just to warn user about low gas
     let perform_balance_check = true;
     if perform_balance_check {
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Checking balance".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Checking balance".to_string());
         let gas_balance = web3
             .eth()
             .balance(from_addr, None)
@@ -134,7 +140,10 @@ pub async fn process_transaction(
     }
 
     if web3_tx_dao.signed_raw_data.is_none() {
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Checking transaction".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Checking transaction".to_string());
         log::info!("Checking transaction {}", web3_tx_dao.id);
         match check_transaction(web3, web3_tx_dao).await {
             Ok(_) => {}
@@ -156,7 +165,10 @@ pub async fn process_transaction(
             }
         }
         log::debug!("web3_tx_dao after check_transaction: {:?}", web3_tx_dao);
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Signing transaction".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Signing transaction".to_string());
         sign_transaction(web3, web3_tx_dao, private_key).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
@@ -167,7 +179,10 @@ pub async fn process_transaction(
             web3_tx_dao.id,
             transaction_nonce
         );
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Sending transaction".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Sending transaction".to_string());
         send_transaction(web3, web3_tx_dao).await?;
         web3_tx_dao.broadcast_count += 1;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
@@ -185,7 +200,10 @@ pub async fn process_transaction(
 
     let mut tx_not_found_count = 0;
     loop {
-        shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Confirmations - checking nonce".to_string());
+        shared_state
+            .lock()
+            .await
+            .set_tx_message(web3_tx_dao.id, "Confirmations - checking nonce".to_string());
 
         log::info!(
             "Checking latest nonce tx: {}, expected nonce: {}",
@@ -207,7 +225,10 @@ pub async fn process_transaction(
                 .map(|n| n as u64)
                 .ok_or_else(|| err_custom_create!("Nonce not found"))?
         {
-            shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Confirmations - checking receipt".to_string());
+            shared_state.lock().await.set_tx_message(
+                web3_tx_dao.id,
+                "Confirmations - checking receipt".to_string(),
+            );
             let res = find_receipt(web3, web3_tx_dao).await?;
             if res {
                 if let Some(block_number) = web3_tx_dao.block_number.map(|n| n as u64) {
@@ -236,14 +257,18 @@ pub async fn process_transaction(
             } else {
                 tx_not_found_count += 1;
                 log::debug!("Receipt not found: {:?}", web3_tx_dao.tx_hash);
-                shared_state.lock().await.SetTxError(web3_tx_dao.id, Some("Receipt not found despite proper nonce. Probably external payment done.".to_string()));
+                shared_state.lock().await.set_tx_error(
+                    web3_tx_dao.id,
+                    Some(
+                        "Receipt not found despite proper nonce. Probably external payment done."
+                            .to_string(),
+                    ),
+                );
 
-                if payment_setup.automatic_recover {
-                    if tx_not_found_count >= CHECKS_UNTIL_NOT_FOUND {
-                        return Ok(ProcessTransactionResult::NeedRetry(
-                            "No receipt".to_string(),
-                        ));
-                    }
+                if payment_setup.automatic_recover && tx_not_found_count >= CHECKS_UNTIL_NOT_FOUND {
+                    return Ok(ProcessTransactionResult::NeedRetry(
+                        "No receipt".to_string(),
+                    ));
                 }
             }
         } else {
@@ -274,7 +299,10 @@ pub async fn process_transaction(
                 web3_tx_dao.id,
                 web3_tx_dao.tx_hash.clone().unwrap_or_default()
             );
-            shared_state.lock().await.SetTxMessage(web3_tx_dao.id, "Resending transaction".to_string());
+            shared_state
+                .lock()
+                .await
+                .set_tx_message(web3_tx_dao.id, "Resending transaction".to_string());
 
             send_transaction(web3, web3_tx_dao).await?;
             web3_tx_dao.broadcast_count += 1;

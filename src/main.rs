@@ -4,7 +4,11 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{accounts, allowances, greet, transactions, transactions_count, transactions_current, transactions_last_processed, transactions_next, transfers, tx_details, ServerData, config_endpoint, transactions_feed, skip_pending_operation};
+use erc20_payment_lib::server::{
+    accounts, allowances, config_endpoint, greet, skip_pending_operation, transactions,
+    transactions_count, transactions_current, transactions_feed, transactions_last_processed,
+    transactions_next, transfers, tx_details, ServerData,
+};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -65,7 +69,8 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route(
                 "/transactions/feed/{prev}/{next}",
                 web::get().to(transactions_feed),
-            )            .route(
+            )
+            .route(
                 "/transactions/next/{count}",
                 web::get().to(transactions_next),
             )

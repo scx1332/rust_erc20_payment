@@ -62,5 +62,5 @@ pub struct Web3TransactionDao {
     #[sqlx(default)]
     pub engine_message: Option<String>,
     #[sqlx(default)]
-    pub engine_error: Option<String>
+    pub engine_error: Option<String>,
 }

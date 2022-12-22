@@ -5,11 +5,11 @@ use crate::setup::PaymentSetup;
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
+use sqlx::Connection;
 use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use sqlx::Connection;
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -178,14 +178,17 @@ pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> imp
     }))
 }
 
-pub async fn skip_pending_operation(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+pub async fn skip_pending_operation(
+    data: Data<Box<ServerData>>,
+    req: HttpRequest,
+) -> impl Responder {
     let tx_id = req
         .match_info()
         .get("tx_id")
         .map(|tx_id| i64::from_str(tx_id).ok())
         .unwrap_or(None);
     if let Some(tx_id) = tx_id {
-        if data.shared_state.lock().await.SkipTx(tx_id) {
+        if data.shared_state.lock().await.skip_tx(tx_id) {
             web::Json(json!({
                 "success": "true",
             }))
@@ -272,8 +275,7 @@ pub async fn transactions_last_processed(
     }))
 }
 
-pub async fn transactions_feed( data: Data<Box<ServerData>>,
-                                req: HttpRequest) -> impl Responder {
+pub async fn transactions_feed(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
     let limit_prev = req
         .match_info()
         .get("prev")
@@ -329,7 +331,6 @@ pub async fn transactions_feed( data: Data<Box<ServerData>>,
             tx.engine_message = Some(tx_info.message.clone());
         }
     }
-
 
     web::Json(json!({
         "txs": txs,
