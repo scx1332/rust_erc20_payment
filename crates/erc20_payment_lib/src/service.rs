@@ -573,7 +573,7 @@ pub async fn gather_transactions_post(
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -656,7 +656,7 @@ pub async fn update_token_transfer_result(
 pub async fn update_approve_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -720,7 +720,7 @@ pub async fn update_approve_result(
 pub async fn update_tx_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -792,17 +792,19 @@ pub async fn process_transactions(
                 || tx.method == "transfer"
             {
                 log::debug!("Updating token transfer result");
-                update_token_transfer_result(conn, tx, process_t_res).await?;
+                update_token_transfer_result(conn, tx, &process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
                 log::debug!("Updating token approve result");
-                update_approve_result(conn, tx, process_t_res).await?;
+                update_approve_result(conn, tx, &process_t_res).await?;
             } else {
-                update_tx_result(conn, tx, process_t_res).await?;
+                update_tx_result(conn, tx, &process_t_res).await?;
             }
-            shared_state.lock().await.current_tx_info.remove(&tx.id);
-
-            //process only one transaction at once
-            break;
+            match process_t_res {
+                ProcessTransactionResult::Unknown => {}
+                _ => {
+                    shared_state.lock().await.current_tx_info.remove(&tx.id);
+                }
+            }
         }
         if transactions.is_empty() {
             break;
