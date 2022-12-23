@@ -19,6 +19,7 @@ pub struct ProviderSetup {
 }
 
 #[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ChainSetup {
     #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
@@ -35,6 +36,7 @@ pub struct ChainSetup {
 }
 
 #[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
     #[serde(skip_serializing)]

@@ -1,6 +1,6 @@
-
-CREATE TABLE "tx" (
-    id	                INTEGER     NOT NULL,
+CREATE TABLE "tx"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
     method              TEXT        NOT NULL,
     from_addr           TEXT        NOT NULL,
     to_addr             TEXT        NOT NULL,
@@ -23,12 +23,16 @@ CREATE TABLE "tx" (
     block_number        INTEGER     NULL,
     chain_status        INTEGER     NULL,
     fee_paid            TEXT        NULL,
-    error               TEXT        NULL,
-    PRIMARY KEY("id" AUTOINCREMENT)
+    error               TEXT        NULL
 );
 
-CREATE TABLE "token_transfer" (
-    id	                INTEGER     NOT NULL,
+CREATE INDEX "idx_tx_created_date" ON "tx" (created_date);
+CREATE INDEX "idx_tx_first_processed" ON "tx" (first_processed);
+CREATE INDEX "idx_tx_processing" ON "tx" (processing);
+
+CREATE TABLE "token_transfer"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
     from_addr           TEXT        NOT NULL,
     receiver_addr       TEXT        NOT NULL,
     chain_id            INTEGER     NOT NULL,
@@ -37,12 +41,12 @@ CREATE TABLE "token_transfer" (
     tx_id               INTEGER     NULL,
     fee_paid            TEXT        NULL,
     error               TEXT        NULL,
-    PRIMARY KEY("id" AUTOINCREMENT)
-    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY("tx_id") REFERENCES "tx"("id")
+    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
 );
 
-CREATE TABLE "allowance" (
-    id	                INTEGER     NOT NULL,
+CREATE TABLE "allowance"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
     owner               TEXT        NOT NULL,
     token_addr          TEXT        NULL,
     spender             TEXT        NOT NULL,
@@ -52,8 +56,7 @@ CREATE TABLE "allowance" (
     fee_paid            TEXT        NULL,
     confirm_date        DATETIME    NULL,
     error               TEXT        NULL,
-    PRIMARY KEY("id" AUTOINCREMENT)
-    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY("tx_id") REFERENCES "tx"("id")
+    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
 );
 
 
