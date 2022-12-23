@@ -91,7 +91,6 @@ WHERE id = $1
     Ok(())
 }
 
-#[allow(unused)]
 pub async fn get_all_allowances(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Allowance>, sqlx::Error> {
@@ -168,14 +167,58 @@ WHERE id = $1
     Ok(token_transfer.clone())
 }
 
-#[allow(unused)]
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
+    limit: Option<i64>,
 ) -> Result<Vec<TokenTransfer>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer")
-        .fetch_all(conn)
-        .await?;
+    let limit = limit.unwrap_or(i64::MAX);
+    let rows = sqlx::query_as::<_, TokenTransfer>(
+        r"SELECT * FROM token_transfer ORDER by id DESC LIMIT $1",
+    )
+    .bind(limit)
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
+}
+
+pub const TRANSACTION_FILTER_QUEUED: &str = "processing > 0 AND first_processed IS NULL";
+pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0 AND first_processed IS NOT NULL";
+pub const TRANSACTION_FILTER_TO_PROCESS: &str = "processing > 0";
+pub const TRANSACTION_FILTER_ALL: &str = "id >= 0";
+pub const TRANSACTION_FILTER_DONE: &str = "processing = 0";
+pub const TRANSACTION_ORDER_BY_CREATE_DATE: &str = "created_date ASC";
+pub const TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC: &str = "first_processed DESC";
+
+pub async fn get_transactions(
+    conn: &mut SqliteConnection,
+    filter: Option<&str>,
+    limit: Option<i64>,
+    order: Option<&str>,
+) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
+    let limit = limit.unwrap_or(i64::MAX);
+    let filter = filter.unwrap_or(TRANSACTION_FILTER_ALL);
+    let order = order.unwrap_or("id DESC");
+    let rows = sqlx::query_as::<_, Web3TransactionDao>(
+        format!(
+            r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
+            filter, order, limit
+        )
+        .as_str(),
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(rows)
+}
+
+pub async fn get_transaction(
+    conn: &mut SqliteConnection,
+    tx_id: i64,
+) -> Result<Web3TransactionDao, sqlx::Error> {
+    let row = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE id = $1")
+        .bind(tx_id)
+        .fetch_one(conn)
+        .await?;
+    Ok(row)
 }
 
 pub async fn get_pending_token_transfers(
@@ -203,15 +246,63 @@ pub async fn get_token_transfers_by_tx(
     Ok(rows)
 }
 
-pub async fn get_transactions_being_processed(
+pub const TRANSFER_FILTER_ALL: &str = "id >= 0";
+pub const TRANSFER_FILTER_QUEUED: &str = "tx_id is null AND error is null";
+pub const TRANSFER_FILTER_PROCESSING: &str = "tx_id is not null AND fee_paid is null";
+pub const TRANSFER_FILTER_DONE: &str = "fee_paid is not null";
+
+pub async fn get_transfer_count(
     conn: &mut SqliteConnection,
-) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, Web3TransactionDao>(
-        r"SELECT * FROM tx WHERE processing>0 ORDER by nonce DESC",
+    transfer_filter: Option<&str>,
+) -> Result<usize, sqlx::Error> {
+    let transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
+    let count = sqlx::query_scalar::<_, i64>(
+        format!(
+            r"SELECT COUNT(*) FROM token_transfer WHERE {}",
+            transfer_filter
+        )
+        .as_str(),
     )
-    .fetch_all(conn)
+    .fetch_one(conn)
     .await?;
-    Ok(rows)
+    Ok(count as usize)
+}
+
+pub async fn get_transaction_count(
+    conn: &mut SqliteConnection,
+    transaction_filter: Option<&str>,
+) -> Result<usize, sqlx::Error> {
+    let transaction_filter = transaction_filter.unwrap_or(TRANSACTION_FILTER_ALL);
+    let count = sqlx::query_scalar::<_, i64>(
+        format!(r"SELECT COUNT(*) FROM tx WHERE {}", transaction_filter).as_str(),
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(count as usize)
+}
+
+pub async fn get_next_transactions_to_process(
+    conn: &mut SqliteConnection,
+    limit: i64,
+) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
+    get_transactions(
+        conn,
+        Some(TRANSACTION_FILTER_TO_PROCESS),
+        Some(limit),
+        Some(TRANSACTION_ORDER_BY_CREATE_DATE),
+    )
+    .await
+}
+
+pub async fn force_tx_error(
+    conn: &mut SqliteConnection,
+    tx: &Web3TransactionDao,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
+        .bind(tx.id)
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 pub async fn insert_tx(

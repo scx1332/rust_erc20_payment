@@ -5,9 +5,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::db::operations::{
-    find_allowance, get_allowance_by_tx, get_pending_token_transfers, get_token_transfers_by_tx,
-    get_transactions_being_processed, insert_allowance, insert_tx, update_allowance,
-    update_token_transfer, update_tx,
+    find_allowance, get_allowance_by_tx, get_next_transactions_to_process,
+    get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance, insert_tx,
+    update_allowance, update_token_transfer, update_tx,
 };
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
@@ -573,7 +573,7 @@ pub async fn gather_transactions_post(
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -617,6 +617,8 @@ pub async fn update_token_transfer_result(
                     .await
                     .map_err(err_from!())?;
             }
+            tx.error = Some(err.clone());
+
             update_tx(&mut db_transaction, tx)
                 .await
                 .map_err(err_from!())?;
@@ -636,6 +638,8 @@ pub async fn update_token_transfer_result(
                     .await
                     .map_err(err_from!())?;
             }
+            tx.error = Some(err.clone());
+
             update_tx(&mut db_transaction, tx)
                 .await
                 .map_err(err_from!())?;
@@ -652,7 +656,7 @@ pub async fn update_token_transfer_result(
 pub async fn update_approve_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -679,6 +683,7 @@ pub async fn update_approve_result(
                 .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
+            tx.error = Some(err.clone());
             update_allowance(&mut db_transaction, &allowance)
                 .await
                 .map_err(err_from!())?;
@@ -695,6 +700,7 @@ pub async fn update_approve_result(
                 .map_err(err_from!())?;
             allowance.fee_paid = Some("0".to_string());
             allowance.error = Some(err.clone());
+            tx.error = Some(err.clone());
             update_allowance(&mut db_transaction, &allowance)
                 .await
                 .map_err(err_from!())?;
@@ -714,7 +720,7 @@ pub async fn update_approve_result(
 pub async fn update_tx_result(
     conn: &mut SqliteConnection,
     tx: &mut Web3TransactionDao,
-    process_t_res: ProcessTransactionResult,
+    process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
         ProcessTransactionResult::Confirmed => {
@@ -740,42 +746,65 @@ pub async fn update_tx_result(
 }
 
 pub async fn process_transactions(
+    shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
 ) -> Result<(), PaymentError> {
+    //remove tx from current processing infos
+
     loop {
-        let mut transactions = get_transactions_being_processed(conn)
+        let mut transactions = get_next_transactions_to_process(conn, 1)
             .await
             .map_err(err_from!())?;
 
-        //TODO - This loop is getting only first element, fix code so only one transaction is taken from db
-        #[allow(clippy::never_loop)]
-        for tx in &mut transactions {
-            let process_t_res = match process_transaction(conn, tx, payment_setup, false).await {
-                Ok(process_result) => process_result,
-                Err(err) => match err.inner {
-                    ErrorBag::TransactionFailedError(err) => {
-                        ProcessTransactionResult::InternalError(format!("{}", err))
-                    }
-                    _ => {
-                        return Err(err);
-                    }
-                },
+        if let Some(tx) = transactions.get_mut(0) {
+            let process_t_res = if shared_state.lock().await.is_skipped(tx.id) {
+                ProcessTransactionResult::InternalError("Transaction skipped by user".into())
+            } else {
+                shared_state
+                    .lock()
+                    .await
+                    .set_tx_message(tx.id, "Processing".to_string());
+                match process_transaction(shared_state.clone(), conn, tx, payment_setup, false)
+                    .await
+                {
+                    Ok(process_result) => process_result,
+                    Err(err) => match err.inner {
+                        ErrorBag::TransactionFailedError(err) => {
+                            shared_state
+                                .lock()
+                                .await
+                                .set_tx_error(tx.id, Some(err.message.clone()));
+                            ProcessTransactionResult::InternalError(format!("{}", &err))
+                        }
+                        _ => {
+                            shared_state
+                                .lock()
+                                .await
+                                .set_tx_error(tx.id, Some(format!("{}", err.inner)));
+                            return Err(err);
+                        }
+                    },
+                }
             };
             if tx.method.starts_with("MULTI.golemTransfer")
                 || tx.method == "ERC20.transfer"
                 || tx.method == "transfer"
             {
                 log::debug!("Updating token transfer result");
-                update_token_transfer_result(conn, tx, process_t_res).await?;
+                update_token_transfer_result(conn, tx, &process_t_res).await?;
             } else if tx.method == "ERC20.approve" {
                 log::debug!("Updating token approve result");
-                update_approve_result(conn, tx, process_t_res).await?;
+                update_approve_result(conn, tx, &process_t_res).await?;
             } else {
-                update_tx_result(conn, tx, process_t_res).await?;
+                update_tx_result(conn, tx, &process_t_res).await?;
             }
-            //process only one transaction at once
-            break;
+            match process_t_res {
+                ProcessTransactionResult::Unknown => {}
+                _ => {
+                    shared_state.lock().await.current_tx_info.remove(&tx.id);
+                }
+            }
         }
         if transactions.is_empty() {
             break;
@@ -816,7 +845,7 @@ pub async fn service_loop(
                 log::warn!("Skipping processing transactions...");
                 process_tx_needed = false;
             } else {
-                match process_transactions(conn, payment_setup).await {
+                match process_transactions(shared_state.clone(), conn, payment_setup).await {
                     Ok(_) => {
                         //all pending transactions processed
                         process_tx_needed = false;

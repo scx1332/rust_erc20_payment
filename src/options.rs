@@ -1,12 +1,6 @@
-use erc20_payment_lib::error::CustomError;
-use erc20_payment_lib::error::ErrorBag;
-use erc20_payment_lib::error::PaymentError;
-use erc20_payment_lib::runtime::ValidatedOptions;
-use erc20_payment_lib::{err_custom_create, err_from, err_from_msg};
 use std::fmt::Debug;
-use std::str::FromStr;
+
 use structopt::StructOpt;
-use web3::types::{Address, U256};
 
 #[derive(Debug, StructOpt)]
 pub struct CliOptions {
@@ -41,4 +35,25 @@ pub struct CliOptions {
         default_value = "10"
     )]
     pub process_sleep: u64,
+
+    #[structopt(
+        long = "http-threads",
+        help = "Number of threads to use for the server",
+        default_value = "2"
+    )]
+    pub http_threads: u64,
+
+    #[structopt(
+        long = "http-port",
+        help = "Port number of the server",
+        default_value = "8080"
+    )]
+    pub http_port: u16,
+
+    #[structopt(
+        long = "http-addr",
+        help = "Bind address of the server",
+        default_value = "127.0.0.1"
+    )]
+    pub http_addr: String,
 }

@@ -27,12 +27,12 @@ impl Default for AdditionalOptions {
     }
 }
 
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Engine {
     pub service_sleep: u64,
     pub process_sleep: u64,
+    pub automatic_recover: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 
-#[derive(sqlx::FromRow, Debug, Clone)]
+#[derive(Serialize, sqlx::FromRow, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Allowance {
     pub id: i64,
     pub owner: String,
@@ -14,7 +16,8 @@ pub struct Allowance {
     pub error: Option<String>,
 }
 
-#[derive(sqlx::FromRow, Debug, Clone)]
+#[derive(Serialize, sqlx::FromRow, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenTransfer {
     pub id: i64,
     pub from_addr: String,
@@ -27,7 +30,8 @@ pub struct TokenTransfer {
     pub error: Option<String>,
 }
 
-#[derive(sqlx::FromRow, Debug, Clone)]
+#[derive(Serialize, sqlx::FromRow, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Web3TransactionDao {
     pub id: i64,
     pub method: String,
@@ -40,10 +44,12 @@ pub struct Web3TransactionDao {
     pub val: String,
     pub nonce: Option<i64>,
     pub processing: i64,
+    #[serde(skip_serializing)]
     pub call_data: Option<String>,
     pub created_date: DateTime<Utc>,
     pub first_processed: Option<DateTime<Utc>>,
     pub tx_hash: Option<String>,
+    #[serde(skip_serializing)]
     pub signed_raw_data: Option<String>,
     pub signed_date: Option<DateTime<Utc>>,
     pub broadcast_date: Option<DateTime<Utc>>,
@@ -53,4 +59,8 @@ pub struct Web3TransactionDao {
     pub chain_status: Option<i64>,
     pub fee_paid: Option<String>,
     pub error: Option<String>,
+    #[sqlx(default)]
+    pub engine_message: Option<String>,
+    #[sqlx(default)]
+    pub engine_error: Option<String>,
 }

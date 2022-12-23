@@ -1,5 +1,14 @@
 mod options;
 
+use crate::options::CliOptions;
+use actix_web::{web, App, HttpServer};
+use erc20_payment_lib::config::AdditionalOptions;
+use erc20_payment_lib::db::create_sqlite_connection;
+use erc20_payment_lib::server::{
+    accounts, allowances, config_endpoint, greet, skip_pending_operation, transactions,
+    transactions_count, transactions_current, transactions_feed, transactions_last_processed,
+    transactions_next, transfers, tx_details, ServerData,
+};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -7,10 +16,9 @@ use erc20_payment_lib::{
     runtime::start_payment_engine,
 };
 use std::env;
-use crate::options::CliOptions;
+use std::sync::Arc;
 use structopt::StructOpt;
-use web3::ethabi::Token::Address;
-use erc20_payment_lib::config::AdditionalOptions;
+use tokio::sync::Mutex;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -31,15 +39,67 @@ async fn main_internal() -> Result<(), PaymentError> {
         generate_tx_only: cli.generate_tx_only,
         skip_multi_contract_check: cli.skip_multi_contract_check,
     };
+    let sp = start_payment_engine(&private_keys, config, Some(add_opt)).await?;
 
-    let sp = start_payment_engine(&private_keys, config,Some(add_opt)).await?;
-    sp.runtime_handle
-        .await
-        .map_err(|e| err_custom_create!("Service loop failed: {:?}", e))?;
+    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
+    log::info!("connecting to sqlite file db: {}", db_conn);
+    let conn = create_sqlite_connection(&db_conn, true).await?;
+
+    let server_data = web::Data::new(Box::new(ServerData {
+        shared_state: sp.shared_state.clone(),
+        db_connection: Arc::new(Mutex::new(conn)),
+        payment_setup: sp.setup.clone(),
+    }));
+
+    let server = HttpServer::new(move || {
+        let cors = actix_cors::Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
+        App::new()
+            .wrap(cors)
+            .app_data(server_data.clone())
+            .route("/", web::get().to(greet))
+            .route("/allowances", web::get().to(allowances))
+            .route("/config", web::get().to(config_endpoint))
+            .route("/transactions", web::get().to(transactions))
+            .route("/transactions/count", web::get().to(transactions_count))
+            .route("/transactions/next", web::get().to(transactions_next))
+            .route(
+                "/transactions/feed/{prev}/{next}",
+                web::get().to(transactions_feed),
+            )
+            .route(
+                "/transactions/next/{count}",
+                web::get().to(transactions_next),
+            )
+            .route("/transactions/current", web::get().to(transactions_current))
+            .route(
+                "/transactions/last",
+                web::get().to(transactions_last_processed),
+            )
+            .route(
+                "/transactions/last/{count}",
+                web::get().to(transactions_last_processed),
+            )
+            .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
+            .route("/tx/{tx_id}", web::get().to(tx_details))
+            .route("/transfers", web::get().to(transfers))
+            .route("/transfers/{tx_id}", web::get().to(transfers))
+            .route("/accounts", web::get().to(accounts))
+            .route("/{name}", web::get().to(greet))
+    })
+    .workers(cli.http_threads as usize)
+    .bind((cli.http_addr.as_str(), cli.http_port))
+    .expect("Cannot run server")
+    .run();
+
+    server.await.unwrap();
     Ok(())
 }
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> Result<(), PaymentError> {
     match main_internal().await {
         Ok(_) => Ok(()),

@@ -1,6 +1,7 @@
 [engine]
-service-sleep = 10
-process-sleep = 10
+service-sleep = 1
+process-sleep = 1
+automatic-recover = false
 
 [chain.rinkeby]
 network-id = 4

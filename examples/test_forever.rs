@@ -45,25 +45,26 @@ async fn main_internal() -> Result<(), PaymentError> {
     let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
     let c = config.chain.get(&cli.chain_name).unwrap().clone();
 
-    let sp = start_payment_engine(None, &private_keys, config).await?;
+    let sp = start_payment_engine(&private_keys, config, None).await?;
     loop {
-        {
-            let idling = { sp.shared_state.lock().await.idling };
-            let ignore_idling = true;
-            if idling || ignore_idling {
-                generate_transaction_batch(
-                    &mut conn,
-                    c.network_id as u64,
-                    &public_addrs,
-                    Some(c.token.clone().unwrap().address),
-                    &addr_pool,
-                    &amount_pool,
-                    cli.generate_count,
-                )
-                .await?;
-            }
-            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        if sp.runtime_handle.is_finished() {
+            break;
         }
+        let idling = { sp.shared_state.lock().await.idling };
+        let ignore_idling = true;
+        if idling || ignore_idling {
+            generate_transaction_batch(
+                &mut conn,
+                c.network_id as u64,
+                &public_addrs,
+                Some(c.token.clone().unwrap().address),
+                &addr_pool,
+                &amount_pool,
+                cli.generate_count,
+            )
+            .await?;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
     sp.runtime_handle
         .await

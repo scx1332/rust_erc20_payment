@@ -6,6 +6,7 @@ use crate::utils::gwei_to_u256;
 use crate::{err_custom_create, err_from};
 use rand::Rng;
 use secp256k1::SecretKey;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use web3::transports::Http;
 use web3::types::{Address, U256};
@@ -17,8 +18,9 @@ pub struct ProviderSetup {
     pub number_of_calls: u64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct ChainSetup {
+    #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
     pub currency_symbol: String,
     pub max_fee_per_gas: U256,
@@ -32,9 +34,10 @@ pub struct ChainSetup {
     pub confirmation_blocks: u64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct PaymentSetup {
     pub chain_setup: BTreeMap<usize, ChainSetup>,
+    #[serde(skip_serializing)]
     pub secret_keys: Vec<SecretKey>,
     //pub pub_address: Address,
     pub finish_when_done: bool,
@@ -42,9 +45,11 @@ pub struct PaymentSetup {
     pub skip_multi_contract_check: bool,
     pub service_sleep: u64,
     pub process_sleep: u64,
+    pub automatic_recover: bool,
 }
 
 impl PaymentSetup {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: &Config,
         secret_keys: Vec<SecretKey>,
@@ -53,6 +58,7 @@ impl PaymentSetup {
         skip_multi_contract_check: bool,
         service_sleep: u64,
         process_sleep: u64,
+        automatic_recover: bool,
     ) -> Result<Self, PaymentError> {
         let mut ps = PaymentSetup {
             chain_setup: BTreeMap::new(),
@@ -63,6 +69,7 @@ impl PaymentSetup {
             skip_multi_contract_check,
             service_sleep,
             process_sleep,
+            automatic_recover,
         };
         for chain_config in &config.chain {
             let mut providers = Vec::new();
