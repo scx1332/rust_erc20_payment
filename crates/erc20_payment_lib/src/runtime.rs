@@ -12,9 +12,9 @@ use sqlx::SqliteConnection;
 use std::env;
 
 use crate::config::AdditionalOptions;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;

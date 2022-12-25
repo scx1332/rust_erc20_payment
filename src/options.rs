@@ -57,16 +57,9 @@ pub struct CliOptions {
     )]
     pub http_addr: String,
 
-    #[structopt(
-    long = "faucet",
-    help = "Enabled faucet for the server",
-    )]
+    #[structopt(long = "faucet", help = "Enabled faucet for the server")]
     pub faucet: bool,
 
-    #[structopt(
-    long = "debug",
-    help = "Enabled debug endpoint for the server",
-    )]
+    #[structopt(long = "debug", help = "Enabled debug endpoint for the server")]
     pub debug: bool,
-
 }

@@ -1,17 +1,17 @@
-use std::collections::{BTreeMap, HashMap};
 use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
+use crate::transaction::{create_eth_transfer, create_token_transfer};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::transaction::{create_eth_transfer, create_token_transfer};
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -427,7 +427,6 @@ pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     format!("Hello {}!", name)
 }
 
-
 pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
     let target_addr = req.match_info().get("addr").unwrap_or("");
     let chain_id = req.match_info().get("chain").unwrap_or("");
@@ -436,7 +435,11 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
 
         let chain_id = return_on_error!(u64::from_str(chain_id));
 
-        let chain : &ChainSetup = return_on_error!(data.payment_setup.chain_setup.get(&(chain_id as usize)).ok_or("No config for given chain id"));
+        let chain: &ChainSetup = return_on_error!(data
+            .payment_setup
+            .chain_setup
+            .get(&(chain_id as usize))
+            .ok_or("No config for given chain id"));
         let faucet_event_idx = format!("{:#x}_{}", receiver_addr, chain_id);
 
         {
@@ -448,30 +451,41 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
                         faucet_events: BTreeMap::new(),
                         last_cleanup: chrono::Utc::now(),
                     });
-                    shared_state.faucet.as_mut().expect("Faucet data should be set here")
+                    shared_state
+                        .faucet
+                        .as_mut()
+                        .expect("Faucet data should be set here")
                 }
             };
 
-            const MIN_SECONDS :i64 = 120;
+            const MIN_SECONDS: i64 = 120;
             if let Some(el) = faucet_data.faucet_events.get(&faucet_event_idx) {
                 let ago = (chrono::Utc::now().time() - el.time()).num_seconds();
                 if ago < MIN_SECONDS {
                     return web::Json(json!({
-                    "error": format!("Already sent to this address {} seconds ago. Try again after {} seconds", ago, MIN_SECONDS)
-                }));
+                        "error": format!("Already sent to this address {} seconds ago. Try again after {} seconds", ago, MIN_SECONDS)
+                    }));
                 } else {
-                    faucet_data.faucet_events.insert(faucet_event_idx, chrono::Utc::now());
+                    faucet_data
+                        .faucet_events
+                        .insert(faucet_event_idx, chrono::Utc::now());
                 }
             } else {
-                faucet_data.faucet_events.insert(faucet_event_idx, chrono::Utc::now());
+                faucet_data
+                    .faucet_events
+                    .insert(faucet_event_idx, chrono::Utc::now());
             }
 
             //faucet data cleanup
-            const FAUCET_CLEANUP_AFTER : i64 = 120;
+            const FAUCET_CLEANUP_AFTER: i64 = 120;
             let curr_time = chrono::Utc::now();
-            if (curr_time.time() - faucet_data.last_cleanup.time()).num_seconds() > FAUCET_CLEANUP_AFTER {
+            if (curr_time.time() - faucet_data.last_cleanup.time()).num_seconds()
+                > FAUCET_CLEANUP_AFTER
+            {
                 faucet_data.last_cleanup = curr_time;
-                faucet_data.faucet_events.retain(|_, v| (curr_time.time() - v.time()).num_seconds() < MIN_SECONDS);
+                faucet_data
+                    .faucet_events
+                    .retain(|_, v| (curr_time.time() - v.time()).num_seconds() < MIN_SECONDS);
             }
         }
 
@@ -479,13 +493,17 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
 
         let from_secret = return_on_error!(data
             .payment_setup
-            .secret_keys.get(0).ok_or("No account found"));
+            .secret_keys
+            .get(0)
+            .ok_or("No account found"));
         let from = get_eth_addr_from_secret(from_secret);
 
-        let faucet_eth_amount = return_on_error!(chain.faucet_eth_amount.ok_or("Faucet amount not set on chain"));
-        let faucet_glm_amount = return_on_error!(chain.faucet_glm_amount.ok_or("Faucet GLM amount not set on chain"));
-
-
+        let faucet_eth_amount = return_on_error!(chain
+            .faucet_eth_amount
+            .ok_or("Faucet amount not set on chain"));
+        let faucet_glm_amount = return_on_error!(chain
+            .faucet_glm_amount
+            .ok_or("Faucet GLM amount not set on chain"));
 
         let token_transfer_eth = {
             let tt = create_token_transfer(from, receiver_addr, chain_id, None, faucet_eth_amount);
@@ -493,7 +511,13 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
             return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
         };
         let token_transfer_glm = {
-            let tt = create_token_transfer(from, receiver_addr, chain_id, Some(glm_address), faucet_glm_amount);
+            let tt = create_token_transfer(
+                from,
+                receiver_addr,
+                chain_id,
+                Some(glm_address),
+                faucet_glm_amount,
+            );
             let mut db_conn = data.db_connection.lock().await;
             return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
         };
@@ -501,10 +525,8 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
         return web::Json(json!({
             "transfer_gas_id": token_transfer_eth.id,
             "transfer_glm_id": token_transfer_glm.id,
-        }))
+        }));
     }
-
-
 
     return web::Json(json!({
         "status": "ok"
