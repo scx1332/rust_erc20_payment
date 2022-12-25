@@ -66,3 +66,5 @@ transaction-timeout = 100
 token = { address = "0xEC9F23c207018A444f9351dF3D7937f609870667", symbol = "tGLM" }
 multi-contract = { address = "0xBCfe9736A4f5bF2E43620061fF3001eA0D003c0F", max-at-once = 10 }
 confirmation-blocks = 1
+faucet-eth-amount = 10.0
+faucet-glm-amount = 20.0

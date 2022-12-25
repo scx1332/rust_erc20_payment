@@ -61,6 +61,8 @@ pub struct Chain {
     pub multi_contract: Option<MultiContractSettings>,
     pub transaction_timeout: u64,
     pub confirmation_blocks: u64,
+    pub faucet_eth_amount: Option<f64>,
+    pub faucet_glm_amount: Option<f64>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

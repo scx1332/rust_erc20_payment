@@ -4,11 +4,7 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{
-    accounts, allowances, config_endpoint, greet, skip_pending_operation, transactions,
-    transactions_count, transactions_current, transactions_feed, transactions_last_processed,
-    transactions_next, transfers, tx_details, ServerData,
-};
+use erc20_payment_lib::server::{accounts, allowances, config_endpoint, greet, skip_pending_operation, transactions, transactions_count, transactions_current, transactions_feed, transactions_last_processed, transactions_next, transfers, tx_details, ServerData, faucet};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -57,7 +53,7 @@ async fn main_internal() -> Result<(), PaymentError> {
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
-        App::new()
+        let mut app = App::new()
             .wrap(cors)
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
@@ -87,8 +83,13 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route("/tx/{tx_id}", web::get().to(tx_details))
             .route("/transfers", web::get().to(transfers))
             .route("/transfers/{tx_id}", web::get().to(transfers))
-            .route("/accounts", web::get().to(accounts))
-            .route("/{name}", web::get().to(greet))
+            .route("/accounts", web::get().to(accounts));
+
+        if cli.faucet {
+            app = app.route("/faucet", web::get().to(faucet));
+            app = app.route("/faucet/{chain}/{addr}", web::get().to(faucet));
+        }
+        app
     })
     .workers(cli.http_threads as usize)
     .bind((cli.http_addr.as_str(), cli.http_port))

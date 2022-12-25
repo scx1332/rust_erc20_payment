@@ -1,7 +1,7 @@
 use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::SharedState;
-use crate::setup::PaymentSetup;
+use crate::setup::{ChainSetup, PaymentSetup};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
@@ -10,6 +10,7 @@ use sqlx::SqliteConnection;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use crate::transaction::{create_eth_transfer, create_token_transfer};
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -415,4 +416,52 @@ pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     //my_data.inserted += 1;
 
     format!("Hello {}!", name)
+}
+
+
+pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let shared_state = data.shared_state.lock().await;
+    let target_addr = req.match_info().get("addr").unwrap_or("");
+    let chain_id = req.match_info().get("chain").unwrap_or("");
+    if !target_addr.is_empty() {
+        let receiver_addr = return_on_error!(web3::types::Address::from_str(target_addr));
+
+        let chain_id = return_on_error!(u64::from_str(chain_id));
+        let chain : &ChainSetup = return_on_error!(data.payment_setup.chain_setup.get(&(chain_id as usize)).ok_or("No config for given chain id"));
+
+
+        let glm_address = return_on_error!(chain.glm_address.ok_or("GLM address not set on chain"));
+
+        let from_secret = return_on_error!(data
+            .payment_setup
+            .secret_keys.get(0).ok_or("No account found"));
+        let from = get_eth_addr_from_secret(from_secret);
+
+        let faucet_eth_amount = return_on_error!(chain.faucet_eth_amount.ok_or("Faucet amount not set on chain"));
+        let faucet_glm_amount = return_on_error!(chain.faucet_glm_amount.ok_or("Faucet GLM amount not set on chain"));
+
+
+
+        let token_transfer_eth = {
+            let tt = create_token_transfer(from, receiver_addr, chain_id, None, faucet_eth_amount);
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+        };
+        let token_transfer_glm = {
+            let tt = create_token_transfer(from, receiver_addr, chain_id, Some(glm_address), faucet_glm_amount);
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+        };
+
+        return web::Json(json!({
+            "transfer_gas_id": token_transfer_eth.id,
+            "transfer_glm_id": token_transfer_glm.id,
+        }))
+    }
+
+
+
+    return web::Json(json!({
+        "status": "ok"
+    }));
 }

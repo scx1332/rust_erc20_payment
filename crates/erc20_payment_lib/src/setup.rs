@@ -33,6 +33,8 @@ pub struct ChainSetup {
     pub transaction_timeout: u64,
     pub skip_multi_contract_check: bool,
     pub confirmation_blocks: u64,
+    pub faucet_eth_amount: Option<U256>,
+    pub faucet_glm_amount: Option<U256>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -85,6 +87,15 @@ impl PaymentSetup {
                     number_of_calls: 0,
                 });
             }
+            let faucet_eth_amount = match &chain_config.1.faucet_eth_amount {
+                Some(f) => Some(gwei_to_u256(*f).map_err(err_from!())?),
+                None => None,
+            };
+            let faucet_glm_amount = match &chain_config.1.faucet_glm_amount {
+                Some(f) => Some(gwei_to_u256(*f).map_err(err_from!())?),
+                None => None,
+            };
+
             ps.chain_setup.insert(
                 chain_config.1.network_id,
                 ChainSetup {
@@ -109,6 +120,8 @@ impl PaymentSetup {
                     confirmation_blocks: chain_config.1.confirmation_blocks,
                     gas_left_warning_limit: chain_config.1.gas_left_warning_limit,
                     currency_symbol: chain_config.1.currency_symbol.clone(),
+                    faucet_eth_amount,
+                    faucet_glm_amount,
                 },
             );
         }

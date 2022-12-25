@@ -56,4 +56,11 @@ pub struct CliOptions {
         default_value = "127.0.0.1"
     )]
     pub http_addr: String,
+
+    #[structopt(
+    long = "faucet",
+    help = "Enabled faucet for the server",
+    )]
+    pub faucet: bool,
+
 }
