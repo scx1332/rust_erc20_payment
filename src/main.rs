@@ -87,20 +87,24 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route("/transfers/{tx_id}", web::get().to(transfers))
             .route("/accounts", web::get().to(accounts));
 
-        if cli.frontend {
-            let static_files = actix_files::Files::new("/", "./frontend");
-            let static_files = static_files.index_file("index.html");
-            app = app.service(static_files)
-        } else {
-            app = app.route("/", web::get().to(greet))
-        }
-
         if cli.faucet {
+            log::info!("Faucet endpoints enabled");
             app = app.route("/faucet", web::get().to(faucet));
             app = app.route("/faucet/{chain}/{addr}", web::get().to(faucet));
         }
         if cli.debug {
+            log::info!("Debug endpoints enabled");
             app = app.route("/debug", web::get().to(debug_endpoint));
+        }
+        if cli.frontend {
+            log::info!("Frontend endpoint enabled");
+            //This has to be on end, otherwise it catches requests to backend
+            let static_files = actix_files::Files::new("/", "./frontend");
+            let static_files = static_files.index_file("index.html");
+            app = app.service(static_files)
+        } else {
+            log::info!("Frontend endpoint disabled");
+            app = app.route("/", web::get().to(greet))
         }
         app
     })

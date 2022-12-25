@@ -38,6 +38,7 @@ rust_decimal = { version = "1.26.1", features = ["serde-arbitrary-precision"] }
 toml = "0.5.9"
 actix-web = "^4.2.1"
 actix-cors = "0.6.4"
+actix-files = "0.6.2"
 serde_json = { version = "^1.0.85" }
 
 [dependencies]
@@ -62,3 +63,4 @@ rust_decimal = { workspace = true }
 toml = { workspace = true }
 actix-web = { workspace = true }
 actix-cors = { workspace = true }
+actix-files = { workspace = true }
