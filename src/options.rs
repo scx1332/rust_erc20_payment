@@ -62,4 +62,7 @@ pub struct CliOptions {
 
     #[structopt(long = "debug", help = "Enabled debug endpoint for the server")]
     pub debug: bool,
+
+    #[structopt(long = "frontend", help = "Enabled frontend serving for the server")]
+    pub frontend: bool,
 }

@@ -1,5 +1,4 @@
 mod options;
-
 use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
@@ -25,7 +24,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         return Err(err_custom_create!("No .env file found: {}", err));
     }
     env_logger::init();
-    let cli = CliOptions::from_args();
+    let cli : CliOptions = CliOptions::from_args();
 
     let (private_keys, _public_addrs) = load_private_keys(
         &env::var("ETH_PRIVATE_KEYS").expect("Specify ETH_PRIVATE_KEYS env variable"),
@@ -60,7 +59,6 @@ async fn main_internal() -> Result<(), PaymentError> {
         let mut app = App::new()
             .wrap(cors)
             .app_data(server_data.clone())
-            .route("/", web::get().to(greet))
             .route("/allowances", web::get().to(allowances))
             .route("/config", web::get().to(config_endpoint))
             .route("/transactions", web::get().to(transactions))
@@ -88,6 +86,14 @@ async fn main_internal() -> Result<(), PaymentError> {
             .route("/transfers", web::get().to(transfers))
             .route("/transfers/{tx_id}", web::get().to(transfers))
             .route("/accounts", web::get().to(accounts));
+
+        if cli.frontend {
+            let static_files = actix_files::Files::new("/", "./frontend");
+            let static_files = static_files.index_file("index.html");
+            app = app.service(static_files)
+        } else {
+            app = app.route("/", web::get().to(greet))
+        }
 
         if cli.faucet {
             app = app.route("/faucet", web::get().to(faucet));
