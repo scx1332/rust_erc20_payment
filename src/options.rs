@@ -63,4 +63,10 @@ pub struct CliOptions {
     )]
     pub faucet: bool,
 
+    #[structopt(
+    long = "debug",
+    help = "Enabled debug endpoint for the server",
+    )]
+    pub debug: bool,
+
 }

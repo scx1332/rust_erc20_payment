@@ -1,6 +1,7 @@
+use std::collections::{BTreeMap, HashMap};
 use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
-use crate::runtime::SharedState;
+use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
@@ -165,6 +166,14 @@ pub async fn config_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
 
     web::Json(json!({
         "config": payment_setup,
+    }))
+}
+
+pub async fn debug_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
+    let mut shared_state = data.shared_state.lock().await.clone();
+
+    web::Json(json!({
+        "sharedState": shared_state,
     }))
 }
 
@@ -420,15 +429,51 @@ pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
 
 
 pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
-    let shared_state = data.shared_state.lock().await;
     let target_addr = req.match_info().get("addr").unwrap_or("");
     let chain_id = req.match_info().get("chain").unwrap_or("");
     if !target_addr.is_empty() {
         let receiver_addr = return_on_error!(web3::types::Address::from_str(target_addr));
 
         let chain_id = return_on_error!(u64::from_str(chain_id));
-        let chain : &ChainSetup = return_on_error!(data.payment_setup.chain_setup.get(&(chain_id as usize)).ok_or("No config for given chain id"));
 
+        let chain : &ChainSetup = return_on_error!(data.payment_setup.chain_setup.get(&(chain_id as usize)).ok_or("No config for given chain id"));
+        let faucet_event_idx = format!("{:#x}_{}", receiver_addr, chain_id);
+
+        {
+            let mut shared_state = data.shared_state.lock().await;
+            let mut faucet_data = match shared_state.faucet {
+                Some(ref mut faucet_data) => faucet_data,
+                None => {
+                    shared_state.faucet = Some(FaucetData {
+                        faucet_events: BTreeMap::new(),
+                        last_cleanup: chrono::Utc::now(),
+                    });
+                    shared_state.faucet.as_mut().expect("Faucet data should be set here")
+                }
+            };
+
+            const MIN_SECONDS :i64 = 120;
+            if let Some(el) = faucet_data.faucet_events.get(&faucet_event_idx) {
+                let ago = (chrono::Utc::now().time() - el.time()).num_seconds();
+                if ago < MIN_SECONDS {
+                    return web::Json(json!({
+                    "error": format!("Already sent to this address {} seconds ago. Try again after {} seconds", ago, MIN_SECONDS)
+                }));
+                } else {
+                    faucet_data.faucet_events.insert(faucet_event_idx, chrono::Utc::now());
+                }
+            } else {
+                faucet_data.faucet_events.insert(faucet_event_idx, chrono::Utc::now());
+            }
+
+            //faucet data cleanup
+            const FAUCET_CLEANUP_AFTER : i64 = 120;
+            let curr_time = chrono::Utc::now();
+            if (curr_time.time() - faucet_data.last_cleanup.time()).num_seconds() > FAUCET_CLEANUP_AFTER {
+                faucet_data.last_cleanup = curr_time;
+                faucet_data.faucet_events.retain(|_, v| (curr_time.time() - v.time()).num_seconds() < MIN_SECONDS);
+            }
+        }
 
         let glm_address = return_on_error!(chain.glm_address.ok_or("GLM address not set on chain"));
 
