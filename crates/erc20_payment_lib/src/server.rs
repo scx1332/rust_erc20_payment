@@ -2,13 +2,13 @@ use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
-use crate::transaction::{create_eth_transfer, create_token_transfer};
+use crate::transaction::{create_token_transfer};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -170,7 +170,7 @@ pub async fn config_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
 }
 
 pub async fn debug_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
-    let mut shared_state = data.shared_state.lock().await.clone();
+    let shared_state = data.shared_state.lock().await.clone();
 
     web::Json(json!({
         "sharedState": shared_state,
@@ -528,7 +528,7 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
         }));
     }
 
-    return web::Json(json!({
-        "status": "ok"
-    }));
+    web::Json(json!({
+        "status": "faucet enabled"
+    }))
 }

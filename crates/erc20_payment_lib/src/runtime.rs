@@ -17,7 +17,6 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 use web3::types::{Address, U256};
 
 #[derive(Debug, Clone, Serialize)]
