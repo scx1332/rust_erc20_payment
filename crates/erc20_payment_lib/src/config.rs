@@ -67,7 +67,7 @@ pub struct Chain {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Token {
-    pub symbol: Option<String>,
+    pub symbol: String,
     pub address: Address,
     pub faucet: Option<Address>,
 }
