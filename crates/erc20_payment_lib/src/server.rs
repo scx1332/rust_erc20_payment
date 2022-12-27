@@ -432,7 +432,7 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         .iter()
         .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
 
-    if public_addr.find(|addr| addr == &account).is_none() {
+    if let Some(_addr) = public_addr.find(|addr| addr == &account) {
         return web::Json(json!({
             "error": format!("Account {} not found in account list", account)
         }))

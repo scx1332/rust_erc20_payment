@@ -105,7 +105,7 @@ impl PaymentSetup {
                         .map_err(err_from!())?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee).map_err(err_from!())?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
-                    currency_glm_symbol: chain_config.1.token.clone().map(|t| t.symbol).unwrap_or("GLM".to_string()),
+                    currency_glm_symbol: chain_config.1.token.clone().map(|t| t.symbol).unwrap_or_else(||"GLM".to_string()),
                     multi_contract_address: chain_config
                         .1
                         .multi_contract
