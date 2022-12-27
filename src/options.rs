@@ -37,6 +37,12 @@ pub struct CliOptions {
     pub process_sleep: u64,
 
     #[structopt(
+    long = "http",
+    help = "Enable http server",
+    )]
+    pub http: bool,
+
+    #[structopt(
         long = "http-threads",
         help = "Number of threads to use for the server",
         default_value = "2"

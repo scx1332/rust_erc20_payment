@@ -33,6 +33,10 @@ async fn main_internal() -> Result<(), PaymentError> {
 
     let config = config::Config::load("config-payments.toml")?;
 
+    if cli.http && !cli.keep_running {
+        return Err(err_custom_create!("http mode requires keep-running option"));
+    }
+
     let add_opt = AdditionalOptions {
         keep_running: cli.keep_running,
         generate_tx_only: cli.generate_tx_only,
@@ -50,70 +54,75 @@ async fn main_internal() -> Result<(), PaymentError> {
         payment_setup: sp.setup.clone(),
     }));
 
-    let server = HttpServer::new(move || {
-        let cors = actix_cors::Cors::default()
-            .allow_any_origin()
-            .allow_any_method()
-            .allow_any_header()
-            .max_age(3600);
-        let mut app = App::new()
-            .wrap(cors)
-            .app_data(server_data.clone())
-            .route("/allowances", web::get().to(allowances))
-            .route("/config", web::get().to(config_endpoint))
-            .route("/transactions", web::get().to(transactions))
-            .route("/transactions/count", web::get().to(transactions_count))
-            .route("/transactions/next", web::get().to(transactions_next))
-            .route(
-                "/transactions/feed/{prev}/{next}",
-                web::get().to(transactions_feed),
-            )
-            .route(
-                "/transactions/next/{count}",
-                web::get().to(transactions_next),
-            )
-            .route("/transactions/current", web::get().to(transactions_current))
-            .route(
-                "/transactions/last",
-                web::get().to(transactions_last_processed),
-            )
-            .route(
-                "/transactions/last/{count}",
-                web::get().to(transactions_last_processed),
-            )
-            .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
-            .route("/tx/{tx_id}", web::get().to(tx_details))
-            .route("/transfers", web::get().to(transfers))
-            .route("/transfers/{tx_id}", web::get().to(transfers))
-            .route("/accounts", web::get().to(accounts));
+    if cli.http {
+        let server = HttpServer::new(move || {
+            let cors = actix_cors::Cors::default()
+                .allow_any_origin()
+                .allow_any_method()
+                .allow_any_header()
+                .max_age(3600);
+            let mut app = App::new()
+                .wrap(cors)
+                .app_data(server_data.clone())
+                .route("/allowances", web::get().to(allowances))
+                .route("/config", web::get().to(config_endpoint))
+                .route("/transactions", web::get().to(transactions))
+                .route("/transactions/count", web::get().to(transactions_count))
+                .route("/transactions/next", web::get().to(transactions_next))
+                .route(
+                    "/transactions/feed/{prev}/{next}",
+                    web::get().to(transactions_feed),
+                )
+                .route(
+                    "/transactions/next/{count}",
+                    web::get().to(transactions_next),
+                )
+                .route("/transactions/current", web::get().to(transactions_current))
+                .route(
+                    "/transactions/last",
+                    web::get().to(transactions_last_processed),
+                )
+                .route(
+                    "/transactions/last/{count}",
+                    web::get().to(transactions_last_processed),
+                )
+                .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
+                .route("/tx/{tx_id}", web::get().to(tx_details))
+                .route("/transfers", web::get().to(transfers))
+                .route("/transfers/{tx_id}", web::get().to(transfers))
+                .route("/accounts", web::get().to(accounts));
 
-        if cli.faucet {
-            log::info!("Faucet endpoints enabled");
-            app = app.route("/faucet", web::get().to(faucet));
-            app = app.route("/faucet/{chain}/{addr}", web::get().to(faucet));
-        }
-        if cli.debug {
-            log::info!("Debug endpoints enabled");
-            app = app.route("/debug", web::get().to(debug_endpoint));
-        }
-        if cli.frontend {
-            log::info!("Frontend endpoint enabled");
-            //This has to be on end, otherwise it catches requests to backend
-            let static_files = actix_files::Files::new("/", "./frontend");
-            let static_files = static_files.index_file("index.html");
-            app = app.service(static_files)
-        } else {
-            log::info!("Frontend endpoint disabled");
-            app = app.route("/", web::get().to(greet))
-        }
-        app
-    })
-    .workers(cli.http_threads as usize)
-    .bind((cli.http_addr.as_str(), cli.http_port))
-    .expect("Cannot run server")
-    .run();
+            if cli.faucet {
+                log::info!("Faucet endpoints enabled");
+                app = app.route("/faucet", web::get().to(faucet));
+                app = app.route("/faucet/{chain}/{addr}", web::get().to(faucet));
+            }
+            if cli.debug {
+                log::info!("Debug endpoints enabled");
+                app = app.route("/debug", web::get().to(debug_endpoint));
+            }
+            if cli.frontend {
+                log::info!("Frontend endpoint enabled");
+                //This has to be on end, otherwise it catches requests to backend
+                let static_files = actix_files::Files::new("/", "./frontend");
+                let static_files = static_files.index_file("index.html");
+                app = app.service(static_files)
+            } else {
+                log::info!("Frontend endpoint disabled");
+                app = app.route("/", web::get().to(greet))
+            }
+            app
+        })
+            .workers(cli.http_threads as usize)
+            .bind((cli.http_addr.as_str(), cli.http_port))
+            .expect("Cannot run server")
+            .run();
 
-    server.await.unwrap();
+        server.await.unwrap();
+    } else {
+        sp.runtime_handle.await.unwrap();
+    }
+
     Ok(())
 }
 
