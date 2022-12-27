@@ -3,11 +3,7 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{
-    accounts, allowances, config_endpoint, debug_endpoint, faucet, greet, skip_pending_operation,
-    transactions, transactions_count, transactions_current, transactions_feed,
-    transactions_last_processed, transactions_next, transfers, tx_details, ServerData,
-};
+use erc20_payment_lib::server::{*};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -90,7 +86,8 @@ async fn main_internal() -> Result<(), PaymentError> {
                 .route("/tx/{tx_id}", web::get().to(tx_details))
                 .route("/transfers", web::get().to(transfers))
                 .route("/transfers/{tx_id}", web::get().to(transfers))
-                .route("/accounts", web::get().to(accounts));
+                .route("/accounts", web::get().to(accounts))
+                .route("/account/{account}", web::get().to(account_details));
 
             if cli.faucet {
                 log::info!("Faucet endpoints enabled");

@@ -12,6 +12,7 @@ use std::collections::{BTreeMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use web3::types::Address;
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -411,12 +412,35 @@ pub async fn accounts(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Re
         .payment_setup
         .secret_keys
         .iter()
-        .map(|sk| get_eth_addr_from_secret(sk).to_string());
+        .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
 
-    json!({
-        "public_addr": public_addr.collect::<Vec<String>>()
-    })
-    .to_string()
+    web::Json(json!({
+        "publicAddr": public_addr.collect::<Vec<String>>()
+    }))
+}
+
+pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let account = return_on_error!(req.match_info().get("account").ok_or("No account provided"));
+
+    let web3_account = return_on_error!(Address::from_str(account));
+
+    let account = format!("{:#x}", web3_account);
+
+    let mut public_addr = data
+        .payment_setup
+        .secret_keys
+        .iter()
+        .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
+
+    if public_addr.find(|addr| addr == &account).is_none() {
+        return web::Json(json!({
+            "error": format!("Account {} not found in account list", account)
+        }))
+    }
+
+    web::Json(json!({
+        "account": account
+    }))
 }
 
 pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
