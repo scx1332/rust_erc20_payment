@@ -23,6 +23,7 @@ pub struct ProviderSetup {
 pub struct ChainSetup {
     #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
+    pub chain_name: String,
     pub currency_gas_symbol: String,
     pub currency_glm_symbol: String,
     pub max_fee_per_gas: U256,
@@ -36,6 +37,7 @@ pub struct ChainSetup {
     pub confirmation_blocks: u64,
     pub faucet_eth_amount: Option<U256>,
     pub faucet_glm_amount: Option<U256>,
+    pub block_explorer_url: Option<String>
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -101,6 +103,7 @@ impl PaymentSetup {
                 chain_config.1.network_id,
                 ChainSetup {
                     providers,
+                    chain_name: chain_config.1.chain_name.clone(),
                     max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas)
                         .map_err(err_from!())?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee).map_err(err_from!())?,
@@ -124,6 +127,7 @@ impl PaymentSetup {
                     currency_gas_symbol: chain_config.1.currency_symbol.clone(),
                     faucet_eth_amount,
                     faucet_glm_amount,
+                    block_explorer_url: chain_config.1.block_explorer_url.clone()
                 },
             );
         }
