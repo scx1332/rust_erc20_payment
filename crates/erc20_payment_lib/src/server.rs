@@ -432,14 +432,23 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         .iter()
         .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
 
-    if let Some(_addr) = public_addr.find(|addr| addr == &account) {
+    if let Some(addr) = public_addr.find(|addr| addr == &account) {
+        log::debug!("Found account: {}", addr);
+    } else {
         return web::Json(json!({
             "error": format!("Account {} not found in account list", account)
         }))
     }
+    let allowances = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
+    };
+
+
 
     web::Json(json!({
-        "account": account
+        "account": account,
+        "allowances": allowances,
     }))
 }
 

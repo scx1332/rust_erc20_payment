@@ -136,6 +136,23 @@ chain_id = $4
     Ok(row)
 }
 
+pub async fn get_allowances_by_owner(
+    conn: &mut SqliteConnection,
+    owner: &str,
+) -> Result<Vec<Allowance>, sqlx::Error> {
+    let row = sqlx::query_as::<_, Allowance>(
+        r"SELECT * FROM allowance
+WHERE
+owner = $1
+",
+    )
+        .bind(owner)
+        .fetch_all(conn)
+        .await?;
+    Ok(row)
+}
+
+
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
     token_transfer: &TokenTransfer,
