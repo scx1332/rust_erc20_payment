@@ -861,7 +861,7 @@ pub async fn transaction_from_chain(
     if web3_tx_dao.chain_status == Some(1) {
         let mut db_transaction = conn.begin().await.map_err(err_from!())?;
 
-        let tx = insert_tx(&mut db_transaction, &mut web3_tx_dao)
+        let tx = insert_tx(&mut db_transaction, &web3_tx_dao)
             .await
             .map_err(err_from!())?;
         for mut tt in fr {

@@ -294,7 +294,7 @@ pub async fn get_transfer_count(
     sender: Option<&str>,
     receiver: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
-    let mut transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
+    let transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
 
     let count = if let Some(sender) = sender {
         sqlx::query_scalar::<_, i64>(

@@ -433,42 +433,48 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
     };
 
-    let queued_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(
-            get_transfer_count(
-                &mut db_conn,
-                Some(TRANSFER_FILTER_QUEUED),
-                Some(&account),
-                None
+    let mut queued_transfer_count = 0;
+    let mut processed_transfer_count = 0;
+    let mut done_transfer_count = 0;
+
+    if is_sender {
+        queued_transfer_count = {
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(
+                get_transfer_count(
+                    &mut db_conn,
+                    Some(TRANSFER_FILTER_QUEUED),
+                    Some(&account),
+                    None
+                )
+                .await
             )
-            .await
-        )
-    };
-    let processed_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(
-            get_transfer_count(
-                &mut db_conn,
-                Some(TRANSFER_FILTER_PROCESSING),
-                Some(&account),
-                None
+        };
+        processed_transfer_count = {
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(
+                get_transfer_count(
+                    &mut db_conn,
+                    Some(TRANSFER_FILTER_PROCESSING),
+                    Some(&account),
+                    None
+                )
+                .await
             )
-            .await
-        )
-    };
-    let done_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(
-            get_transfer_count(
-                &mut db_conn,
-                Some(TRANSFER_FILTER_DONE),
-                Some(&account),
-                None
+        };
+        done_transfer_count = {
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(
+                get_transfer_count(
+                    &mut db_conn,
+                    Some(TRANSFER_FILTER_DONE),
+                    Some(&account),
+                    None
+                )
+                .await
             )
-            .await
-        )
-    };
+        };
+    }
     let received_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
 

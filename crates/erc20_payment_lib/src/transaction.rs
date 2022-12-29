@@ -1,12 +1,9 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::model::Web3TransactionDao;
 use crate::model::{ChainTransfer, TokenTransfer};
-use std::fmt::format;
-
 use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;
-use crate::db::operations::insert_chain_transfer;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
@@ -549,7 +546,7 @@ pub async fn find_receipt_extended(
         web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
 
         //todo: move to lazy static
-        let ERC20_TRANSFER_EVENT_SIGNATURE: H256 =
+        let erc20_transfer_event_signature: H256 =
             H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
                 .unwrap();
         let mut transfers = Vec::<ChainTransfer>::new();
@@ -566,44 +563,44 @@ pub async fn find_receipt_extended(
             });
         }
 
-        let mut transfered_to_contract_amount = None;
+        let mut transfered_to_contract_amount = U256::zero();
         let mut transfered_to_contract_token = None;
         let mut transfered_to_contract_from = None;
 
         //check if there is special transfer to contract
         for log in &receipt.logs {
-            if log.topics.len() == 3 && log.topics[0] == ERC20_TRANSFER_EVENT_SIGNATURE {
+            if log.topics.len() == 3 && log.topics[0] == erc20_transfer_event_signature {
                 let from = Address::from_slice(&log.topics[1][12..]);
                 let to = Address::from_slice(&log.topics[2][12..]);
                 let amount = U256::from(log.data.0.as_slice());
                 if to == tx_to {
-                    if let Some(transfered_to_contract_from) = transfered_to_contract_from {
-                        if from != transfered_to_contract_from {
+                    if let Some(tcf) = &transfered_to_contract_from {
+                        if from != *tcf {
                             return Err(err_custom_create!(
                                 "Transfer to contract from different addresses {:#x} != {:#x}",
                                 from,
-                                transfered_to_contract_from
+                                tcf
                             ));
                         }
                     }
-                    if let Some(transfered_to_contract_token) = transfered_to_contract_token {
-                        if log.address != transfered_to_contract_token {
+                    if let Some(tct) = &transfered_to_contract_token {
+                        if log.address != *tct {
                             return Err(err_custom_create!(
                                 "Transfer to contract from different tokens {:#x} != {:#x}",
                                 log.address,
-                                transfered_to_contract_token
+                                tct
                             ));
                         }
                     }
                     transfered_to_contract_from = Some(from);
                     transfered_to_contract_token = Some(log.address);
-                    transfered_to_contract_amount = Some(amount);
+                    transfered_to_contract_amount += amount;
                 }
             }
         }
 
         for log in &receipt.logs {
-            if log.topics.len() == 3 && log.topics[0] == ERC20_TRANSFER_EVENT_SIGNATURE {
+            if log.topics.len() == 3 && log.topics[0] == erc20_transfer_event_signature {
                 let from = Address::from_slice(&log.topics[1][12..]);
                 let to = Address::from_slice(&log.topics[2][12..]);
                 let amount = U256::from(log.data.0.as_slice());
