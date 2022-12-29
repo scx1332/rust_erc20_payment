@@ -108,24 +108,8 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
         }
     };
 
-    let json_allowances = allowances
-        .iter()
-        .map(|allowance| {
-            json!({
-                "id": allowance.id,
-                "chain_id": allowance.chain_id,
-                "tx_id": allowance.tx_id,
-                "owner": allowance.owner,
-                "token": allowance.token_addr,
-                "spender": allowance.spender,
-                "amount": allowance.allowance,
-                "confirm_date": allowance.confirm_date,
-            })
-        })
-        .collect::<Vec<_>>();
-
     web::Json(json!({
-        "allowances": json_allowances,
+        "allowances": allowances,
     }))
 }
 
