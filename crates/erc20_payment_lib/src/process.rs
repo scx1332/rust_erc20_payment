@@ -104,11 +104,11 @@ pub async fn process_transaction(
             chain_setup.max_fee_per_gas * U256::from(chain_setup.gas_left_warning_limit);
         if gas_balance < expected_gas_balance {
             let msg = if gas_balance.is_zero() {
-                format!("Account {} gas balance", chain_setup.currency_symbol)
+                format!("Account {} gas balance", chain_setup.currency_gas_symbol)
             } else {
                 format!(
                     "Account {} gas balance is very low",
-                    chain_setup.currency_symbol
+                    chain_setup.currency_gas_symbol
                 )
             };
 
@@ -155,7 +155,7 @@ pub async fn process_transaction(
                 {
                     log::error!(
                         "Insufficient {} for tx id: {}",
-                        chain_setup.currency_symbol,
+                        chain_setup.currency_gas_symbol,
                         web3_tx_dao.id
                     );
                     return Err(err);

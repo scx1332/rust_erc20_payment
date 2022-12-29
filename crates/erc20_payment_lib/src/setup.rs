@@ -23,7 +23,9 @@ pub struct ProviderSetup {
 pub struct ChainSetup {
     #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
-    pub currency_symbol: String,
+    pub chain_name: String,
+    pub currency_gas_symbol: String,
+    pub currency_glm_symbol: String,
     pub max_fee_per_gas: U256,
     pub gas_left_warning_limit: u64,
     pub priority_fee: U256,
@@ -33,6 +35,9 @@ pub struct ChainSetup {
     pub transaction_timeout: u64,
     pub skip_multi_contract_check: bool,
     pub confirmation_blocks: u64,
+    pub faucet_eth_amount: Option<U256>,
+    pub faucet_glm_amount: Option<U256>,
+    pub block_explorer_url: Option<String>
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -85,14 +90,25 @@ impl PaymentSetup {
                     number_of_calls: 0,
                 });
             }
+            let faucet_eth_amount = match &chain_config.1.faucet_eth_amount {
+                Some(f) => Some(gwei_to_u256(*f).map_err(err_from!())?),
+                None => None,
+            };
+            let faucet_glm_amount = match &chain_config.1.faucet_glm_amount {
+                Some(f) => Some(gwei_to_u256(*f).map_err(err_from!())?),
+                None => None,
+            };
+
             ps.chain_setup.insert(
                 chain_config.1.network_id,
                 ChainSetup {
                     providers,
+                    chain_name: chain_config.1.chain_name.clone(),
                     max_fee_per_gas: gwei_to_u256(chain_config.1.max_fee_per_gas)
                         .map_err(err_from!())?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee).map_err(err_from!())?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
+                    currency_glm_symbol: chain_config.1.token.clone().map(|t| t.symbol).unwrap_or_else(||"GLM".to_string()),
                     multi_contract_address: chain_config
                         .1
                         .multi_contract
@@ -108,7 +124,10 @@ impl PaymentSetup {
                     skip_multi_contract_check,
                     confirmation_blocks: chain_config.1.confirmation_blocks,
                     gas_left_warning_limit: chain_config.1.gas_left_warning_limit,
-                    currency_symbol: chain_config.1.currency_symbol.clone(),
+                    currency_gas_symbol: chain_config.1.currency_symbol.clone(),
+                    faucet_eth_amount,
+                    faucet_glm_amount,
+                    block_explorer_url: chain_config.1.block_explorer_url.clone()
                 },
             );
         }

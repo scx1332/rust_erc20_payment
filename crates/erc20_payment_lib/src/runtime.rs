@@ -12,6 +12,7 @@ use sqlx::SqliteConnection;
 use std::env;
 
 use crate::config::AdditionalOptions;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -26,9 +27,16 @@ pub struct SharedInfoTx {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct FaucetData {
+    pub faucet_events: BTreeMap<String, DateTime<Utc>>,
+    pub last_cleanup: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SharedState {
     /// Additional engine info about processed transactions
     pub current_tx_info: BTreeMap<i64, SharedInfoTx>,
+    pub faucet: Option<FaucetData>,
     pub inserted: usize,
     pub idling: bool,
 }
@@ -181,6 +189,7 @@ pub async fn start_payment_engine(
         inserted: 0,
         idling: false,
         current_tx_info: BTreeMap::new(),
+        faucet: None,
     }));
     let shared_state_clone = shared_state.clone();
     let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });

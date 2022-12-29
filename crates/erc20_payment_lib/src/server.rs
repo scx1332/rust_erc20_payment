@@ -1,15 +1,18 @@
 use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
-use crate::runtime::SharedState;
-use crate::setup::PaymentSetup;
+use crate::runtime::{FaucetData, SharedState};
+use crate::setup::{ChainSetup, PaymentSetup};
+use crate::transaction::{create_token_transfer};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
+use std::collections::{BTreeMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use web3::types::Address;
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
@@ -105,24 +108,8 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
         }
     };
 
-    let json_allowances = allowances
-        .iter()
-        .map(|allowance| {
-            json!({
-                "id": allowance.id,
-                "chain_id": allowance.chain_id,
-                "tx_id": allowance.tx_id,
-                "owner": allowance.owner,
-                "token": allowance.token_addr,
-                "spender": allowance.spender,
-                "amount": allowance.allowance,
-                "confirm_date": allowance.confirm_date,
-            })
-        })
-        .collect::<Vec<_>>();
-
     web::Json(json!({
-        "allowances": json_allowances,
+        "allowances": allowances,
     }))
 }
 
@@ -164,6 +151,14 @@ pub async fn config_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
 
     web::Json(json!({
         "config": payment_setup,
+    }))
+}
+
+pub async fn debug_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
+    let shared_state = data.shared_state.lock().await.clone();
+
+    web::Json(json!({
+        "sharedState": shared_state,
     }))
 }
 
@@ -401,12 +396,44 @@ pub async fn accounts(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Re
         .payment_setup
         .secret_keys
         .iter()
-        .map(|sk| get_eth_addr_from_secret(sk).to_string());
+        .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
 
-    json!({
-        "public_addr": public_addr.collect::<Vec<String>>()
-    })
-    .to_string()
+    web::Json(json!({
+        "publicAddr": public_addr.collect::<Vec<String>>()
+    }))
+}
+
+pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let account = return_on_error!(req.match_info().get("account").ok_or("No account provided"));
+
+    let web3_account = return_on_error!(Address::from_str(account));
+
+    let account = format!("{:#x}", web3_account);
+
+    let mut public_addr = data
+        .payment_setup
+        .secret_keys
+        .iter()
+        .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
+
+    if let Some(addr) = public_addr.find(|addr| addr == &account) {
+        log::debug!("Found account: {}", addr);
+    } else {
+        return web::Json(json!({
+            "error": format!("Account {} not found in account list", account)
+        }))
+    }
+    let allowances = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
+    };
+
+
+
+    web::Json(json!({
+        "account": account,
+        "allowances": allowances,
+    }))
 }
 
 pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
@@ -415,4 +442,110 @@ pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     //my_data.inserted += 1;
 
     format!("Hello {}!", name)
+}
+
+pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let target_addr = req.match_info().get("addr").unwrap_or("");
+    let chain_id = req.match_info().get("chain").unwrap_or("");
+    if !target_addr.is_empty() {
+        let receiver_addr = return_on_error!(web3::types::Address::from_str(target_addr));
+
+        let chain_id = return_on_error!(u64::from_str(chain_id));
+
+        let chain: &ChainSetup = return_on_error!(data
+            .payment_setup
+            .chain_setup
+            .get(&(chain_id as usize))
+            .ok_or("No config for given chain id"));
+        let faucet_event_idx = format!("{:#x}_{}", receiver_addr, chain_id);
+
+        {
+            let mut shared_state = data.shared_state.lock().await;
+            let mut faucet_data = match shared_state.faucet {
+                Some(ref mut faucet_data) => faucet_data,
+                None => {
+                    shared_state.faucet = Some(FaucetData {
+                        faucet_events: BTreeMap::new(),
+                        last_cleanup: chrono::Utc::now(),
+                    });
+                    shared_state
+                        .faucet
+                        .as_mut()
+                        .expect("Faucet data should be set here")
+                }
+            };
+
+            const MIN_SECONDS: i64 = 120;
+            if let Some(el) = faucet_data.faucet_events.get(&faucet_event_idx) {
+                let ago = (chrono::Utc::now().time() - el.time()).num_seconds();
+                if ago < MIN_SECONDS {
+                    return web::Json(json!({
+                        "error": format!("Already sent to this address {} seconds ago. Try again after {} seconds", ago, MIN_SECONDS)
+                    }));
+                } else {
+                    faucet_data
+                        .faucet_events
+                        .insert(faucet_event_idx, chrono::Utc::now());
+                }
+            } else {
+                faucet_data
+                    .faucet_events
+                    .insert(faucet_event_idx, chrono::Utc::now());
+            }
+
+            //faucet data cleanup
+            const FAUCET_CLEANUP_AFTER: i64 = 120;
+            let curr_time = chrono::Utc::now();
+            if (curr_time.time() - faucet_data.last_cleanup.time()).num_seconds()
+                > FAUCET_CLEANUP_AFTER
+            {
+                faucet_data.last_cleanup = curr_time;
+                faucet_data
+                    .faucet_events
+                    .retain(|_, v| (curr_time.time() - v.time()).num_seconds() < MIN_SECONDS);
+            }
+        }
+
+        let glm_address = return_on_error!(chain.glm_address.ok_or("GLM address not set on chain"));
+
+        let from_secret = return_on_error!(data
+            .payment_setup
+            .secret_keys
+            .get(0)
+            .ok_or("No account found"));
+        let from = get_eth_addr_from_secret(from_secret);
+
+        let faucet_eth_amount = return_on_error!(chain
+            .faucet_eth_amount
+            .ok_or("Faucet amount not set on chain"));
+        let faucet_glm_amount = return_on_error!(chain
+            .faucet_glm_amount
+            .ok_or("Faucet GLM amount not set on chain"));
+
+        let token_transfer_eth = {
+            let tt = create_token_transfer(from, receiver_addr, chain_id, None, faucet_eth_amount);
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+        };
+        let token_transfer_glm = {
+            let tt = create_token_transfer(
+                from,
+                receiver_addr,
+                chain_id,
+                Some(glm_address),
+                faucet_glm_amount,
+            );
+            let mut db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+        };
+
+        return web::Json(json!({
+            "transfer_gas_id": token_transfer_eth.id,
+            "transfer_glm_id": token_transfer_glm.id,
+        }));
+    }
+
+    web::Json(json!({
+        "status": "faucet enabled"
+    }))
 }

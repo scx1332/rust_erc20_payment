@@ -37,6 +37,12 @@ pub struct CliOptions {
     pub process_sleep: u64,
 
     #[structopt(
+    long = "http",
+    help = "Enable http server",
+    )]
+    pub http: bool,
+
+    #[structopt(
         long = "http-threads",
         help = "Number of threads to use for the server",
         default_value = "2"
@@ -56,4 +62,13 @@ pub struct CliOptions {
         default_value = "127.0.0.1"
     )]
     pub http_addr: String,
+
+    #[structopt(long = "faucet", help = "Enabled faucet for the server")]
+    pub faucet: bool,
+
+    #[structopt(long = "debug", help = "Enabled debug endpoint for the server")]
+    pub debug: bool,
+
+    #[structopt(long = "frontend", help = "Enabled frontend serving for the server")]
+    pub frontend: bool,
 }

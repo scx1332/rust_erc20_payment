@@ -51,6 +51,7 @@ pub struct MultiContractSettings {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Chain {
+    pub chain_name: String,
     pub network_id: usize,
     pub rpc_endpoints: Vec<String>,
     pub currency_symbol: String,
@@ -61,11 +62,14 @@ pub struct Chain {
     pub multi_contract: Option<MultiContractSettings>,
     pub transaction_timeout: u64,
     pub confirmation_blocks: u64,
+    pub faucet_eth_amount: Option<f64>,
+    pub faucet_glm_amount: Option<f64>,
+    pub block_explorer_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Token {
-    pub symbol: Option<String>,
+    pub symbol: String,
     pub address: Address,
     pub faucet: Option<Address>,
 }
