@@ -26,8 +26,21 @@ pub struct TokenTransfer {
     pub token_addr: Option<String>,
     pub token_amount: String,
     pub tx_id: Option<i64>,
+    pub tx_val_id: Option<i64>,
     pub fee_paid: Option<String>,
     pub error: Option<String>,
+}
+
+#[derive(Serialize, sqlx::FromRow, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainTransfer {
+    pub id: i64,
+    pub from_addr: String,
+    pub receiver_addr: String,
+    pub chain_id: i64,
+    pub token_addr: Option<String>,
+    pub token_amount: String,
+    pub tx_id: Option<i64>,
 }
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]

@@ -1,4 +1,4 @@
-use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
+use crate::model::{Allowance, ChainTransfer, TokenTransfer, Web3TransactionDao};
 use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(
@@ -21,6 +21,27 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
     .bind(&token_transfer.error)
     .fetch_one(conn)
     .await?;
+    Ok(res)
+}
+
+pub async fn insert_chain_transfer(
+    conn: &mut SqliteConnection,
+    token_transfer: &ChainTransfer,
+) -> Result<ChainTransfer, sqlx::Error> {
+    let res = sqlx::query_as::<_, ChainTransfer>(
+        r"INSERT INTO chain_transfer
+(from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id)
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+",
+    )
+        .bind(&token_transfer.from_addr)
+        .bind(&token_transfer.receiver_addr)
+        .bind(token_transfer.chain_id)
+        .bind(&token_transfer.token_addr)
+        .bind(&token_transfer.token_amount)
+        .bind(token_transfer.tx_id)
+        .fetch_one(conn)
+        .await?;
     Ok(res)
 }
 
@@ -263,10 +284,10 @@ pub async fn get_token_transfers_by_tx(
     Ok(rows)
 }
 
-pub const TRANSFER_FILTER_ALL: &str = "id >= 0";
-pub const TRANSFER_FILTER_QUEUED: &str = "tx_id is null AND error is null";
-pub const TRANSFER_FILTER_PROCESSING: &str = "tx_id is not null AND fee_paid is null";
-pub const TRANSFER_FILTER_DONE: &str = "fee_paid is not null";
+pub const TRANSFER_FILTER_ALL: &str = "(id >= 0)";
+pub const TRANSFER_FILTER_QUEUED: &str = "(tx_id is null AND error is null)";
+pub const TRANSFER_FILTER_PROCESSING: &str = "(tx_id is not null AND fee_paid is null)";
+pub const TRANSFER_FILTER_DONE: &str = "(fee_paid is not null)";
 
 pub async fn get_transfer_count(
     conn: &mut SqliteConnection,
@@ -289,7 +310,7 @@ pub async fn get_transfer_count(
                 r"SELECT COUNT(*) FROM token_transfer WHERE {} AND receiver_addr = $1",
                 transfer_filter
             ).as_str(),
-        ).bind(sender).fetch_one(conn).await?
+        ).bind(receiver).fetch_one(conn).await?
     } else {
         sqlx::query_scalar::<_, i64>(
             format!(

@@ -416,13 +416,12 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         .iter()
         .map(|sk| format!("{:#x}", get_eth_addr_from_secret(sk)));
 
-    if let Some(addr) = public_addr.find(|addr| addr == &account) {
+    let is_sender = if let Some(addr) = public_addr.find(|addr| addr == &account) {
         log::debug!("Found account: {}", addr);
+        true
     } else {
-        return web::Json(json!({
-            "error": format!("Account {} not found in account list", account)
-        }))
-    }
+        false
+    };
     let allowances = {
         let mut db_conn = data.db_connection.lock().await;
         return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
@@ -442,6 +441,11 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         let mut db_conn = data.db_connection.lock().await;
         return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), Some(&account), None).await)
     };
+    let received_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_ALL), None, Some(&account)).await)
+    };
 
     web::Json(json!({
         "account": account,
@@ -449,6 +453,7 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         "transfersQueued": queued_transfer_count,
         "transfersProcessing": processed_transfer_count,
         "transfersDone": done_transfer_count,
+        "receivedTransfers": received_transfer_count,
     }))
 }
 

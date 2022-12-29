@@ -1,5 +1,6 @@
+use std::fmt::format;
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
-use crate::model::TokenTransfer;
+use crate::model::{ChainTransfer, TokenTransfer};
 use crate::model::Web3TransactionDao;
 
 use secp256k1::SecretKey;
@@ -13,8 +14,9 @@ use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, Bytes, CallRequest, TransactionId, TransactionParameters, U256, U64};
+use web3::types::{Address, Bytes, CallRequest, H256, TransactionId, TransactionParameters, U256, U64};
 use web3::Web3;
+use crate::db::operations::insert_chain_transfer;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -91,6 +93,7 @@ pub fn create_token_transfer(
         token_addr: token_addr.map(|addr| format!("{:#x}", addr)),
         token_amount: token_amount.to_string(),
         tx_id: None,
+        tx_val_id: None,
         fee_paid: None,
         error: None,
     }
@@ -465,3 +468,187 @@ pub async fn find_receipt(
         Err(err_custom_create!("No tx hash"))
     }
 }
+
+
+pub async fn find_receipt_extended(
+    web3: &Web3<Http>,
+    web3_tx_dao: &mut Web3TransactionDao,
+) -> Result<Vec<ChainTransfer>, PaymentError> {
+    if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
+        let tx_hash = web3::types::H256::from_str(tx_hash)
+            .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
+            .map_err(err_from!())?;
+        let tx = web3
+            .eth()
+            .transaction(TransactionId::Hash(tx_hash))
+            .await
+            .map_err(err_from!())?.ok_or(err_custom_create!("Transaction not found"))?;
+        let receipt = web3
+            .eth()
+            .transaction_receipt(tx_hash)
+            .await
+            .map_err(err_from!())?.ok_or(err_custom_create!("Receipt not found"))?;
+
+        println!("Receipt: {:#?}", receipt);
+        if web3_tx_dao.from_addr.is_empty() {
+            web3_tx_dao.from_addr = format!("{:#x}", receipt.from);
+        } else if web3_tx_dao.from_addr != format!("{:#x}", receipt.from) {
+            return Err(err_custom_create!(
+                "From addr not match with receipt from {} != {:#x}",
+                web3_tx_dao.from_addr.to_lowercase(),
+                receipt.from
+            ));
+        }
+
+        let receipt_to = receipt.to.ok_or_else(||err_custom_create!(
+            "Receipt to for tx {:#x} to is None", tx_hash
+        ))?;
+        let tx_to = tx.to.ok_or_else(||err_custom_create!(
+            "Transaction to for tx {:#x} to is None", tx_hash
+        ))?;
+        if receipt_to != tx_to {
+            return Err(err_custom_create!(
+                "Receipt to not match with transaction to {:#x} != {:#x}",
+                receipt_to,
+                tx_to
+            ));
+        }
+        let tx_from = tx.from.ok_or(err_custom_create!("Transaction from is None"))?;
+        if tx_from != receipt.from {
+            return Err(err_custom_create!(
+                "Transaction from not match with receipt from {:#x} != {:#x}",
+                tx_from,
+                receipt.from
+            ));
+        }
+
+
+
+
+        if web3_tx_dao.to_addr.is_empty() {
+            web3_tx_dao.to_addr = format!("{:#x}", receipt_to);
+        } else if web3_tx_dao.to_addr != format!("{:#x}", receipt_to) {
+            return Err(err_custom_create!(
+                "To addr not match with receipt to {} != {:#x}",
+                web3_tx_dao.to_addr.to_lowercase(),
+                receipt.to.unwrap()
+            ));
+        }
+        web3_tx_dao.block_number = receipt.block_number.map(|x| x.as_u64() as i64);
+        web3_tx_dao.chain_status = receipt.status.map(|x| x.as_u64() as i64);
+
+        let gas_used = receipt
+            .gas_used
+            .ok_or_else(|| err_custom_create!("Gas used expected"))?;
+        let effective_gas_price = receipt
+            .effective_gas_price
+            .ok_or_else(|| err_custom_create!("Effective gas price expected"))?;
+
+
+        web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
+
+        //todo: move to lazy static
+        let ERC20_TRANSFER_EVENT_SIGNATURE : H256 = H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap();
+        let mut transfers = Vec::<ChainTransfer>::new();
+
+        if tx.value != U256::zero() {
+            transfers.push(ChainTransfer {
+                id: 0,
+                from_addr: format!("{:#x}", tx_from),
+                receiver_addr: format!("{:#x}", tx_to),
+                chain_id: 0,
+                token_addr: None,
+                token_amount: tx.value.to_string(),
+                tx_id: None,
+            });
+        }
+
+        let mut transfered_to_contract_amount = None;
+        let mut transfered_to_contract_token = None;
+        let mut transfered_to_contract_from = None;
+
+        //check if there is special transfer to contract
+        for log in &receipt.logs {
+            if log.topics.len() == 3 && log.topics[0] == ERC20_TRANSFER_EVENT_SIGNATURE {
+                let from = Address::from_slice(&log.topics[1][12..]);
+                let to = Address::from_slice(&log.topics[2][12..]);
+                let amount = U256::from(log.data.0.as_slice());
+                if to == tx_to {
+                    if let Some(transfered_to_contract_from) = transfered_to_contract_from {
+                        if from != transfered_to_contract_from {
+                            return Err(err_custom_create!(
+                                "Transfer to contract from different addresses {:#x} != {:#x}",
+                                from,
+                                transfered_to_contract_from
+                            ));
+                        }
+                    }
+                    if let Some(transfered_to_contract_token) = transfered_to_contract_token {
+                        if log.address != transfered_to_contract_token {
+                            return Err(err_custom_create!(
+                                "Transfer to contract from different tokens {:#x} != {:#x}",
+                                log.address,
+                                transfered_to_contract_token
+                            ));
+                        }
+                    }
+                    transfered_to_contract_from = Some(from);
+                    transfered_to_contract_token = Some(log.address);
+                    transfered_to_contract_amount = Some(amount);
+                }
+            }
+        }
+
+        for log in &receipt.logs {
+            if log.topics.len() == 3 && log.topics[0] == ERC20_TRANSFER_EVENT_SIGNATURE {
+                let from = Address::from_slice(&log.topics[1][12..]);
+                let to = Address::from_slice(&log.topics[2][12..]);
+                let amount = U256::from(log.data.0.as_slice());
+                if to == tx_to {
+                    continue;
+                }
+
+                if from == tx_to {
+                    if Some(log.address) != transfered_to_contract_token {
+                        return Err(err_custom_create!(
+                            "Transfer from contract different token {:#x} != {:#x}",
+                            log.address,
+                            transfered_to_contract_token.unwrap()
+                        ));
+                    }
+                    let contract_from_addr = transfered_to_contract_from.ok_or(err_custom_create!(
+                        "Transfer from contract without contract from"
+                    ))?;
+                    transfers.push(ChainTransfer {
+                        id: 0,
+                        from_addr: format!("{:#x}", contract_from_addr),
+                        receiver_addr: format!("{:#x}", to),
+                        chain_id: 0,
+                        token_addr: Some(format!("{:#x}", log.address)),
+                        token_amount: amount.to_string(),
+                        tx_id: None,
+                    });
+                } else if to == tx_to {
+                    //ignore payment to contract - handled in loop before
+                    continue;
+                } else {
+                    transfers.push(ChainTransfer {
+                        id: 0,
+                        from_addr: format!("{:#x}", from),
+                        receiver_addr: format!("{:#x}", to),
+                        chain_id: 0,
+                        token_addr: Some(format!("{:#x}", log.address)),
+                        token_amount: amount.to_string(),
+                        tx_id: None,
+                    });
+                }
+            }
+        }
+        Ok(transfers)
+    } else {
+        Err(err_custom_create!("No tx hash"))
+    }
+}
+
+
+

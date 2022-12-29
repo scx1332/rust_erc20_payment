@@ -4,18 +4,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::db::operations::{
-    find_allowance, get_allowance_by_tx, get_next_transactions_to_process,
-    get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance, insert_tx,
-    update_allowance, update_token_transfer, update_tx,
-};
+use crate::db::operations::{find_allowance, get_allowance_by_tx, get_next_transactions_to_process, get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance, insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx};
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{
-    create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer,
-};
+use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer, find_receipt_extended};
 use crate::utils::ConversionError;
 
 use crate::error::CustomError;
@@ -24,7 +18,9 @@ use crate::{err_create, err_custom_create, err_from};
 
 use crate::runtime::SharedState;
 use sqlx::{Connection, SqliteConnection};
+use web3::transports::Http;
 use web3::types::{Address, U256};
+use web3::Web3;
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct TokenTransferKey {
@@ -814,6 +810,64 @@ pub async fn process_transactions(
     Ok(())
 }
 
+pub async fn transaction_from_chain(
+    web3: &Web3<Http>,
+    conn: &mut SqliteConnection,
+    chain_id: i64,
+    tx_hash: &str,
+) -> Result<bool, PaymentError> {
+    println!("tx_hash: {}", tx_hash);
+    let tx_hash = web3::types::H256::from_str(tx_hash)
+        .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
+        .map_err(err_from!())?;
+
+    let mut web3_tx_dao = Web3TransactionDao {
+        id: -1,
+        method: "".to_string(),
+        from_addr: "".to_string(),
+        to_addr: "".to_string(),
+        chain_id,
+        gas_limit: None,
+        max_fee_per_gas: "".to_string(),
+        priority_fee: "".to_string(),
+        val: "".to_string(),
+        nonce: None,
+        processing: 0,
+        call_data: None,
+        created_date: chrono::Utc::now(),
+        first_processed: None,
+        tx_hash: Some(format!("{:#x}", tx_hash)),
+        signed_raw_data: None,
+        signed_date: None,
+        broadcast_date: None,
+        broadcast_count: 0,
+        confirm_date: None,
+        block_number: None,
+        chain_status: None,
+        fee_paid: None,
+        error: None,
+        engine_message: None,
+        engine_error: None
+    };
+    let fr = find_receipt_extended(web3, &mut web3_tx_dao).await?;
+
+    if web3_tx_dao.chain_status == Some(1) {
+        let mut db_transaction = conn.begin().await.map_err(err_from!())?;
+
+        let tx = insert_tx(&mut db_transaction, &mut web3_tx_dao).await.map_err(err_from!())?;
+        for mut tt in fr {
+            tt.tx_id = Some(tx.id);
+            insert_chain_transfer(&mut db_transaction, &tt).await.map_err(err_from!())?;
+        }
+        db_transaction.commit().await.map_err(err_from!())?;
+        log::info!("Transaction found and parsed successfully: {}", tx.id);
+    }
+
+
+
+    Ok(true)
+}
+
 pub async fn service_loop(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,
@@ -825,6 +879,13 @@ pub async fn service_loop(
         chrono::Utc::now() - chrono::Duration::seconds(process_transactions_interval);
     let mut last_update_time2 =
         chrono::Utc::now() - chrono::Duration::seconds(gather_transactions_interval);
+
+
+    let ps = payment_setup.chain_setup.get(&987789).unwrap();
+    transaction_from_chain(&ps.providers[0].provider, conn, 987789, "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7").await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_secs(100000)).await;
+
+
 
     let mut process_tx_needed = true;
     let mut process_tx_instantly = true;

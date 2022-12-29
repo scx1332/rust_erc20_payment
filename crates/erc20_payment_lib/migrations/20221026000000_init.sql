@@ -39,9 +39,22 @@ CREATE TABLE "token_transfer"
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
     tx_id               INTEGER     NULL,
+    tx_val_id           INTEGER     NULL,
     fee_paid            TEXT        NULL,
     error               TEXT        NULL,
     CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
+);
+
+CREATE TABLE "chain_transfer"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
+    from_addr           TEXT        NOT NULL,
+    receiver_addr       TEXT        NOT NULL,
+    chain_id            INTEGER     NOT NULL,
+    token_addr          TEXT        NULL,
+    token_amount        TEXT        NOT NULL,
+    tx_id               INTEGER     NULL,
+    CONSTRAINT "fk_chain_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
 );
 
 CREATE TABLE "allowance"
