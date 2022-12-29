@@ -4,12 +4,19 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::db::operations::{find_allowance, get_allowance_by_tx, get_next_transactions_to_process, get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance, insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx};
+use crate::db::operations::{
+    find_allowance, get_allowance_by_tx, get_next_transactions_to_process,
+    get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance,
+    insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx,
+};
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
 use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer, find_receipt_extended};
+use crate::transaction::{
+    create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer,
+    find_receipt_extended,
+};
 use crate::utils::ConversionError;
 
 use crate::error::CustomError;
@@ -847,23 +854,25 @@ pub async fn transaction_from_chain(
         fee_paid: None,
         error: None,
         engine_message: None,
-        engine_error: None
+        engine_error: None,
     };
     let fr = find_receipt_extended(web3, &mut web3_tx_dao).await?;
 
     if web3_tx_dao.chain_status == Some(1) {
         let mut db_transaction = conn.begin().await.map_err(err_from!())?;
 
-        let tx = insert_tx(&mut db_transaction, &mut web3_tx_dao).await.map_err(err_from!())?;
+        let tx = insert_tx(&mut db_transaction, &mut web3_tx_dao)
+            .await
+            .map_err(err_from!())?;
         for mut tt in fr {
             tt.tx_id = Some(tx.id);
-            insert_chain_transfer(&mut db_transaction, &tt).await.map_err(err_from!())?;
+            insert_chain_transfer(&mut db_transaction, &tt)
+                .await
+                .map_err(err_from!())?;
         }
         db_transaction.commit().await.map_err(err_from!())?;
         log::info!("Transaction found and parsed successfully: {}", tx.id);
     }
-
-
 
     Ok(true)
 }
@@ -880,12 +889,16 @@ pub async fn service_loop(
     let mut last_update_time2 =
         chrono::Utc::now() - chrono::Duration::seconds(gather_transactions_interval);
 
-
     let ps = payment_setup.chain_setup.get(&987789).unwrap();
-    transaction_from_chain(&ps.providers[0].provider, conn, 987789, "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7").await.unwrap();
-        tokio::time::sleep(std::time::Duration::from_secs(100000)).await;
-
-
+    transaction_from_chain(
+        &ps.providers[0].provider,
+        conn,
+        987789,
+        "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7",
+    )
+    .await
+    .unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(100000)).await;
 
     let mut process_tx_needed = true;
     let mut process_tx_instantly = true;

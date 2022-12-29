@@ -36,10 +36,7 @@ pub struct CliOptions {
     )]
     pub process_sleep: u64,
 
-    #[structopt(
-    long = "http",
-    help = "Enable http server",
-    )]
+    #[structopt(long = "http", help = "Enable http server")]
     pub http: bool,
 
     #[structopt(

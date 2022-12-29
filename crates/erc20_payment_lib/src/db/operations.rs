@@ -34,14 +34,14 @@ pub async fn insert_chain_transfer(
 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 ",
     )
-        .bind(&token_transfer.from_addr)
-        .bind(&token_transfer.receiver_addr)
-        .bind(token_transfer.chain_id)
-        .bind(&token_transfer.token_addr)
-        .bind(&token_transfer.token_amount)
-        .bind(token_transfer.tx_id)
-        .fetch_one(conn)
-        .await?;
+    .bind(&token_transfer.from_addr)
+    .bind(&token_transfer.receiver_addr)
+    .bind(token_transfer.chain_id)
+    .bind(&token_transfer.token_addr)
+    .bind(&token_transfer.token_amount)
+    .bind(token_transfer.tx_id)
+    .fetch_one(conn)
+    .await?;
     Ok(res)
 }
 
@@ -167,12 +167,11 @@ WHERE
 owner = $1
 ",
     )
-        .bind(owner)
-        .fetch_all(conn)
-        .await?;
+    .bind(owner)
+    .fetch_all(conn)
+    .await?;
     Ok(row)
 }
-
 
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
@@ -302,22 +301,33 @@ pub async fn get_transfer_count(
             format!(
                 r"SELECT COUNT(*) FROM token_transfer WHERE {} AND from_addr = $1",
                 transfer_filter
-            ).as_str(),
-        ).bind(sender).fetch_one(conn).await?
+            )
+            .as_str(),
+        )
+        .bind(sender)
+        .fetch_one(conn)
+        .await?
     } else if let Some(receiver) = receiver {
         sqlx::query_scalar::<_, i64>(
             format!(
                 r"SELECT COUNT(*) FROM token_transfer WHERE {} AND receiver_addr = $1",
                 transfer_filter
-            ).as_str(),
-        ).bind(receiver).fetch_one(conn).await?
+            )
+            .as_str(),
+        )
+        .bind(receiver)
+        .fetch_one(conn)
+        .await?
     } else {
         sqlx::query_scalar::<_, i64>(
             format!(
                 r"SELECT COUNT(*) FROM token_transfer WHERE {}",
                 transfer_filter
-            ).as_str(),
-        ).fetch_one(conn).await?
+            )
+            .as_str(),
+        )
+        .fetch_one(conn)
+        .await?
     };
 
     Ok(count as usize)

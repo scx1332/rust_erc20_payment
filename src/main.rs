@@ -3,7 +3,7 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::server::{*};
+use erc20_payment_lib::server::*;
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -20,7 +20,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         return Err(err_custom_create!("No .env file found: {}", err));
     }
     env_logger::init();
-    let cli : CliOptions = CliOptions::from_args();
+    let cli: CliOptions = CliOptions::from_args();
 
     let (private_keys, _public_addrs) = load_private_keys(
         &env::var("ETH_PRIVATE_KEYS").expect("Specify ETH_PRIVATE_KEYS env variable"),
@@ -110,10 +110,10 @@ async fn main_internal() -> Result<(), PaymentError> {
             }
             app
         })
-            .workers(cli.http_threads as usize)
-            .bind((cli.http_addr.as_str(), cli.http_port))
-            .expect("Cannot run server")
-            .run();
+        .workers(cli.http_threads as usize)
+        .bind((cli.http_addr.as_str(), cli.http_port))
+        .expect("Cannot run server")
+        .run();
 
         server.await.unwrap();
     } else {

@@ -2,13 +2,13 @@ use crate::db::operations::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
-use crate::transaction::{create_token_transfer};
+use crate::transaction::create_token_transfer;
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, Responder};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -125,15 +125,21 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
 
     let queued_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), None, None).await)
+        return_on_error!(
+            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), None, None).await
+        )
     };
     let processed_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), None, None).await)
+        return_on_error!(
+            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), None, None).await
+        )
     };
     let done_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), None, None).await)
+        return_on_error!(
+            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), None, None).await
+        )
     };
 
     web::Json(json!({
@@ -427,24 +433,54 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
     };
 
-
-
     let queued_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), Some(&account), None).await)
+        return_on_error!(
+            get_transfer_count(
+                &mut db_conn,
+                Some(TRANSFER_FILTER_QUEUED),
+                Some(&account),
+                None
+            )
+            .await
+        )
     };
     let processed_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), Some(&account), None).await)
+        return_on_error!(
+            get_transfer_count(
+                &mut db_conn,
+                Some(TRANSFER_FILTER_PROCESSING),
+                Some(&account),
+                None
+            )
+            .await
+        )
     };
     let done_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), Some(&account), None).await)
+        return_on_error!(
+            get_transfer_count(
+                &mut db_conn,
+                Some(TRANSFER_FILTER_DONE),
+                Some(&account),
+                None
+            )
+            .await
+        )
     };
     let received_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
 
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_ALL), None, Some(&account)).await)
+        return_on_error!(
+            get_transfer_count(
+                &mut db_conn,
+                Some(TRANSFER_FILTER_ALL),
+                None,
+                Some(&account)
+            )
+            .await
+        )
     };
 
     web::Json(json!({

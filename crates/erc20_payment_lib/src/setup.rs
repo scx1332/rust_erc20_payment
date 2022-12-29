@@ -37,7 +37,7 @@ pub struct ChainSetup {
     pub confirmation_blocks: u64,
     pub faucet_eth_amount: Option<U256>,
     pub faucet_glm_amount: Option<U256>,
-    pub block_explorer_url: Option<String>
+    pub block_explorer_url: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -108,7 +108,12 @@ impl PaymentSetup {
                         .map_err(err_from!())?,
                     priority_fee: gwei_to_u256(chain_config.1.priority_fee).map_err(err_from!())?,
                     glm_address: chain_config.1.token.clone().map(|t| t.address),
-                    currency_glm_symbol: chain_config.1.token.clone().map(|t| t.symbol).unwrap_or_else(||"GLM".to_string()),
+                    currency_glm_symbol: chain_config
+                        .1
+                        .token
+                        .clone()
+                        .map(|t| t.symbol)
+                        .unwrap_or_else(|| "GLM".to_string()),
                     multi_contract_address: chain_config
                         .1
                         .multi_contract
@@ -127,7 +132,7 @@ impl PaymentSetup {
                     currency_gas_symbol: chain_config.1.currency_symbol.clone(),
                     faucet_eth_amount,
                     faucet_glm_amount,
-                    block_explorer_url: chain_config.1.block_explorer_url.clone()
+                    block_explorer_url: chain_config.1.block_explorer_url.clone(),
                 },
             );
         }

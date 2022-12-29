@@ -1,11 +1,12 @@
-use std::fmt::format;
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
-use crate::model::{ChainTransfer, TokenTransfer};
 use crate::model::Web3TransactionDao;
+use crate::model::{ChainTransfer, TokenTransfer};
+use std::fmt::format;
 
 use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;
+use crate::db::operations::insert_chain_transfer;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
@@ -14,9 +15,10 @@ use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, Bytes, CallRequest, H256, TransactionId, TransactionParameters, U256, U64};
+use web3::types::{
+    Address, Bytes, CallRequest, TransactionId, TransactionParameters, H256, U256, U64,
+};
 use web3::Web3;
-use crate::db::operations::insert_chain_transfer;
 
 fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
@@ -469,7 +471,6 @@ pub async fn find_receipt(
     }
 }
 
-
 pub async fn find_receipt_extended(
     web3: &Web3<Http>,
     web3_tx_dao: &mut Web3TransactionDao,
@@ -482,12 +483,14 @@ pub async fn find_receipt_extended(
             .eth()
             .transaction(TransactionId::Hash(tx_hash))
             .await
-            .map_err(err_from!())?.ok_or(err_custom_create!("Transaction not found"))?;
+            .map_err(err_from!())?
+            .ok_or(err_custom_create!("Transaction not found"))?;
         let receipt = web3
             .eth()
             .transaction_receipt(tx_hash)
             .await
-            .map_err(err_from!())?.ok_or(err_custom_create!("Receipt not found"))?;
+            .map_err(err_from!())?
+            .ok_or(err_custom_create!("Receipt not found"))?;
 
         println!("Receipt: {:#?}", receipt);
         if web3_tx_dao.from_addr.is_empty() {
@@ -500,12 +503,12 @@ pub async fn find_receipt_extended(
             ));
         }
 
-        let receipt_to = receipt.to.ok_or_else(||err_custom_create!(
-            "Receipt to for tx {:#x} to is None", tx_hash
-        ))?;
-        let tx_to = tx.to.ok_or_else(||err_custom_create!(
-            "Transaction to for tx {:#x} to is None", tx_hash
-        ))?;
+        let receipt_to = receipt
+            .to
+            .ok_or_else(|| err_custom_create!("Receipt to for tx {:#x} to is None", tx_hash))?;
+        let tx_to = tx
+            .to
+            .ok_or_else(|| err_custom_create!("Transaction to for tx {:#x} to is None", tx_hash))?;
         if receipt_to != tx_to {
             return Err(err_custom_create!(
                 "Receipt to not match with transaction to {:#x} != {:#x}",
@@ -513,7 +516,9 @@ pub async fn find_receipt_extended(
                 tx_to
             ));
         }
-        let tx_from = tx.from.ok_or(err_custom_create!("Transaction from is None"))?;
+        let tx_from = tx
+            .from
+            .ok_or(err_custom_create!("Transaction from is None"))?;
         if tx_from != receipt.from {
             return Err(err_custom_create!(
                 "Transaction from not match with receipt from {:#x} != {:#x}",
@@ -521,9 +526,6 @@ pub async fn find_receipt_extended(
                 receipt.from
             ));
         }
-
-
-
 
         if web3_tx_dao.to_addr.is_empty() {
             web3_tx_dao.to_addr = format!("{:#x}", receipt_to);
@@ -544,11 +546,12 @@ pub async fn find_receipt_extended(
             .effective_gas_price
             .ok_or_else(|| err_custom_create!("Effective gas price expected"))?;
 
-
         web3_tx_dao.fee_paid = Some((gas_used * effective_gas_price).to_string());
 
         //todo: move to lazy static
-        let ERC20_TRANSFER_EVENT_SIGNATURE : H256 = H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap();
+        let ERC20_TRANSFER_EVENT_SIGNATURE: H256 =
+            H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+                .unwrap();
         let mut transfers = Vec::<ChainTransfer>::new();
 
         if tx.value != U256::zero() {
@@ -616,9 +619,9 @@ pub async fn find_receipt_extended(
                             transfered_to_contract_token.unwrap()
                         ));
                     }
-                    let contract_from_addr = transfered_to_contract_from.ok_or(err_custom_create!(
-                        "Transfer from contract without contract from"
-                    ))?;
+                    let contract_from_addr = transfered_to_contract_from.ok_or(
+                        err_custom_create!("Transfer from contract without contract from"),
+                    )?;
                     transfers.push(ChainTransfer {
                         id: 0,
                         from_addr: format!("{:#x}", contract_from_addr),
@@ -649,6 +652,3 @@ pub async fn find_receipt_extended(
         Err(err_custom_create!("No tx hash"))
     }
 }
-
-
-
