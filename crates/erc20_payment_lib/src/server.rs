@@ -125,15 +125,15 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
 
     let queued_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED)).await)
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), None, None).await)
     };
     let processed_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING)).await)
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), None, None).await)
     };
     let done_transfer_count = {
         let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE)).await)
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), None, None).await)
     };
 
     web::Json(json!({
@@ -430,9 +430,25 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
 
 
 
+    let queued_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), Some(&account), None).await)
+    };
+    let processed_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), Some(&account), None).await)
+    };
+    let done_transfer_count = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), Some(&account), None).await)
+    };
+
     web::Json(json!({
         "account": account,
         "allowances": allowances,
+        "transfersQueued": queued_transfer_count,
+        "transfersProcessing": processed_transfer_count,
+        "transfersDone": done_transfer_count,
     }))
 }
 

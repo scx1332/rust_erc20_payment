@@ -1,6 +1,15 @@
 # rust_erc20_payment
 
 
+# Notes
+
+* all addresses/txs in database are in hex/lowercase format. 
+
+# Frontend
+
+Link to frontend repo:
+https://github.com/scx1332/erc20_driver_frontend
+
 # Sample environment setup
 
 ETH_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000000

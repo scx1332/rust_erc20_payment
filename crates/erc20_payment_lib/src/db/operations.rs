@@ -271,17 +271,34 @@ pub const TRANSFER_FILTER_DONE: &str = "fee_paid is not null";
 pub async fn get_transfer_count(
     conn: &mut SqliteConnection,
     transfer_filter: Option<&str>,
+    sender: Option<&str>,
+    receiver: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
-    let transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
-    let count = sqlx::query_scalar::<_, i64>(
-        format!(
-            r"SELECT COUNT(*) FROM token_transfer WHERE {}",
-            transfer_filter
-        )
-        .as_str(),
-    )
-    .fetch_one(conn)
-    .await?;
+    let mut transfer_filter = transfer_filter.unwrap_or(TRANSFER_FILTER_ALL);
+
+    let count = if let Some(sender) = sender {
+        sqlx::query_scalar::<_, i64>(
+            format!(
+                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND from_addr = $1",
+                transfer_filter
+            ).as_str(),
+        ).bind(sender).fetch_one(conn).await?
+    } else if let Some(receiver) = receiver {
+        sqlx::query_scalar::<_, i64>(
+            format!(
+                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND receiver_addr = $1",
+                transfer_filter
+            ).as_str(),
+        ).bind(sender).fetch_one(conn).await?
+    } else {
+        sqlx::query_scalar::<_, i64>(
+            format!(
+                r"SELECT COUNT(*) FROM token_transfer WHERE {}",
+                transfer_filter
+            ).as_str(),
+        ).fetch_one(conn).await?
+    };
+
     Ok(count as usize)
 }
 
