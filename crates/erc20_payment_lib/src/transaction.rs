@@ -1,5 +1,5 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
-use crate::db::model::{*};
+use crate::db::model::*;
 use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;
@@ -45,9 +45,7 @@ pub fn dao_to_call_request(web3_tx_dao: &TxDao) -> Result<CallRequest, PaymentEr
     })
 }
 
-pub fn dao_to_transaction(
-    web3_tx_dao: &TxDao,
-) -> Result<TransactionParameters, PaymentError> {
+pub fn dao_to_transaction(web3_tx_dao: &TxDao) -> Result<TransactionParameters, PaymentError> {
     Ok(TransactionParameters {
         nonce: Some(U256::from(
             web3_tx_dao
@@ -407,10 +405,7 @@ pub async fn send_transaction(
 // it seems that this function is not needed at all for checking the transaction status
 // instead use nonce and transaction receipt
 #[allow(unused)]
-pub async fn find_tx(
-    web3: &Web3<Http>,
-    web3_tx_dao: &mut TxDao,
-) -> Result<bool, PaymentError> {
+pub async fn find_tx(web3: &Web3<Http>, web3_tx_dao: &mut TxDao) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
             .map_err(|err| ConversionError::from("Failed to convert tx hash".into()))

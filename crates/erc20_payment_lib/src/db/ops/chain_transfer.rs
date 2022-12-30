@@ -1,4 +1,4 @@
-use crate::db::model::{*};
+use crate::db::model::*;
 use sqlx::SqliteConnection;
 
 pub async fn insert_chain_transfer(
@@ -11,14 +11,13 @@ pub async fn insert_chain_transfer(
 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 ",
     )
-        .bind(&token_transfer.from_addr)
-        .bind(&token_transfer.receiver_addr)
-        .bind(token_transfer.chain_id)
-        .bind(&token_transfer.token_addr)
-        .bind(&token_transfer.token_amount)
-        .bind(token_transfer.tx_id)
-        .fetch_one(conn)
-        .await?;
+    .bind(&token_transfer.from_addr)
+    .bind(&token_transfer.receiver_addr)
+    .bind(token_transfer.chain_id)
+    .bind(&token_transfer.token_addr)
+    .bind(&token_transfer.token_amount)
+    .bind(token_transfer.tx_id)
+    .fetch_one(conn)
+    .await?;
     Ok(res)
 }
-

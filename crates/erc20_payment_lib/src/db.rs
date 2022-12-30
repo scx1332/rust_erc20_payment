@@ -1,5 +1,5 @@
 mod connection;
-pub mod ops;
 pub mod model;
+pub mod ops;
 
 pub use connection::create_sqlite_connection;

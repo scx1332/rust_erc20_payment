@@ -1,4 +1,4 @@
-use crate::db::model::{*};
+use crate::db::model::*;
 use sqlx::SqliteConnection;
 
 pub const TRANSACTION_FILTER_QUEUED: &str = "processing > 0 AND first_processed IS NULL";
@@ -23,10 +23,10 @@ pub async fn get_transactions(
             r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
             filter, order, limit
         )
-            .as_str(),
+        .as_str(),
     )
-        .fetch_all(conn)
-        .await?;
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
 
@@ -41,8 +41,6 @@ pub async fn get_transaction(
     Ok(row)
 }
 
-
-
 pub async fn get_transaction_count(
     conn: &mut SqliteConnection,
     transaction_filter: Option<&str>,
@@ -51,8 +49,8 @@ pub async fn get_transaction_count(
     let count = sqlx::query_scalar::<_, i64>(
         format!(r"SELECT COUNT(*) FROM tx WHERE {}", transaction_filter).as_str(),
     )
-        .fetch_one(conn)
-        .await?;
+    .fetch_one(conn)
+    .await?;
     Ok(count as usize)
 }
 
@@ -66,14 +64,10 @@ pub async fn get_next_transactions_to_process(
         Some(limit),
         Some(TRANSACTION_ORDER_BY_CREATE_DATE),
     )
-        .await
+    .await
 }
 
-
-pub async fn force_tx_error(
-    conn: &mut SqliteConnection,
-    tx: &TxDao,
-) -> Result<(), sqlx::Error> {
+pub async fn force_tx_error(conn: &mut SqliteConnection, tx: &TxDao) -> Result<(), sqlx::Error> {
     sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
         .bind(tx.id)
         .execute(conn)
@@ -81,10 +75,7 @@ pub async fn force_tx_error(
     Ok(())
 }
 
-pub async fn insert_tx(
-    conn: &mut SqliteConnection,
-    tx: &TxDao,
-) -> Result<TxDao, sqlx::Error> {
+pub async fn insert_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TxDao>(
         r"INSERT INTO tx
 (method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid, error)
@@ -119,10 +110,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
     Ok(res)
 }
 
-pub async fn update_tx(
-    conn: &mut SqliteConnection,
-    tx: &TxDao,
-) -> Result<TxDao, sqlx::Error> {
+pub async fn update_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE tx SET
 method = $2,
@@ -151,31 +139,31 @@ error = $24
 WHERE id = $1
 ",
     )
-        .bind(tx.id)
-        .bind(&tx.method)
-        .bind(&tx.from_addr)
-        .bind(&tx.to_addr)
-        .bind(tx.chain_id)
-        .bind(tx.gas_limit)
-        .bind(&tx.max_fee_per_gas)
-        .bind(&tx.priority_fee)
-        .bind(&tx.val)
-        .bind(tx.nonce)
-        .bind(tx.processing)
-        .bind(&tx.call_data)
-        .bind(tx.created_date)
-        .bind(tx.first_processed)
-        .bind(&tx.tx_hash)
-        .bind(&tx.signed_raw_data)
-        .bind(tx.signed_date)
-        .bind(tx.broadcast_date)
-        .bind(tx.broadcast_count)
-        .bind(tx.confirm_date)
-        .bind(tx.block_number)
-        .bind(tx.chain_status)
-        .bind(&tx.fee_paid)
-        .bind(&tx.error)
-        .execute(conn)
-        .await?;
+    .bind(tx.id)
+    .bind(&tx.method)
+    .bind(&tx.from_addr)
+    .bind(&tx.to_addr)
+    .bind(tx.chain_id)
+    .bind(tx.gas_limit)
+    .bind(&tx.max_fee_per_gas)
+    .bind(&tx.priority_fee)
+    .bind(&tx.val)
+    .bind(tx.nonce)
+    .bind(tx.processing)
+    .bind(&tx.call_data)
+    .bind(tx.created_date)
+    .bind(tx.first_processed)
+    .bind(&tx.tx_hash)
+    .bind(&tx.signed_raw_data)
+    .bind(tx.signed_date)
+    .bind(tx.broadcast_date)
+    .bind(tx.broadcast_count)
+    .bind(tx.confirm_date)
+    .bind(tx.block_number)
+    .bind(tx.chain_status)
+    .bind(&tx.fee_paid)
+    .bind(&tx.error)
+    .execute(conn)
+    .await?;
     Ok(tx.clone())
 }

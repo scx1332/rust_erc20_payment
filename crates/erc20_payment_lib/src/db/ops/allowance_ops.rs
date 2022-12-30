@@ -1,6 +1,5 @@
-use crate::db::model::{*};
+use crate::db::model::*;
 use sqlx::SqliteConnection;
-
 
 pub async fn insert_allowance(
     conn: &mut SqliteConnection,
@@ -22,17 +21,17 @@ error
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 ",
     )
-        .bind(&allowance.owner)
-        .bind(&allowance.token_addr)
-        .bind(&allowance.spender)
-        .bind(&allowance.allowance)
-        .bind(allowance.chain_id)
-        .bind(allowance.tx_id)
-        .bind(&allowance.fee_paid)
-        .bind(allowance.confirm_date)
-        .bind(&allowance.error)
-        .fetch_one(conn)
-        .await?;
+    .bind(&allowance.owner)
+    .bind(&allowance.token_addr)
+    .bind(&allowance.spender)
+    .bind(&allowance.allowance)
+    .bind(allowance.chain_id)
+    .bind(allowance.tx_id)
+    .bind(&allowance.fee_paid)
+    .bind(allowance.confirm_date)
+    .bind(&allowance.error)
+    .fetch_one(conn)
+    .await?;
     Ok(res)
 }
 
@@ -54,21 +53,20 @@ error = $10
 WHERE id = $1
  ",
     )
-        .bind(allowance.id)
-        .bind(&allowance.owner)
-        .bind(&allowance.token_addr)
-        .bind(&allowance.spender)
-        .bind(&allowance.allowance)
-        .bind(allowance.chain_id)
-        .bind(allowance.tx_id)
-        .bind(&allowance.fee_paid)
-        .bind(allowance.confirm_date)
-        .bind(&allowance.error)
-        .execute(conn)
-        .await?;
+    .bind(allowance.id)
+    .bind(&allowance.owner)
+    .bind(&allowance.token_addr)
+    .bind(&allowance.spender)
+    .bind(&allowance.allowance)
+    .bind(allowance.chain_id)
+    .bind(allowance.tx_id)
+    .bind(&allowance.fee_paid)
+    .bind(allowance.confirm_date)
+    .bind(&allowance.error)
+    .execute(conn)
+    .await?;
     Ok(())
 }
-
 
 pub async fn get_all_allowances(
     conn: &mut SqliteConnection,
@@ -106,12 +104,12 @@ spender = $3 AND
 chain_id = $4
 ",
     )
-        .bind(owner)
-        .bind(token_addr)
-        .bind(spender)
-        .bind(chain_id)
-        .fetch_optional(conn)
-        .await?;
+    .bind(owner)
+    .bind(token_addr)
+    .bind(spender)
+    .bind(chain_id)
+    .fetch_optional(conn)
+    .await?;
     Ok(row)
 }
 
@@ -125,8 +123,8 @@ WHERE
 owner = $1
 ",
     )
-        .bind(owner)
-        .fetch_all(conn)
-        .await?;
+    .bind(owner)
+    .fetch_all(conn)
+    .await?;
     Ok(row)
 }

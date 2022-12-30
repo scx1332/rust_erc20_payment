@@ -11,8 +11,8 @@ use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
 
-use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
 use crate::db::model::TxDao;
+use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;

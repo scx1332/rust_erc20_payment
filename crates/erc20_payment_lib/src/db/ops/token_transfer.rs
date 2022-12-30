@@ -1,4 +1,4 @@
-use crate::db::model::{*};
+use crate::db::model::*;
 use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(
@@ -23,7 +23,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
     .await?;
     Ok(res)
 }
-
 
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
@@ -70,7 +69,6 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
-
 pub async fn get_pending_token_transfers(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
@@ -89,10 +87,11 @@ pub async fn get_token_transfers_by_tx(
     conn: &mut SqliteConnection,
     tx_id: i64,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
-        .bind(tx_id)
-        .fetch_all(conn)
-        .await?;
+    let rows =
+        sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
+            .bind(tx_id)
+            .fetch_all(conn)
+            .await?;
     Ok(rows)
 }
 
