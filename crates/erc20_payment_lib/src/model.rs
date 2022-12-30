@@ -3,7 +3,7 @@ use serde::Serialize;
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Allowance {
+pub struct AllowanceDao {
     pub id: i64,
     pub owner: String,
     pub token_addr: String,
@@ -18,7 +18,7 @@ pub struct Allowance {
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct TokenTransfer {
+pub struct TokenTransferDao {
     pub id: i64,
     pub from_addr: String,
     pub receiver_addr: String,
@@ -33,7 +33,7 @@ pub struct TokenTransfer {
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ChainTransfer {
+pub struct ChainTransferDao {
     pub id: i64,
     pub from_addr: String,
     pub receiver_addr: String,
@@ -45,7 +45,7 @@ pub struct ChainTransfer {
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Web3TransactionDao {
+pub struct TxDao {
     pub id: i64,
     pub method: String,
     pub from_addr: String,

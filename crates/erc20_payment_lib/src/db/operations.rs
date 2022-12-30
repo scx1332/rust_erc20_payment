@@ -1,11 +1,11 @@
-use crate::model::{Allowance, ChainTransfer, TokenTransfer, Web3TransactionDao};
+use crate::model::{*};
 use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
-    token_transfer: &TokenTransfer,
-) -> Result<TokenTransfer, sqlx::Error> {
-    let res = sqlx::query_as::<_, TokenTransfer>(
+    token_transfer: &TokenTransferDao,
+) -> Result<TokenTransferDao, sqlx::Error> {
+    let res = sqlx::query_as::<_, TokenTransferDao>(
         r"INSERT INTO token_transfer
 (from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid, error)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
@@ -26,9 +26,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
 
 pub async fn insert_chain_transfer(
     conn: &mut SqliteConnection,
-    token_transfer: &ChainTransfer,
-) -> Result<ChainTransfer, sqlx::Error> {
-    let res = sqlx::query_as::<_, ChainTransfer>(
+    token_transfer: &ChainTransferDao,
+) -> Result<ChainTransferDao, sqlx::Error> {
+    let res = sqlx::query_as::<_, ChainTransferDao>(
         r"INSERT INTO chain_transfer
 (from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id)
 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
@@ -47,9 +47,9 @@ VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 
 pub async fn insert_allowance(
     conn: &mut SqliteConnection,
-    allowance: &Allowance,
-) -> Result<Allowance, sqlx::Error> {
-    let res = sqlx::query_as::<_, Allowance>(
+    allowance: &AllowanceDao,
+) -> Result<AllowanceDao, sqlx::Error> {
+    let res = sqlx::query_as::<_, AllowanceDao>(
         r"INSERT INTO allowance
 (
 owner,
@@ -81,7 +81,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 
 pub async fn update_allowance(
     conn: &mut SqliteConnection,
-    allowance: &Allowance,
+    allowance: &AllowanceDao,
 ) -> Result<(), sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE allowance SET
@@ -114,8 +114,8 @@ WHERE id = $1
 
 pub async fn get_all_allowances(
     conn: &mut SqliteConnection,
-) -> Result<Vec<Allowance>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, Allowance>(r"SELECT * FROM allowance")
+) -> Result<Vec<AllowanceDao>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, AllowanceDao>(r"SELECT * FROM allowance")
         .fetch_all(conn)
         .await?;
     Ok(rows)
@@ -124,8 +124,8 @@ pub async fn get_all_allowances(
 pub async fn get_allowance_by_tx(
     conn: &mut SqliteConnection,
     tx_id: i64,
-) -> Result<Allowance, sqlx::Error> {
-    let row = sqlx::query_as::<_, Allowance>(r"SELECT * FROM allowance WHERE tx_id=$1")
+) -> Result<AllowanceDao, sqlx::Error> {
+    let row = sqlx::query_as::<_, AllowanceDao>(r"SELECT * FROM allowance WHERE tx_id=$1")
         .bind(tx_id)
         .fetch_one(conn)
         .await?;
@@ -138,8 +138,8 @@ pub async fn find_allowance(
     token_addr: &str,
     spender: &str,
     chain_id: i64,
-) -> Result<Option<Allowance>, sqlx::Error> {
-    let row = sqlx::query_as::<_, Allowance>(
+) -> Result<Option<AllowanceDao>, sqlx::Error> {
+    let row = sqlx::query_as::<_, AllowanceDao>(
         r"SELECT * FROM allowance
 WHERE
 owner = $1 AND
@@ -160,8 +160,8 @@ chain_id = $4
 pub async fn get_allowances_by_owner(
     conn: &mut SqliteConnection,
     owner: &str,
-) -> Result<Vec<Allowance>, sqlx::Error> {
-    let row = sqlx::query_as::<_, Allowance>(
+) -> Result<Vec<AllowanceDao>, sqlx::Error> {
+    let row = sqlx::query_as::<_, AllowanceDao>(
         r"SELECT * FROM allowance
 WHERE
 owner = $1
@@ -175,8 +175,8 @@ owner = $1
 
 pub async fn update_token_transfer(
     conn: &mut SqliteConnection,
-    token_transfer: &TokenTransfer,
-) -> Result<TokenTransfer, sqlx::Error> {
+    token_transfer: &TokenTransferDao,
+) -> Result<TokenTransferDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE token_transfer SET
 from_addr = $2,
@@ -207,9 +207,9 @@ WHERE id = $1
 pub async fn get_all_token_transfers(
     conn: &mut SqliteConnection,
     limit: Option<i64>,
-) -> Result<Vec<TokenTransfer>, sqlx::Error> {
+) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
-    let rows = sqlx::query_as::<_, TokenTransfer>(
+    let rows = sqlx::query_as::<_, TokenTransferDao>(
         r"SELECT * FROM token_transfer ORDER by id DESC LIMIT $1",
     )
     .bind(limit)
@@ -231,11 +231,11 @@ pub async fn get_transactions(
     filter: Option<&str>,
     limit: Option<i64>,
     order: Option<&str>,
-) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
+) -> Result<Vec<TxDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
     let filter = filter.unwrap_or(TRANSACTION_FILTER_ALL);
     let order = order.unwrap_or("id DESC");
-    let rows = sqlx::query_as::<_, Web3TransactionDao>(
+    let rows = sqlx::query_as::<_, TxDao>(
         format!(
             r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
             filter, order, limit
@@ -250,8 +250,8 @@ pub async fn get_transactions(
 pub async fn get_transaction(
     conn: &mut SqliteConnection,
     tx_id: i64,
-) -> Result<Web3TransactionDao, sqlx::Error> {
-    let row = sqlx::query_as::<_, Web3TransactionDao>(r"SELECT * FROM tx WHERE id = $1")
+) -> Result<TxDao, sqlx::Error> {
+    let row = sqlx::query_as::<_, TxDao>(r"SELECT * FROM tx WHERE id = $1")
         .bind(tx_id)
         .fetch_one(conn)
         .await?;
@@ -260,8 +260,8 @@ pub async fn get_transaction(
 
 pub async fn get_pending_token_transfers(
     conn: &mut SqliteConnection,
-) -> Result<Vec<TokenTransfer>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, TokenTransfer>(
+) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, TokenTransferDao>(
         r"SELECT * FROM token_transfer
 WHERE tx_id is null
 AND error is null
@@ -275,8 +275,8 @@ AND error is null
 pub async fn get_token_transfers_by_tx(
     conn: &mut SqliteConnection,
     tx_id: i64,
-) -> Result<Vec<TokenTransfer>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, TokenTransfer>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
+) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
         .bind(tx_id)
         .fetch_all(conn)
         .await?;
@@ -349,7 +349,7 @@ pub async fn get_transaction_count(
 pub async fn get_next_transactions_to_process(
     conn: &mut SqliteConnection,
     limit: i64,
-) -> Result<Vec<Web3TransactionDao>, sqlx::Error> {
+) -> Result<Vec<TxDao>, sqlx::Error> {
     get_transactions(
         conn,
         Some(TRANSACTION_FILTER_TO_PROCESS),
@@ -361,7 +361,7 @@ pub async fn get_next_transactions_to_process(
 
 pub async fn force_tx_error(
     conn: &mut SqliteConnection,
-    tx: &Web3TransactionDao,
+    tx: &TxDao,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
         .bind(tx.id)
@@ -372,9 +372,9 @@ pub async fn force_tx_error(
 
 pub async fn insert_tx(
     conn: &mut SqliteConnection,
-    tx: &Web3TransactionDao,
-) -> Result<Web3TransactionDao, sqlx::Error> {
-    let res = sqlx::query_as::<_, Web3TransactionDao>(
+    tx: &TxDao,
+) -> Result<TxDao, sqlx::Error> {
+    let res = sqlx::query_as::<_, TxDao>(
         r"INSERT INTO tx
 (method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid, error)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING *;
@@ -410,8 +410,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 
 pub async fn update_tx(
     conn: &mut SqliteConnection,
-    tx: &Web3TransactionDao,
-) -> Result<Web3TransactionDao, sqlx::Error> {
+    tx: &TxDao,
+) -> Result<TxDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE tx SET
 method = $2,

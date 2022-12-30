@@ -10,7 +10,7 @@ use crate::db::operations::{
     insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx,
 };
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::model::{Allowance, TokenTransfer, Web3TransactionDao};
+use crate::model::{*};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{
@@ -107,7 +107,7 @@ pub async fn process_allowance(
             .await?;
             if allowance > minimum_allowance {
                 log::info!("Allowance found on chain, add entry to db");
-                let db_allowance = Allowance {
+                let db_allowance = AllowanceDao {
                     id: 0,
                     owner: allowance_request.owner.clone(),
                     token_addr: allowance_request.token_addr.clone(),
@@ -129,7 +129,7 @@ pub async fn process_allowance(
     };
 
     if allowance < minimum_allowance {
-        let mut allowance = Allowance {
+        let mut allowance = AllowanceDao {
             id: 0,
             owner: allowance_request.owner.clone(),
             token_addr: allowance_request.token_addr.clone(),
@@ -167,7 +167,7 @@ pub async fn process_allowance(
     Ok(0)
 }
 
-type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransfer>>;
+type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransferDao>>;
 
 pub async fn gather_transactions_pre(
     conn: &mut SqliteConnection,
@@ -238,7 +238,7 @@ pub async fn gather_transactions_pre(
 #[derive(Debug, Clone)]
 pub struct TokenTransferMultiOrder {
     receiver: Address,
-    token_transfers: Vec<TokenTransfer>,
+    token_transfers: Vec<TokenTransferDao>,
 }
 
 pub async fn gather_transactions_batch_multi(
@@ -385,7 +385,7 @@ pub async fn gather_transactions_batch_multi(
 pub async fn gather_transactions_batch(
     conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
-    token_transfers: &mut [TokenTransfer],
+    token_transfers: &mut [TokenTransferDao],
     token_transfer: &TokenTransferKey,
 ) -> Result<u32, PaymentError> {
     let mut sum = U256::zero();
@@ -575,7 +575,7 @@ pub async fn gather_transactions_post(
 
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,
-    tx: &mut Web3TransactionDao,
+    tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
@@ -658,7 +658,7 @@ pub async fn update_token_transfer_result(
 
 pub async fn update_approve_result(
     conn: &mut SqliteConnection,
-    tx: &mut Web3TransactionDao,
+    tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
@@ -722,7 +722,7 @@ pub async fn update_approve_result(
 
 pub async fn update_tx_result(
     conn: &mut SqliteConnection,
-    tx: &mut Web3TransactionDao,
+    tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
     match process_t_res {
@@ -828,7 +828,7 @@ pub async fn transaction_from_chain(
         .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
         .map_err(err_from!())?;
 
-    let mut web3_tx_dao = Web3TransactionDao {
+    let mut web3_tx_dao = TxDao {
         id: -1,
         method: "".to_string(),
         from_addr: "".to_string(),

@@ -12,7 +12,7 @@ use web3::types::{Address, U256};
 use web3::Web3;
 
 use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
-use crate::model::Web3TransactionDao;
+use crate::model::TxDao;
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;
@@ -39,7 +39,7 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
 pub async fn process_transaction(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
     payment_setup: &PaymentSetup,
     wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, PaymentError> {

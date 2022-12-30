@@ -1,6 +1,5 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
-use crate::model::Web3TransactionDao;
-use crate::model::{ChainTransfer, TokenTransfer};
+use crate::model::{*};
 use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;
@@ -17,7 +16,7 @@ use web3::types::{
 };
 use web3::Web3;
 
-fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes>, PaymentError> {
+fn decode_data_to_bytes(web3_tx_dao: &TxDao) -> Result<Option<Bytes>, PaymentError> {
     Ok(if let Some(data) = &web3_tx_dao.call_data {
         let hex_data = hex::decode(data)
             .map_err(|_err| err_custom_create!("Failed to convert data from hex"))?;
@@ -27,7 +26,7 @@ fn decode_data_to_bytes(web3_tx_dao: &Web3TransactionDao) -> Result<Option<Bytes
     })
 }
 
-pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallRequest, PaymentError> {
+pub fn dao_to_call_request(web3_tx_dao: &TxDao) -> Result<CallRequest, PaymentError> {
     Ok(CallRequest {
         from: Some(Address::from_str(&web3_tx_dao.from_addr).map_err(err_from!())?),
         to: Some(Address::from_str(&web3_tx_dao.to_addr).map_err(err_from!())?),
@@ -47,7 +46,7 @@ pub fn dao_to_call_request(web3_tx_dao: &Web3TransactionDao) -> Result<CallReque
 }
 
 pub fn dao_to_transaction(
-    web3_tx_dao: &Web3TransactionDao,
+    web3_tx_dao: &TxDao,
 ) -> Result<TransactionParameters, PaymentError> {
     Ok(TransactionParameters {
         nonce: Some(U256::from(
@@ -83,8 +82,8 @@ pub fn create_token_transfer(
     chain_id: i64,
     token_addr: Option<Address>,
     token_amount: U256,
-) -> TokenTransfer {
-    TokenTransfer {
+) -> TokenTransferDao {
+    TokenTransferDao {
         id: 0,
         from_addr: format!("{:#x}", from),
         receiver_addr: format!("{:#x}", receiver),
@@ -107,8 +106,8 @@ pub fn create_eth_transfer(
     max_fee_per_gas: U256,
     priority_fee: U256,
     amount: U256,
-) -> Web3TransactionDao {
-    Web3TransactionDao {
+) -> TxDao {
+    TxDao {
         id: 0,
         method: "transfer".to_string(),
         from_addr: format!("{:#x}", from),
@@ -147,8 +146,8 @@ pub fn create_eth_transfer_str(
     max_fee_per_gas: String,
     priority_fee: String,
     amount: String,
-) -> Web3TransactionDao {
-    Web3TransactionDao {
+) -> TxDao {
+    TxDao {
         id: 0,
         method: "transfer".to_string(),
         from_addr,
@@ -188,8 +187,8 @@ pub fn create_erc20_transfer(
     gas_limit: Option<u64>,
     max_fee_per_gas: U256,
     priority_fee: U256,
-) -> Result<Web3TransactionDao, PaymentError> {
-    Ok(Web3TransactionDao {
+) -> Result<TxDao, PaymentError> {
+    Ok(TxDao {
         id: 0,
         method: "ERC20.transfer".to_string(),
         from_addr: format!("{:#x}", from),
@@ -232,7 +231,7 @@ pub fn create_erc20_transfer_multi(
     max_fee_per_gas: U256,
     priority_fee: U256,
     direct: bool,
-) -> Result<Web3TransactionDao, PaymentError> {
+) -> Result<TxDao, PaymentError> {
     let (packed, sum) = pack_transfers_for_multi_contract(erc20_to, erc20_amount)?;
     //todo set method
     let (data, method_str) = if direct {
@@ -247,7 +246,7 @@ pub fn create_erc20_transfer_multi(
         )
     };
 
-    Ok(Web3TransactionDao {
+    Ok(TxDao {
         id: 0,
         method: method_str,
         from_addr: format!("{:#x}", from),
@@ -285,8 +284,8 @@ pub fn create_erc20_approve(
     gas_limit: Option<u64>,
     max_fee_per_gas: U256,
     priority_fee: U256,
-) -> Result<Web3TransactionDao, PaymentError> {
-    Ok(Web3TransactionDao {
+) -> Result<TxDao, PaymentError> {
+    Ok(TxDao {
         id: 0,
         method: "ERC20.approve".to_string(),
         from_addr: format!("{:#x}", from),
@@ -320,7 +319,7 @@ pub fn create_erc20_approve(
 
 pub async fn check_transaction(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
 ) -> Result<(), PaymentError> {
     let call_request = dao_to_call_request(web3_tx_dao)?;
     if let Some(gas) = call_request.gas {
@@ -355,7 +354,7 @@ pub async fn check_transaction(
 
 pub async fn sign_transaction(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
     let public_addr = get_eth_addr_from_secret(secret_key);
@@ -386,7 +385,7 @@ pub async fn sign_transaction(
 
 pub async fn send_transaction(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
 ) -> Result<(), PaymentError> {
     if let Some(signed_raw_data) = web3_tx_dao.signed_raw_data.as_ref() {
         let bytes = Bytes(
@@ -410,7 +409,7 @@ pub async fn send_transaction(
 #[allow(unused)]
 pub async fn find_tx(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
@@ -434,7 +433,7 @@ pub async fn find_tx(
 
 pub async fn find_receipt(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
+    web3_tx_dao: &mut TxDao,
 ) -> Result<bool, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
@@ -470,8 +469,8 @@ pub async fn find_receipt(
 
 pub async fn find_receipt_extended(
     web3: &Web3<Http>,
-    web3_tx_dao: &mut Web3TransactionDao,
-) -> Result<Vec<ChainTransfer>, PaymentError> {
+    web3_tx_dao: &mut TxDao,
+) -> Result<Vec<ChainTransferDao>, PaymentError> {
     if let Some(tx_hash) = web3_tx_dao.tx_hash.as_ref() {
         let tx_hash = web3::types::H256::from_str(tx_hash)
             .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
@@ -549,10 +548,10 @@ pub async fn find_receipt_extended(
         let erc20_transfer_event_signature: H256 =
             H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
                 .unwrap();
-        let mut transfers = Vec::<ChainTransfer>::new();
+        let mut transfers = Vec::<ChainTransferDao>::new();
 
         if tx.value != U256::zero() {
-            transfers.push(ChainTransfer {
+            transfers.push(ChainTransferDao {
                 id: 0,
                 from_addr: format!("{:#x}", tx_from),
                 receiver_addr: format!("{:#x}", tx_to),
@@ -619,7 +618,7 @@ pub async fn find_receipt_extended(
                     let contract_from_addr = transfered_to_contract_from.ok_or(
                         err_custom_create!("Transfer from contract without contract from"),
                     )?;
-                    transfers.push(ChainTransfer {
+                    transfers.push(ChainTransferDao {
                         id: 0,
                         from_addr: format!("{:#x}", contract_from_addr),
                         receiver_addr: format!("{:#x}", to),
@@ -632,7 +631,7 @@ pub async fn find_receipt_extended(
                     //ignore payment to contract - handled in loop before
                     continue;
                 } else {
-                    transfers.push(ChainTransfer {
+                    transfers.push(ChainTransferDao {
                         id: 0,
                         from_addr: format!("{:#x}", from),
                         receiver_addr: format!("{:#x}", to),
