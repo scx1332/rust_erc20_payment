@@ -501,7 +501,7 @@ pub async fn find_receipt_extended(
         .map_err(err_from!())?
         .ok_or(err_custom_create!("Receipt not found"))?;
 
-    println!("Receipt: {:#?}", receipt);
+    //println!("Receipt: {:#?}", receipt);
     chain_tx_dao.from_addr = format!("{:#x}", receipt.from);
 
     let receipt_to = receipt
@@ -558,10 +558,10 @@ pub async fn find_receipt_extended(
             id: 0,
             from_addr: format!("{:#x}", tx_from),
             receiver_addr: format!("{:#x}", tx_to),
-            chain_id: 0,
+            chain_id,
             token_addr: None,
             token_amount: tx.value.to_string(),
-            chain_tx_id: None,
+            chain_tx_id: 0,
         });
     }
 
@@ -625,10 +625,10 @@ pub async fn find_receipt_extended(
                     id: 0,
                     from_addr: format!("{:#x}", contract_from_addr),
                     receiver_addr: format!("{:#x}", to),
-                    chain_id: 0,
+                    chain_id,
                     token_addr: Some(format!("{:#x}", log.address)),
                     token_amount: amount.to_string(),
-                    chain_tx_id: None,
+                    chain_tx_id: 0,
                 });
             } else if to == tx_to {
                 //ignore payment to contract - handled in loop before
@@ -638,10 +638,10 @@ pub async fn find_receipt_extended(
                     id: 0,
                     from_addr: format!("{:#x}", from),
                     receiver_addr: format!("{:#x}", to),
-                    chain_id: 0,
+                    chain_id,
                     token_addr: Some(format!("{:#x}", log.address)),
                     token_amount: amount.to_string(),
-                    chain_tx_id: None,
+                    chain_tx_id: 0,
                 });
             }
         }

@@ -833,7 +833,7 @@ pub async fn transaction_from_chain(
             .await
             .map_err(err_from!())?;
         for mut transfer in transfers {
-            transfer.chain_tx_id = Some(tx.id);
+            transfer.chain_tx_id = tx.id;
             insert_chain_transfer(&mut db_transaction, &transfer)
                 .await
                 .map_err(err_from!())?;

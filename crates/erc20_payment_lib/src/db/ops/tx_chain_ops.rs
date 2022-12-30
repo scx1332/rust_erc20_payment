@@ -40,6 +40,20 @@ pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<TxChai
     Ok(row)
 }
 
+pub async fn get_incoming_transfers(
+    conn: &mut SqliteConnection,
+    account: String,
+) -> Result<Vec<ChainTransferDaoExt>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, ChainTransferDaoExt>(r"
+SELECT ct.from_addr, ct.receiver_addr, ct.token_addr, ct.chain_tx_id, ct.token_amount, cx.blockchain_date
+FROM chain_transfer as ct
+JOIN chain_tx as cx on ct.chain_tx_id = cx.id
+WHERE ct.receiver_addr = $1
+").bind(account).fetch_all(conn).await?;
+
+    Ok(rows)
+}
+
 #[sqlx::test]
 async fn tx_chain_test(pool: sqlx::SqlitePool) -> sqlx::Result<()> {
     let mut conn = pool.acquire().await?;

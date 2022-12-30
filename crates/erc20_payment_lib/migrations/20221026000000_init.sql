@@ -74,7 +74,7 @@ CREATE TABLE "chain_transfer"
     chain_id            INTEGER     NOT NULL,
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
-    chain_tx_id         INTEGER     NULL,
+    chain_tx_id         INTEGER     NOT NULL,
     CONSTRAINT "fk_chain_transfer_tx" FOREIGN KEY ("chain_tx_id") REFERENCES "chain_tx" ("id")
 );
 
