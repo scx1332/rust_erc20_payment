@@ -55,7 +55,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         if idling || ignore_idling {
             generate_transaction_batch(
                 &mut conn,
-                c.network_id as u64,
+                c.chain_id,
                 &public_addrs,
                 Some(c.token.clone().unwrap().address),
                 &addr_pool,
