@@ -90,7 +90,7 @@ pub struct TxDao {
     pub engine_error: Option<String>,
 }
 
-#[derive(Serialize, sqlx::FromRow, Debug, Clone, PartialEq)]
+#[derive(Serialize, sqlx::FromRow, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TxChainDao {
     pub id: i64,
