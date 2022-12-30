@@ -9,7 +9,7 @@ pub mod multi;
 pub mod process;
 pub mod runtime;
 pub mod service;
-mod setup;
+pub mod setup;
 pub mod transaction;
 pub mod utils;
 //@todo - add feature

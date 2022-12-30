@@ -889,17 +889,6 @@ pub async fn service_loop(
     let mut last_update_time2 =
         chrono::Utc::now() - chrono::Duration::seconds(gather_transactions_interval);
 
-    let ps = payment_setup.chain_setup.get(&987789).unwrap();
-    transaction_from_chain(
-        &ps.providers[0].provider,
-        conn,
-        987789,
-        "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7",
-    )
-    .await
-    .unwrap();
-    tokio::time::sleep(std::time::Duration::from_secs(100000)).await;
-
     let mut process_tx_needed = true;
     let mut process_tx_instantly = true;
     loop {
