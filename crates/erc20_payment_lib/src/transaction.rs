@@ -1,5 +1,5 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
-use crate::model::{*};
+use crate::db::model::{*};
 use secp256k1::SecretKey;
 
 use crate::contracts::get_erc20_approve;

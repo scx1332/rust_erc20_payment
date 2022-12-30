@@ -1,4 +1,4 @@
-use crate::model::{*};
+use crate::db::model::{*};
 use sqlx::SqliteConnection;
 
 pub async fn insert_token_transfer(

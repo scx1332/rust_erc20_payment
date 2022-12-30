@@ -10,7 +10,7 @@ use crate::db::operations::{
     insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx,
 };
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::model::{*};
+use crate::db::model::{*};
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{

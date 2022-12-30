@@ -12,7 +12,7 @@ use web3::types::{Address, U256};
 use web3::Web3;
 
 use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
-use crate::model::TxDao;
+use crate::db::model::TxDao;
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
 use crate::transaction::check_transaction;
