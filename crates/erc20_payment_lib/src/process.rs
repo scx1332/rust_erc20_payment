@@ -1,4 +1,4 @@
-use crate::db::operations::update_tx;
+use crate::db::ops::update_tx;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::{err_create, err_custom_create, err_from};

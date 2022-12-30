@@ -1,4 +1,4 @@
-use crate::db::operations::*;
+use crate::db::ops::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};

@@ -4,13 +4,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::db::operations::{
-    find_allowance, get_allowance_by_tx, get_next_transactions_to_process,
-    get_pending_token_transfers, get_token_transfers_by_tx, insert_allowance,
-    insert_chain_transfer, insert_tx, update_allowance, update_token_transfer, update_tx,
-};
+use crate::db::ops::*;
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::db::model::{*};
+use crate::db::model::*;
 use crate::multi::check_allowance;
 use crate::process::{process_transaction, ProcessTransactionResult};
 use crate::transaction::{

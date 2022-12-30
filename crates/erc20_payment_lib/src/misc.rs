@@ -1,4 +1,4 @@
-use crate::db::operations::insert_token_transfer;
+use crate::db::ops::insert_token_transfer;
 use std::str::FromStr;
 use std::time::Instant;
 
