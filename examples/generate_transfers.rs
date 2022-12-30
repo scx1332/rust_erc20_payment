@@ -50,7 +50,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     let c = config.chain.get(&cli.chain_name).unwrap();
     generate_transaction_batch(
         &mut conn,
-        c.network_id as u64,
+        c.chain_id,
         &public_addrs,
         Some(c.token.clone().unwrap().address),
         &addr_pool,

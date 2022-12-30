@@ -49,7 +49,6 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
     Ok(amount_pool)
 }
 
-#[allow(unused)]
 pub async fn generate_transaction_batch(
     conn: &mut SqliteConnection,
     chain_id: i64,

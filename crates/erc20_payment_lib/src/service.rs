@@ -824,45 +824,17 @@ pub async fn transaction_from_chain(
         .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
         .map_err(err_from!())?;
 
-    let mut web3_tx_dao = TxDao {
-        id: -1,
-        method: "".to_string(),
-        from_addr: "".to_string(),
-        to_addr: "".to_string(),
-        chain_id,
-        gas_limit: None,
-        max_fee_per_gas: "".to_string(),
-        priority_fee: "".to_string(),
-        val: "".to_string(),
-        nonce: None,
-        processing: 0,
-        call_data: None,
-        created_date: chrono::Utc::now(),
-        first_processed: None,
-        tx_hash: Some(format!("{:#x}", tx_hash)),
-        signed_raw_data: None,
-        signed_date: None,
-        broadcast_date: None,
-        broadcast_count: 0,
-        confirm_date: None,
-        block_number: None,
-        chain_status: None,
-        fee_paid: None,
-        error: None,
-        engine_message: None,
-        engine_error: None,
-    };
-    let fr = find_receipt_extended(web3, &mut web3_tx_dao).await?;
+    let (chain_tx_dao, transfers) = find_receipt_extended(web3, tx_hash, chain_id).await?;
 
-    if web3_tx_dao.chain_status == Some(1) {
+    if chain_tx_dao.chain_status == 1 {
         let mut db_transaction = conn.begin().await.map_err(err_from!())?;
 
-        let tx = insert_tx(&mut db_transaction, &web3_tx_dao)
+        let tx = insert_chain_tx(&mut db_transaction, &chain_tx_dao)
             .await
             .map_err(err_from!())?;
-        for mut tt in fr {
-            tt.tx_id = Some(tx.id);
-            insert_chain_transfer(&mut db_transaction, &tt)
+        for mut transfer in transfers {
+            transfer.chain_tx_id = Some(tx.id);
+            insert_chain_transfer(&mut db_transaction, &transfer)
                 .await
                 .map_err(err_from!())?;
         }

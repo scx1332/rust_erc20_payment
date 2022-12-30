@@ -26,7 +26,6 @@ pub struct TokenTransferDao {
     pub token_addr: Option<String>,
     pub token_amount: String,
     pub tx_id: Option<i64>,
-    pub tx_val_id: Option<i64>,
     pub fee_paid: Option<String>,
     pub error: Option<String>,
 }
@@ -40,7 +39,7 @@ pub struct ChainTransferDao {
     pub chain_id: i64,
     pub token_addr: Option<String>,
     pub token_amount: String,
-    pub tx_id: Option<i64>,
+    pub chain_tx_id: Option<i64>,
 }
 
 #[derive(Serialize, sqlx::FromRow, Debug, Clone)]
@@ -71,6 +70,32 @@ pub struct TxDao {
     pub block_number: Option<i64>,
     pub chain_status: Option<i64>,
     pub fee_paid: Option<String>,
+    pub error: Option<String>,
+    #[sqlx(default)]
+    pub engine_message: Option<String>,
+    #[sqlx(default)]
+    pub engine_error: Option<String>,
+}
+
+#[derive(Serialize, sqlx::FromRow, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TxChainDao {
+    pub id: i64,
+    pub tx_hash: String,
+    pub method: String,
+    pub from_addr: String,
+    pub to_addr: String,
+    pub chain_id: i64,
+    pub gas_limit: Option<i64>,
+    pub max_fee_per_gas: Option<String>,
+    pub priority_fee: Option<String>,
+    pub val: String,
+    pub nonce: i64,
+    pub checked_date: DateTime<Utc>,
+    pub blockchain_date: DateTime<Utc>,
+    pub block_number: i64,
+    pub chain_status: i64,
+    pub fee_paid: String,
     pub error: Option<String>,
     #[sqlx(default)]
     pub engine_message: Option<String>,

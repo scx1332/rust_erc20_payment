@@ -30,6 +30,28 @@ CREATE INDEX "idx_tx_created_date" ON "tx" (created_date);
 CREATE INDEX "idx_tx_first_processed" ON "tx" (first_processed);
 CREATE INDEX "idx_tx_processing" ON "tx" (processing);
 
+CREATE TABLE "chain_tx"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
+    tx_hash             TEXT        NOT NULL,
+    method              TEXT        NOT NULL,
+    from_addr           TEXT        NOT NULL,
+    to_addr             TEXT        NOT NULL,
+    chain_id            INTEGER     NOT NULL,
+    gas_limit           INTEGER     NULL,
+    max_fee_per_gas     TEXT        NULL,
+    priority_fee        TEXT        NULL,
+    val                 TEXT        NOT NULL,
+    nonce               INTEGER     NOT NULL,
+    checked_date        DATETIME    NOT NULL,
+    blockchain_date     DATETIME    NOT NULL,
+    block_number        INTEGER     NOT NULL,
+    chain_status        INTEGER     NOT NULL,
+    fee_paid            TEXT        NULL,
+    error               TEXT        NULL
+);
+
+
 CREATE TABLE "token_transfer"
 (
     id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +61,6 @@ CREATE TABLE "token_transfer"
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
     tx_id               INTEGER     NULL,
-    tx_val_id           INTEGER     NULL,
     fee_paid            TEXT        NULL,
     error               TEXT        NULL,
     CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
@@ -53,8 +74,8 @@ CREATE TABLE "chain_transfer"
     chain_id            INTEGER     NOT NULL,
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
-    tx_id               INTEGER     NULL,
-    CONSTRAINT "fk_chain_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
+    chain_tx_id         INTEGER     NULL,
+    CONSTRAINT "fk_chain_transfer_tx" FOREIGN KEY ("chain_tx_id") REFERENCES "chain_tx" ("id")
 );
 
 CREATE TABLE "allowance"
