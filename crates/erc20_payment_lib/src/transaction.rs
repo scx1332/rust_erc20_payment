@@ -80,7 +80,7 @@ pub fn dao_to_transaction(
 pub fn create_token_transfer(
     from: Address,
     receiver: Address,
-    chain_id: u64,
+    chain_id: i64,
     token_addr: Option<Address>,
     token_amount: U256,
 ) -> TokenTransfer {
@@ -88,7 +88,7 @@ pub fn create_token_transfer(
         id: 0,
         from_addr: format!("{:#x}", from),
         receiver_addr: format!("{:#x}", receiver),
-        chain_id: chain_id as i64,
+        chain_id,
         token_addr: token_addr.map(|addr| format!("{:#x}", addr)),
         token_amount: token_amount.to_string(),
         tx_id: None,

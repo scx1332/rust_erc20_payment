@@ -513,12 +513,12 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     if !target_addr.is_empty() {
         let receiver_addr = return_on_error!(web3::types::Address::from_str(target_addr));
 
-        let chain_id = return_on_error!(u64::from_str(chain_id));
+        let chain_id = return_on_error!(i64::from_str(chain_id));
 
         let chain: &ChainSetup = return_on_error!(data
             .payment_setup
             .chain_setup
-            .get(&(chain_id as usize))
+            .get(&(chain_id))
             .ok_or("No config for given chain id"));
         let faucet_event_idx = format!("{:#x}_{}", receiver_addr, chain_id);
 

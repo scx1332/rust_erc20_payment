@@ -43,7 +43,7 @@ pub struct ChainSetup {
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PaymentSetup {
-    pub chain_setup: BTreeMap<usize, ChainSetup>,
+    pub chain_setup: BTreeMap<i64, ChainSetup>,
     #[serde(skip_serializing)]
     pub secret_keys: Vec<SecretKey>,
     //pub pub_address: Address,
@@ -100,7 +100,7 @@ impl PaymentSetup {
             };
 
             ps.chain_setup.insert(
-                chain_config.1.network_id,
+                chain_config.1.chain_id,
                 ChainSetup {
                     providers,
                     chain_name: chain_config.1.chain_name.clone(),
@@ -140,14 +140,14 @@ impl PaymentSetup {
     }
     pub fn get_chain_setup(&self, chain_id: i64) -> Result<&ChainSetup, PaymentError> {
         self.chain_setup
-            .get(&(chain_id as usize))
+            .get(&chain_id)
             .ok_or_else(|| err_custom_create!("No chain setup for chain id: {}", chain_id))
     }
 
     pub fn get_provider(&self, chain_id: i64) -> Result<&Web3<Http>, PaymentError> {
         let chain_setup = self
             .chain_setup
-            .get(&(chain_id as usize))
+            .get(&chain_id)
             .ok_or_else(|| err_custom_create!("No chain setup for chain id: {}", chain_id))?;
 
         let mut rng = rand::thread_rng();

@@ -52,7 +52,7 @@ pub struct MultiContractSettings {
 #[serde(rename_all = "kebab-case")]
 pub struct Chain {
     pub chain_name: String,
-    pub network_id: usize,
+    pub chain_id: i64,
     pub rpc_endpoints: Vec<String>,
     pub currency_symbol: String,
     pub priority_fee: f64,
