@@ -7,10 +7,13 @@ use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{display_private_keys, load_private_keys};
 use sqlx::Connection;
 use std::env;
+use std::str::FromStr;
 
 use erc20_payment_lib::service::transaction_from_chain;
 use erc20_payment_lib::setup::PaymentSetup;
+use erc20_payment_lib::transaction::import_erc20_txs;
 use structopt::StructOpt;
+use web3::ethabi::ethereum_types::Address;
 
 #[derive(Debug, StructOpt)]
 struct ImportTxOptions {
@@ -40,17 +43,27 @@ async fn main_internal() -> Result<(), PaymentError> {
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     let mut conn = create_sqlite_connection(&db_conn, true).await?;
 
-    //let web3 = web3::Web3::new(config.chain.get("dev").unwrap().rpc_endpoints[0]);
     let payment_setup = PaymentSetup::new(&config, vec![], true, false, false, 1, 1, false)?;
     let ps = payment_setup.chain_setup.get(&cli.chain_id).unwrap();
-    transaction_from_chain(
+    let txs = import_erc20_txs(
         &ps.providers[0].provider,
-        &mut conn,
+        ps.glm_address.unwrap(),
         cli.chain_id,
-        &cli.tx_hash,
+        &[Address::from_str("0x0000000600000006000000060000000600000006").unwrap()],
     )
     .await
     .unwrap();
+
+    for tx in &txs {
+        transaction_from_chain(
+            &ps.providers[0].provider,
+            &mut conn,
+            cli.chain_id,
+            &format!("{:x}", tx),
+        )
+        .await
+        .unwrap();
+    }
 
     conn.close().await.map_err(err_from!())?; //it is needed to process all the transactions before closing the connection
     Ok(())

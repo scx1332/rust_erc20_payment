@@ -1,6 +1,7 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::db::model::*;
 use secp256k1::SecretKey;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
@@ -12,7 +13,8 @@ use crate::{err_custom_create, err_from};
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
-    Address, Bytes, CallRequest, TransactionId, TransactionParameters, H256, U256, U64,
+    Address, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters,
+    TransactionReceipt, H256, U256, U64,
 };
 use web3::Web3;
 
@@ -647,4 +649,101 @@ pub async fn find_receipt_extended(
         }
     }
     Ok((chain_tx_dao, transfers))
+}
+
+pub async fn get_erc20_logs(
+    web3: &Web3<Http>,
+    erc20_address: Address,
+    topic_receivers: Vec<H256>,
+    from_block: i64,
+    to_block: i64,
+) -> Result<Vec<web3::types::Log>, PaymentError> {
+    if from_block < 0 || to_block < 0 {
+        return Err(err_custom_create!("Block number cannot be negative"));
+    }
+    let filter = web3::types::FilterBuilder::default()
+        .address(vec![erc20_address])
+        .topics(
+            Some(vec![H256::from_str(
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            )
+            .unwrap()]),
+            None,
+            Some(topic_receivers),
+            None,
+        )
+        .from_block(BlockNumber::Number(U64::from(from_block as u64)))
+        .to_block(BlockNumber::Number(U64::from(to_block as u64)));
+    web3.eth()
+        .logs(filter.build())
+        .await
+        .map_err(|e| err_custom_create!("Error while getting logs: {}", e))
+}
+
+pub async fn import_erc20_txs(
+    web3: &Web3<Http>,
+    erc20_address: Address,
+    chain_id: i64,
+    accounts: &[Address],
+) -> Result<Vec<H256>, PaymentError> {
+    let topic_receivers: Vec<H256> = accounts
+        .iter()
+        .map(|f| {
+            let mut topic = [0u8; 32];
+            topic[12..32].copy_from_slice(&f.to_fixed_bytes());
+            H256::from(topic)
+        })
+        .collect();
+
+    println!("{:#x}", topic_receivers[0]);
+
+    let current_block = web3
+        .eth()
+        .block_number()
+        .await
+        .map_err(err_from!())?
+        .as_u64() as i64;
+
+    //start around 30 days ago
+    let mut start_block = std::cmp::max(1, current_block - (3600 * 24 * 30) / 2);
+
+    let mut txs = HashMap::<H256, u64>::new();
+    loop {
+        println!("start block: {}", start_block);
+        let end_block = std::cmp::min(start_block + 1000, current_block);
+        if start_block > end_block {
+            break;
+        }
+        let logs = get_erc20_logs(
+            web3,
+            erc20_address,
+            topic_receivers.clone(),
+            start_block,
+            end_block,
+        )
+        .await?;
+        for log in logs.into_iter() {
+            println!("Block number: {}", log.block_number.unwrap());
+            txs.insert(
+                log.transaction_hash
+                    .ok_or(err_custom_create!("Log without transaction hash"))?,
+                log.block_number
+                    .ok_or(err_custom_create!("Log without block number"))?
+                    .as_u64(),
+            );
+        }
+
+        start_block = start_block + 1000;
+    }
+
+    if txs.is_empty() {
+        println!("No logs found");
+    }
+    for tx in &txs {
+        println!("Transaction: {:#x}", tx.0);
+    }
+    //return transactions sorted by block number
+    let mut vec = txs.into_iter().collect::<Vec<(H256, u64)>>();
+    vec.sort_by(|a, b| a.1.cmp(&b.1));
+    Ok(vec.into_iter().map(|(tx, _)| tx).collect())
 }
