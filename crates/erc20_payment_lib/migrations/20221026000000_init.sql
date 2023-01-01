@@ -66,6 +66,18 @@ CREATE TABLE "token_transfer"
     CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
 );
 
+CREATE TABLE "transfer_in"
+(
+    id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
+    from_addr           TEXT        NOT NULL,
+    receiver_addr       TEXT        NOT NULL,
+    chain_id            INTEGER     NOT NULL,
+    token_addr          TEXT        NULL,
+    token_amount        TEXT        NOT NULL,
+    tx_hash             TEXT        NULL,
+    received_date       DATETIME    NOT NULL,
+);
+
 CREATE TABLE "chain_transfer"
 (
     id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +102,7 @@ CREATE TABLE "allowance"
     fee_paid            TEXT        NULL,
     confirm_date        DATETIME    NULL,
     error               TEXT        NULL,
-    CONSTRAINT "fk_token_transfer_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
+    CONSTRAINT "fk_allowance_tx" FOREIGN KEY ("tx_id") REFERENCES "tx" ("id")
 );
 
 

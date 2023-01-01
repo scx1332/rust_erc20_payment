@@ -1,7 +1,7 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::db::model::*;
 use secp256k1::SecretKey;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{HashMap};
 
 use crate::contracts::get_erc20_approve;
 use crate::error::PaymentError;
@@ -14,7 +14,7 @@ use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
     Address, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters,
-    TransactionReceipt, H256, U256, U64,
+    H256, U256, U64,
 };
 use web3::Web3;
 
@@ -732,8 +732,7 @@ pub async fn import_erc20_txs(
                     .as_u64(),
             );
         }
-
-        start_block = start_block + 1000;
+        start_block += 1000;
     }
 
     if txs.is_empty() {
