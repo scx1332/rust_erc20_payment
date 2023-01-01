@@ -75,7 +75,7 @@ CREATE TABLE "transfer_in"
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
     tx_hash             TEXT        NULL,
-    received_date       DATETIME    NOT NULL,
+    received_date       DATETIME    NOT NULL
 );
 
 CREATE TABLE "chain_transfer"

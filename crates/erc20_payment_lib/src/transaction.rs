@@ -1,15 +1,13 @@
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::db::model::*;
-use secp256k1::SecretKey;
-use std::collections::{HashMap};
-
 use crate::contracts::get_erc20_approve;
-use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
+use secp256k1::SecretKey;
+use std::collections::{HashMap};
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
@@ -683,7 +681,7 @@ pub async fn get_erc20_logs(
 pub async fn import_erc20_txs(
     web3: &Web3<Http>,
     erc20_address: Address,
-    chain_id: i64,
+    _chain_id: i64,
     accounts: &[Address],
 ) -> Result<Vec<H256>, PaymentError> {
     let topic_receivers: Vec<H256> = accounts

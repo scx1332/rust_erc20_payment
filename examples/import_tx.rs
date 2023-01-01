@@ -24,7 +24,7 @@ struct ImportTxOptions {
         long = "tx-hash",
         default_value = "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7"
     )]
-    tx_hash: String,
+    _tx_hash: String,
 }
 
 async fn main_internal() -> Result<(), PaymentError> {
