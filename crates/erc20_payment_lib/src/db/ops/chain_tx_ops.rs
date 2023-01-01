@@ -3,9 +3,9 @@ use sqlx::SqliteConnection;
 
 pub async fn insert_chain_tx(
     conn: &mut SqliteConnection,
-    tx: &TxChainDao,
-) -> Result<TxChainDao, sqlx::Error> {
-    let res = sqlx::query_as::<_, TxChainDao>(
+    tx: &ChainTxDao,
+) -> Result<ChainTxDao, sqlx::Error> {
+    let res = sqlx::query_as::<_, ChainTxDao>(
         r"INSERT INTO chain_tx
 (tx_hash, method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, checked_date, blockchain_date, block_number, chain_status, fee_paid, error)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *;
@@ -32,8 +32,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) R
     Ok(res)
 }
 
-pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<TxChainDao, sqlx::Error> {
-    let row = sqlx::query_as::<_, TxChainDao>(r"SELECT * FROM chain_tx WHERE id = $1")
+pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<ChainTxDao, sqlx::Error> {
+    let row = sqlx::query_as::<_, ChainTxDao>(r"SELECT * FROM chain_tx WHERE id = $1")
         .bind(id)
         .fetch_one(conn)
         .await?;
@@ -60,7 +60,7 @@ async fn tx_chain_test(pool: sqlx::SqlitePool) -> sqlx::Result<()> {
 
     println!("Start tx_chain_test...");
 
-    let mut tx_to_insert = TxChainDao {
+    let mut tx_to_insert = ChainTxDao {
         id: -1,
         tx_hash: "0x13d8a54dec1c0a30f1cd5129f690c3e27b9aadd59504957bad4d247966dadae7".to_string(),
         method: "".to_string(),
