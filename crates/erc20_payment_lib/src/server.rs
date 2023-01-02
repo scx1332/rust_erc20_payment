@@ -408,6 +408,25 @@ pub async fn accounts(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Re
         "publicAddr": public_addr.collect::<Vec<String>>()
     }))
 }
+pub async fn account_payments_in(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
+    let account = return_on_error!(req.match_info().get("account").ok_or("No account provided"));
+    let web3_account = return_on_error!(Address::from_str(account));
+    let account = format!("{:#x}", web3_account);
+
+    let transfers_in = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_account_transfers_in(&mut db_conn, &account, None).await)
+    };
+    let chain_transfers = {
+        let mut db_conn = data.db_connection.lock().await;
+        return_on_error!(get_account_chain_transfers(&mut db_conn, &account).await)
+    };
+
+    web::Json(json!({
+        "transfersIn": transfers_in,
+        "chainTransfers": chain_transfers,
+    }))
+}
 
 pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
     let account = return_on_error!(req.match_info().get("account").ok_or("No account provided"));

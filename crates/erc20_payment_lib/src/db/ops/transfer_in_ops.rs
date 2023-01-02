@@ -58,13 +58,32 @@ WHERE id = $1
     Ok(token_transfer.clone())
 }
 
+pub async fn get_account_transfers_in(
+    conn: &mut SqliteConnection,
+    account: &str,
+    limit: Option<i64>,
+) -> Result<Vec<TransferInDao>, sqlx::Error> {
+    let limit = limit.unwrap_or(i64::MAX);
+    let rows = sqlx::query_as::<_, TransferInDao>(
+        r"SELECT * FROM transfer_in
+WHERE receiver_addr=$2
+ORDER by requested_date DESC
+LIMIT $1",
+    )
+        .bind(limit)
+        .bind(&account)
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
 pub async fn get_all_transfers_in(
     conn: &mut SqliteConnection,
     limit: Option<i64>,
 ) -> Result<Vec<TransferInDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
     let rows = sqlx::query_as::<_, TransferInDao>(
-        r"SELECT * FROM token_transfer ORDER by id DESC LIMIT $1",
+        r"SELECT * FROM transfer_in ORDER by id DESC LIMIT $1",
     )
     .bind(limit)
     .fetch_all(conn)

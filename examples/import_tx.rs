@@ -59,7 +59,7 @@ async fn main_internal() -> Result<(), PaymentError> {
             &ps.providers[0].provider,
             &mut conn,
             cli.chain_id,
-            &format!("{:x}", tx),
+            &format!("{:#x}", tx),
         )
         .await
         .unwrap();

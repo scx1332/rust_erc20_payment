@@ -824,10 +824,10 @@ pub async fn add_payment_request_2(
     let transfer_in = TransferInDao {
         id: 0,
         payment_id: payment_id.to_string(),
-        from_addr: format!("{:x}", payer_addr),
-        receiver_addr: format!("{:x}", receiver_addr),
+        from_addr: format!("{:#x}", payer_addr),
+        receiver_addr: format!("{:#x}", receiver_addr),
         chain_id,
-        token_addr: token_address.map(|a| format!("{:x}", a)),
+        token_addr: token_address.map(|a| format!("{:#x}", a)),
         token_amount: token_amount.to_string(),
         tx_hash: None,
         requested_date: chrono::Utc::now(),
@@ -849,11 +849,11 @@ pub async fn add_glm_request(
     let transfer_in = TransferInDao {
         id: 0,
         payment_id: payment_id.to_string(),
-        from_addr: format!("{:x}", payer_addr),
-        receiver_addr: format!("{:x}", receiver_addr),
+        from_addr: format!("{:#x}", payer_addr),
+        receiver_addr: format!("{:#x}", receiver_addr),
         chain_id: chain_setup.chain_id,
         token_addr: Some(format!(
-            "{:x}",
+            "{:#x}",
             chain_setup.glm_address.ok_or(err_custom_create!(
                 "GLM address not set for chain {}",
                 chain_setup.chain_id

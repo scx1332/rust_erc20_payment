@@ -87,7 +87,8 @@ async fn main_internal() -> Result<(), PaymentError> {
                 .route("/transfers", web::get().to(transfers))
                 .route("/transfers/{tx_id}", web::get().to(transfers))
                 .route("/accounts", web::get().to(accounts))
-                .route("/account/{account}", web::get().to(account_details));
+                .route("/account/{account}", web::get().to(account_details))
+                .route("/account/{account}/in", web::get().to(account_payments_in));
 
             if cli.faucet {
                 log::info!("Faucet endpoints enabled");

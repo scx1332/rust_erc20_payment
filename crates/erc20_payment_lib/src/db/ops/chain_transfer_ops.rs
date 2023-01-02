@@ -21,3 +21,19 @@ VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
     .await?;
     Ok(res)
 }
+
+
+pub async fn get_account_chain_transfers(
+    conn: &mut SqliteConnection,
+    account: &str,
+) -> Result<Vec<ChainTransferDaoExt>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, ChainTransferDaoExt>(r"
+SELECT ct.id, ct.chain_id, ct.from_addr, ct.receiver_addr, ct.token_addr, ct.chain_tx_id, ct.token_amount, cx.blockchain_date
+FROM chain_transfer as ct
+JOIN chain_tx as cx on ct.chain_tx_id = cx.id
+WHERE ct.receiver_addr = $1
+").bind(account).fetch_all(conn).await?;
+
+    Ok(rows)
+}
+
