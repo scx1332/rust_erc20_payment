@@ -70,10 +70,10 @@ WHERE receiver_addr=$2
 ORDER by requested_date DESC
 LIMIT $1",
     )
-        .bind(limit)
-        .bind(&account)
-        .fetch_all(conn)
-        .await?;
+    .bind(limit)
+    .bind(&account)
+    .fetch_all(conn)
+    .await?;
     Ok(rows)
 }
 
@@ -82,11 +82,10 @@ pub async fn get_all_transfers_in(
     limit: Option<i64>,
 ) -> Result<Vec<TransferInDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
-    let rows = sqlx::query_as::<_, TransferInDao>(
-        r"SELECT * FROM transfer_in ORDER by id DESC LIMIT $1",
-    )
-    .bind(limit)
-    .fetch_all(conn)
-    .await?;
+    let rows =
+        sqlx::query_as::<_, TransferInDao>(r"SELECT * FROM transfer_in ORDER by id DESC LIMIT $1")
+            .bind(limit)
+            .fetch_all(conn)
+            .await?;
     Ok(rows)
 }

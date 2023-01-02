@@ -22,7 +22,6 @@ VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
     Ok(res)
 }
 
-
 pub async fn get_account_chain_transfers(
     conn: &mut SqliteConnection,
     account: &str,
@@ -36,4 +35,3 @@ WHERE ct.receiver_addr = $1
 
     Ok(rows)
 }
-

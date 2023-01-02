@@ -6,12 +6,14 @@ use crate::eth::get_eth_addr_from_secret;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use secp256k1::SecretKey;
 use std::collections::HashMap;
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
-    Address, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters, H256, U256, U64,
+    Address, BlockId, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters, H256,
+    U256, U64,
 };
 use web3::Web3;
 
@@ -489,20 +491,38 @@ pub async fn find_receipt_extended(
         fee_paid: "".to_string(),
     };
 
-    let tx = web3
-        .eth()
-        .transaction(TransactionId::Hash(tx_hash))
-        .await
-        .map_err(err_from!())?
-        .ok_or(err_custom_create!("Transaction not found"))?;
     let receipt = web3
         .eth()
         .transaction_receipt(tx_hash)
         .await
         .map_err(err_from!())?
         .ok_or(err_custom_create!("Receipt not found"))?;
+    let tx = web3
+        .eth()
+        .transaction(TransactionId::Hash(tx_hash))
+        .await
+        .map_err(err_from!())?
+        .ok_or(err_custom_create!("Transaction not found"))?;
+    chain_tx_dao.block_number = receipt
+        .block_number
+        .map(|x| x.as_u64() as i64)
+        .ok_or(err_custom_create!("Block number is None"))?;
+
+    let block_info = web3
+        .eth()
+        .block(BlockId::Number(BlockNumber::Number(U64::from(
+            chain_tx_dao.block_number as u64,
+        ))))
+        .await
+        .map_err(err_from!())?
+        .ok_or(err_custom_create!("Block not found"))?;
 
     //println!("Receipt: {:#?}", receipt);
+    chain_tx_dao.blockchain_date = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(block_info.timestamp.as_u64() as i64, 0),
+        Utc,
+    );
+
     chain_tx_dao.from_addr = format!("{:#x}", receipt.from);
 
     let receipt_to = receipt
@@ -530,10 +550,7 @@ pub async fn find_receipt_extended(
     }
 
     chain_tx_dao.to_addr = format!("{:#x}", receipt_to);
-    chain_tx_dao.block_number = receipt
-        .block_number
-        .map(|x| x.as_u64() as i64)
-        .ok_or(err_custom_create!("Block number is None"))?;
+
     chain_tx_dao.chain_status = receipt
         .status
         .map(|x| x.as_u64() as i64)
@@ -647,6 +664,7 @@ pub async fn find_receipt_extended(
             }
         }
     }
+
     Ok((chain_tx_dao, transfers))
 }
 

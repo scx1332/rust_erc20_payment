@@ -40,7 +40,6 @@ pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<ChainT
     Ok(row)
 }
 
-
 #[sqlx::test]
 async fn tx_chain_test(pool: sqlx::SqlitePool) -> sqlx::Result<()> {
     let mut conn = pool.acquire().await?;
