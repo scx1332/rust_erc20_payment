@@ -1,18 +1,18 @@
+use crate::contracts::get_erc20_approve;
 use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
 use crate::db::model::*;
-use crate::contracts::get_erc20_approve;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::multi::pack_transfers_for_multi_contract;
 use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
 use secp256k1::SecretKey;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
-    Address, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters,
-    H256, U256, U64,
+    Address, BlockNumber, Bytes, CallRequest, Res, TransactionId, TransactionParameters, H256,
+    U256, U64,
 };
 use web3::Web3;
 
@@ -78,11 +78,13 @@ pub fn create_token_transfer(
     from: Address,
     receiver: Address,
     chain_id: i64,
+    payment_id: Option<&str>,
     token_addr: Option<Address>,
     token_amount: U256,
 ) -> TokenTransferDao {
     TokenTransferDao {
         id: 0,
+        payment_id: payment_id.map(|s| s.to_string()),
         from_addr: format!("{:#x}", from),
         receiver_addr: format!("{:#x}", receiver),
         chain_id,

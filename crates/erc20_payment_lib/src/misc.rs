@@ -10,6 +10,7 @@ use crate::err_from;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
+use crate::service::{add_payment_request, add_payment_request_2};
 use rand::Rng;
 use secp256k1::SecretKey;
 use web3::types::{Address, U256};
@@ -68,10 +69,28 @@ pub async fn generate_transaction_batch(
         let receiver = addr_pool[rng.gen_range(0..addr_pool.len())];
         let amount = amount_pool[rng.gen_range(0..amount_pool.len())];
         let from = from_addr_pool[rng.gen_range(0..from_addr_pool.len())];
-        let token_transfer = create_token_transfer(from, receiver, chain_id, token_addr, amount);
+        let payment_id = uuid::Uuid::new_v4().to_string();
+        let token_transfer = create_token_transfer(
+            from,
+            receiver,
+            chain_id,
+            Some(&payment_id),
+            token_addr,
+            amount,
+        );
         let _token_transfer = insert_token_transfer(conn, &token_transfer)
             .await
             .map_err(err_from!())?;
+        add_payment_request_2(
+            conn,
+            token_addr,
+            amount,
+            &payment_id,
+            from,
+            receiver,
+            chain_id,
+        )
+        .await?;
         log::info!(
             "Generated token transfer: from: {} to: {} {}/{}",
             token_transfer.from_addr,

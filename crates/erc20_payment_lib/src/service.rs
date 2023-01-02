@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Add;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use crate::transaction::{
 use crate::utils::ConversionError;
 
 use crate::error::CustomError;
-use crate::setup::PaymentSetup;
+use crate::setup::{ChainSetup, PaymentSetup};
 use crate::{err_create, err_custom_create, err_from};
 
 use crate::runtime::SharedState;
@@ -811,6 +812,63 @@ pub async fn process_transactions(
         tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
     }
     Ok(())
+}
+
+pub async fn add_payment_request_2(
+    conn: &mut SqliteConnection,
+    token_address: Option<Address>,
+    token_amount: U256,
+    payment_id: &str,
+    payer_addr: Address,
+    receiver_addr: Address,
+    chain_id: i64,
+) -> Result<TransferInDao, PaymentError> {
+    let transfer_in = TransferInDao {
+        id: 0,
+        payment_id: payment_id.to_string(),
+        from_addr: format!("{:x}", payer_addr),
+        receiver_addr: format!("{:x}", receiver_addr),
+        chain_id,
+        token_addr: token_address.map(|a| format!("{:x}", a)),
+        token_amount: token_amount.to_string(),
+        tx_hash: None,
+        requested_date: chrono::Utc::now(),
+        received_date: None,
+    };
+    insert_transfer_in(conn, &transfer_in)
+        .await
+        .map_err(err_from!())
+}
+
+pub async fn add_payment_request(
+    conn: &mut SqliteConnection,
+    chain_setup: &ChainSetup,
+    token_amount: U256,
+    payment_id: &str,
+    payer_addr: Address,
+    receiver_addr: Address,
+) -> Result<TransferInDao, PaymentError> {
+    let transfer_in = TransferInDao {
+        id: 0,
+        payment_id: payment_id.to_string(),
+        from_addr: format!("{:x}", payer_addr),
+        receiver_addr: format!("{:x}", receiver_addr),
+        chain_id: chain_setup.chain_id,
+        token_addr: Some(format!(
+            "{:x}",
+            chain_setup.glm_address.ok_or(err_custom_create!(
+                "GLM address not set for chain {}",
+                chain_setup.chain_id
+            ))?
+        )),
+        token_amount: token_amount.to_string(),
+        tx_hash: None,
+        requested_date: chrono::Utc::now(),
+        received_date: None,
+    };
+    insert_transfer_in(conn, &transfer_in)
+        .await
+        .map_err(err_from!())
 }
 
 pub async fn transaction_from_chain(

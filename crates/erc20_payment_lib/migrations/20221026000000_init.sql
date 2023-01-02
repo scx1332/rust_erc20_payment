@@ -55,6 +55,7 @@ CREATE TABLE "chain_tx"
 CREATE TABLE "token_transfer"
 (
     id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
+    payment_id          TEXT        NULL,
     from_addr           TEXT        NOT NULL,
     receiver_addr       TEXT        NOT NULL,
     chain_id            INTEGER     NOT NULL,
@@ -69,13 +70,15 @@ CREATE TABLE "token_transfer"
 CREATE TABLE "transfer_in"
 (
     id                  INTEGER     NOT NULL     PRIMARY KEY AUTOINCREMENT,
+    payment_id          TEXT        NOT NULL,
     from_addr           TEXT        NOT NULL,
     receiver_addr       TEXT        NOT NULL,
     chain_id            INTEGER     NOT NULL,
     token_addr          TEXT        NULL,
     token_amount        TEXT        NOT NULL,
     tx_hash             TEXT        NULL,
-    received_date       DATETIME    NOT NULL
+    requested_date      DATETIME    NOT NULL,
+    received_date       DATETIME    NULL
 );
 
 CREATE TABLE "chain_transfer"

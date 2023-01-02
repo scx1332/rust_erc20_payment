@@ -40,6 +40,7 @@ actix-web = "^4.2.1"
 actix-cors = "0.6.4"
 actix-files = "0.6.2"
 serde_json = { version = "^1.0.85" }
+uuid = { version = "1.2.2", features = ["serde", "v4"] }
 
 [dependencies]
 erc20_payment_lib = { path = "crates/erc20_payment_lib" }
@@ -64,3 +65,4 @@ toml = { workspace = true }
 actix-web = { workspace = true }
 actix-cors = { workspace = true }
 actix-files = { workspace = true }
+uuid = { workspace = true }

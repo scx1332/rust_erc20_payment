@@ -24,6 +24,7 @@ pub struct ChainSetup {
     #[serde(skip_serializing)]
     pub providers: Vec<ProviderSetup>,
     pub chain_name: String,
+    pub chain_id: i64,
     pub currency_gas_symbol: String,
     pub currency_glm_symbol: String,
     pub max_fee_per_gas: U256,
@@ -133,6 +134,7 @@ impl PaymentSetup {
                     faucet_eth_amount,
                     faucet_glm_amount,
                     block_explorer_url: chain_config.1.block_explorer_url.clone(),
+                    chain_id: 0,
                 },
             );
         }

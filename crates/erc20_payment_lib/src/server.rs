@@ -586,7 +586,14 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
             .ok_or("Faucet GLM amount not set on chain"));
 
         let token_transfer_eth = {
-            let tt = create_token_transfer(from, receiver_addr, chain_id, None, faucet_eth_amount);
+            let tt = create_token_transfer(
+                from,
+                receiver_addr,
+                chain_id,
+                Some(&uuid::Uuid::new_v4().to_string()),
+                None,
+                faucet_eth_amount,
+            );
             let mut db_conn = data.db_connection.lock().await;
             return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
         };
@@ -595,6 +602,7 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
                 from,
                 receiver_addr,
                 chain_id,
+                Some(&uuid::Uuid::new_v4().to_string()),
                 Some(glm_address),
                 faucet_glm_amount,
             );
@@ -603,9 +611,11 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
         };
 
         return web::Json(json!({
-            "transfer_gas_id": token_transfer_eth.id,
-            "transfer_glm_id": token_transfer_glm.id,
-        }));
+        "transfer_gas_id": token_transfer_eth.id,
+        "transfer_gas_payment_id": token_transfer_eth.payment_id,
+        "transfer_glm_id": token_transfer_glm.id,
+        "transfer_glm_payment_id": token_transfer_glm.payment_id,
+                }));
     }
 
     web::Json(json!({

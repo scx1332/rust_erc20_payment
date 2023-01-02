@@ -7,10 +7,11 @@ pub async fn insert_token_transfer(
 ) -> Result<TokenTransferDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TokenTransferDao>(
         r"INSERT INTO token_transfer
-(from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid, error)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
+(payment_id, from_addr, receiver_addr, chain_id, token_addr, token_amount, tx_id, fee_paid, error)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 ",
     )
+    .bind(&token_transfer.payment_id)
     .bind(&token_transfer.from_addr)
     .bind(&token_transfer.receiver_addr)
     .bind(token_transfer.chain_id)
@@ -30,18 +31,20 @@ pub async fn update_token_transfer(
 ) -> Result<TokenTransferDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE token_transfer SET
-from_addr = $2,
-receiver_addr = $3,
-chain_id = $4,
-token_addr = $5,
-token_amount = $6,
-tx_id = $7,
-fee_paid = $8,
-error = $9
+payment_id = $2,
+from_addr = $3,
+receiver_addr = $4,
+chain_id = $5,
+token_addr = $6,
+token_amount = $7,
+tx_id = $8,
+fee_paid = $9,
+error = $10
 WHERE id = $1
 ",
     )
     .bind(token_transfer.id)
+    .bind(&token_transfer.payment_id)
     .bind(&token_transfer.from_addr)
     .bind(&token_transfer.receiver_addr)
     .bind(token_transfer.chain_id)

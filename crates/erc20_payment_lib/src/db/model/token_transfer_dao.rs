@@ -4,6 +4,7 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct TokenTransferDao {
     pub id: i64,
+    pub payment_id: Option<String>,
     pub from_addr: String,
     pub receiver_addr: String,
     pub chain_id: i64,
