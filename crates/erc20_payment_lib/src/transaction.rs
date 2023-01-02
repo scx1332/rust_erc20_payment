@@ -11,8 +11,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use web3::transports::Http;
 use web3::types::{
-    Address, BlockNumber, Bytes, CallRequest, Res, TransactionId, TransactionParameters, H256,
-    U256, U64,
+    Address, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters, H256, U256, U64,
 };
 use web3::Web3;
 

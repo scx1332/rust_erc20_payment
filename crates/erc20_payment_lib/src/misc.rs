@@ -10,7 +10,7 @@ use crate::err_from;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
-use crate::service::{add_payment_request, add_payment_request_2};
+use crate::service::add_payment_request_2;
 use rand::Rng;
 use secp256k1::SecretKey;
 use web3::types::{Address, U256};

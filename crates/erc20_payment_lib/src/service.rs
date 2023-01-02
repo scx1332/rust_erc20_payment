@@ -1,6 +1,4 @@
 use std::collections::{BTreeMap, HashMap};
-use std::ops::Add;
-
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -840,7 +838,7 @@ pub async fn add_payment_request_2(
         .map_err(err_from!())
 }
 
-pub async fn add_payment_request(
+pub async fn add_glm_request(
     conn: &mut SqliteConnection,
     chain_setup: &ChainSetup,
     token_amount: U256,
