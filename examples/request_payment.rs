@@ -9,9 +9,9 @@ use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 
-use erc20_payment_lib::service::{add_payment_request, transaction_from_chain};
+use erc20_payment_lib::service::add_payment_request;
 use erc20_payment_lib::setup::PaymentSetup;
-use erc20_payment_lib::transaction::import_erc20_txs;
+
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use structopt::StructOpt;
