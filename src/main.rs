@@ -3,6 +3,7 @@ use crate::options::CliOptions;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
+use erc20_payment_lib::misc::load_public_addresses;
 use erc20_payment_lib::server::*;
 use erc20_payment_lib::{
     config, err_custom_create,
@@ -14,7 +15,6 @@ use std::env;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use erc20_payment_lib::misc::load_public_addresses;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {

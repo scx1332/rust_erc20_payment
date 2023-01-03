@@ -6,11 +6,11 @@ use crate::transaction::create_token_transfer;
 
 use sqlx::SqliteConnection;
 
-use crate::{err_custom_create, err_from};
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::service::add_payment_request_2;
+use crate::{err_custom_create, err_from};
 use rand::Rng;
 use secp256k1::SecretKey;
 use web3::api::Accounts;
@@ -117,7 +117,8 @@ pub fn load_private_keys(str: &str) -> Result<(Vec<SecretKey>, Vec<Address>), Pa
     }
     for key in str.split(',') {
         //do not disclose the private key in error message
-        let secret = SecretKey::from_str(key).map_err(|_|err_custom_create!("Failed to parse private key"))?;
+        let secret = SecretKey::from_str(key)
+            .map_err(|_| err_custom_create!("Failed to parse private key"))?;
         let public_addr = get_eth_addr_from_secret(&secret);
         keys.push(secret);
         addrs.push(public_addr);
@@ -136,7 +137,6 @@ pub fn load_public_addresses(str: &str) -> Result<(Vec<Address>), PaymentError> 
     }
     Ok(addrs)
 }
-
 
 pub fn display_private_keys(keys: &[SecretKey]) {
     let mut account_no = 1;

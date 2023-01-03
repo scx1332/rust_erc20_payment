@@ -41,13 +41,11 @@ pub struct TokenTransferMultiKey {
 
 type TokenTransferMap = HashMap<TokenTransferKey, Vec<TokenTransferDao>>;
 
-
 #[derive(Debug, Clone)]
 pub struct TokenTransferMultiOrder {
     receiver: Address,
     token_transfers: Vec<TokenTransferDao>,
 }
-
 
 pub async fn gather_transactions_pre(
     conn: &mut SqliteConnection,
@@ -141,8 +139,8 @@ pub async fn gather_transactions_batch_multi(
                     &format!("{:#x}", multi_contract_address),
                     token_transfer.chain_id,
                 )
-                    .await
-                    .map_err(err_from!())?;
+                .await
+                .map_err(err_from!())?;
 
                 let mut allowance_not_met = false;
                 match db_allowance {
@@ -351,7 +349,7 @@ pub async fn gather_transactions_post(
                     token_transfers,
                     token_transfer,
                 )
-                    .await
+                .await
                 {
                     Ok(_) => {
                         inserted_tx_count += 1;
@@ -413,7 +411,7 @@ pub async fn gather_transactions_post(
                 &mut token_transfers,
                 &token_transfer,
             )
-                .await
+            .await
             {
                 Ok(_) => {
                     inserted_tx_count += 1;

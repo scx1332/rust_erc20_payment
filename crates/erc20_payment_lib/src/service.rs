@@ -1,4 +1,3 @@
-
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -24,8 +23,6 @@ use sqlx::{Connection, SqliteConnection};
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
-
-
 
 pub async fn add_payment_request_2(
     conn: &mut SqliteConnection,

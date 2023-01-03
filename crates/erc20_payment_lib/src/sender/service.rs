@@ -19,13 +19,12 @@ use crate::setup::{ChainSetup, PaymentSetup};
 use crate::{err_create, err_custom_create, err_from};
 
 use crate::runtime::SharedState;
+use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
+use crate::sender::process_allowance;
 use sqlx::{Connection, SqliteConnection};
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
-use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
-use crate::sender::process_allowance;
-
 
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,
@@ -202,8 +201,6 @@ pub async fn update_tx_result(
     Ok(())
 }
 
-
-
 pub async fn process_transactions(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,
@@ -296,8 +293,8 @@ pub async fn service_loop(
 
         if process_tx_instantly
             || (process_tx_needed
-            && current_time
-            > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
+                && current_time
+                    > last_update_time1 + chrono::Duration::seconds(process_transactions_interval))
         {
             process_tx_instantly = false;
             if payment_setup.generate_tx_only {

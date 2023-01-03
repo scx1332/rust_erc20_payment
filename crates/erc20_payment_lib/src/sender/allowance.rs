@@ -42,8 +42,8 @@ pub async fn process_allowance(
         &allowance_request.spender_addr,
         allowance_request.chain_id,
     )
-        .await
-        .map_err(err_from!())?;
+    .await
+    .map_err(err_from!())?;
 
     let allowance = match db_allowance.as_mut() {
         Some(db_allowance) => match db_allowance.confirm_date {
@@ -62,7 +62,7 @@ pub async fn process_allowance(
                     Address::from_str(&allowance_request.token_addr).map_err(err_from!())?,
                     Address::from_str(&allowance_request.spender_addr).map_err(err_from!())?,
                 )
-                    .await?;
+                .await?;
                 if allowance > minimum_allowance {
                     log::debug!(
                         "Allowance found on chain, update db_allowance with id {}",
@@ -84,7 +84,7 @@ pub async fn process_allowance(
                 Address::from_str(&allowance_request.token_addr).map_err(err_from!())?,
                 Address::from_str(&allowance_request.spender_addr).map_err(err_from!())?,
             )
-                .await?;
+            .await?;
             if allowance > minimum_allowance {
                 log::info!("Allowance found on chain, add entry to db");
                 let db_allowance = AllowanceDao {

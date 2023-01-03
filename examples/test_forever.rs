@@ -1,5 +1,8 @@
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::misc::{create_test_amount_pool, generate_transaction_batch, load_public_addresses, ordered_address_pool};
+use erc20_payment_lib::misc::{
+    create_test_amount_pool, generate_transaction_batch, load_public_addresses,
+    ordered_address_pool,
+};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},

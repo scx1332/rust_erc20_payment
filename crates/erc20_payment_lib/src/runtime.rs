@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 
 use crate::error::PaymentError;
 
-
 use crate::setup::PaymentSetup;
 
 use crate::config;
@@ -12,13 +11,13 @@ use sqlx::SqliteConnection;
 use std::env;
 
 use crate::config::AdditionalOptions;
+use crate::sender::service_loop;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use web3::types::{Address, U256};
-use crate::sender::service_loop;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SharedInfoTx {
