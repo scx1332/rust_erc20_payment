@@ -901,6 +901,16 @@ pub async fn transaction_from_chain(
     Ok(true)
 }
 
+pub async fn confirm_loop(
+    shared_state: Arc<Mutex<SharedState>>,
+    conn: &mut SqliteConnection,
+    payment_setup: &PaymentSetup,
+) {
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(payment_setup.service_sleep)).await;
+    }
+}
+
 pub async fn service_loop(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &mut SqliteConnection,

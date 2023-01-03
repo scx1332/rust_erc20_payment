@@ -14,6 +14,7 @@ use std::env;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
+use erc20_payment_lib::misc::load_public_addresses;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -24,6 +25,9 @@ async fn main_internal() -> Result<(), PaymentError> {
 
     let (private_keys, _public_addrs) = load_private_keys(
         &env::var("ETH_PRIVATE_KEYS").expect("Specify ETH_PRIVATE_KEYS env variable"),
+    )?;
+    let receiver_accounts = load_public_addresses(
+        &env::var("ETH_RECEIVERS").expect("Specify ETH_RECEIVERS env variable"),
     )?;
     display_private_keys(&private_keys);
 
@@ -38,7 +42,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         generate_tx_only: cli.generate_tx_only,
         skip_multi_contract_check: cli.skip_multi_contract_check,
     };
-    let sp = start_payment_engine(&private_keys, config, Some(add_opt)).await?;
+    let sp = start_payment_engine(&private_keys, &receiver_accounts, config, Some(add_opt)).await?;
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
     log::info!("connecting to sqlite file db: {}", db_conn);
