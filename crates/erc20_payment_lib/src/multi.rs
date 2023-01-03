@@ -1,11 +1,7 @@
-use web3::transports::Http;
-use web3::types::{Address, Bytes, CallRequest, U256};
-use web3::Web3;
+use web3::types::{Address, U256};
 
-use crate::contracts::encode_erc20_allowance;
 use crate::error::{CustomError, PaymentError};
-use crate::{err_custom_create, err_from, error::ErrorBag};
-
+use crate::{err_custom_create, error::ErrorBag};
 
 pub fn pack_transfers_for_multi_contract(
     receivers: Vec<Address>,
