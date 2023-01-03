@@ -13,7 +13,7 @@ use crate::service::add_payment_request_2;
 use crate::{err_custom_create, err_from};
 use rand::Rng;
 use secp256k1::SecretKey;
-use web3::api::Accounts;
+
 use web3::types::{Address, U256};
 
 #[allow(unused)]
@@ -126,7 +126,7 @@ pub fn load_private_keys(str: &str) -> Result<(Vec<SecretKey>, Vec<Address>), Pa
     Ok((keys, addrs))
 }
 
-pub fn load_public_addresses(str: &str) -> Result<(Vec<Address>), PaymentError> {
+pub fn load_public_addresses(str: &str) -> Result<Vec<Address>, PaymentError> {
     let mut addrs = Vec::new();
     if str.is_empty() {
         return Ok(addrs);

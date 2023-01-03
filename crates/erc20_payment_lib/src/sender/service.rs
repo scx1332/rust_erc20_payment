@@ -1,30 +1,23 @@
-use std::collections::{BTreeMap, HashMap};
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::db::model::*;
 use crate::db::ops::*;
-use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::multi::check_allowance;
+use crate::error::{ErrorBag, PaymentError};
+
 use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{
-    create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer,
-    find_receipt_extended,
-};
+
 use crate::utils::ConversionError;
 
-use crate::error::CustomError;
-use crate::setup::{ChainSetup, PaymentSetup};
-use crate::{err_create, err_custom_create, err_from};
+use crate::err_from;
+use crate::setup::PaymentSetup;
 
 use crate::runtime::SharedState;
 use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
 use crate::sender::process_allowance;
 use sqlx::{Connection, SqliteConnection};
-use web3::transports::Http;
-use web3::types::{Address, U256};
-use web3::Web3;
+
+use web3::types::U256;
 
 pub async fn update_token_transfer_result(
     conn: &mut SqliteConnection,

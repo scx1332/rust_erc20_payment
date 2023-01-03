@@ -1,22 +1,17 @@
-use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::db::model::*;
 use crate::db::ops::*;
-use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::multi::check_allowance;
-use crate::process::{process_transaction, ProcessTransactionResult};
-use crate::transaction::{
-    create_erc20_approve, create_erc20_transfer, create_erc20_transfer_multi, create_eth_transfer,
-    find_receipt_extended,
-};
+use crate::error::{ErrorBag, PaymentError};
+
+use crate::transaction::find_receipt_extended;
 use crate::utils::ConversionError;
 
 use crate::error::CustomError;
 use crate::setup::{ChainSetup, PaymentSetup};
-use crate::{err_create, err_custom_create, err_from};
+use crate::{err_custom_create, err_from};
 
 use crate::runtime::SharedState;
 use sqlx::{Connection, SqliteConnection};
@@ -114,8 +109,8 @@ pub async fn transaction_from_chain(
 }
 
 pub async fn confirm_loop(
-    shared_state: Arc<Mutex<SharedState>>,
-    conn: &mut SqliteConnection,
+    _shared_state: Arc<Mutex<SharedState>>,
+    _conn: &mut SqliteConnection,
     payment_setup: &PaymentSetup,
 ) {
     loop {
