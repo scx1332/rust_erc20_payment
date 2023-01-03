@@ -1,7 +1,5 @@
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::misc::{
-    create_test_amount_pool, generate_transaction_batch, ordered_address_pool,
-};
+use erc20_payment_lib::misc::{create_test_amount_pool, generate_transaction_batch, load_public_addresses, ordered_address_pool};
 use erc20_payment_lib::{
     config, err_custom_create,
     error::{CustomError, ErrorBag, PaymentError},
@@ -36,6 +34,10 @@ async fn main_internal() -> Result<(), PaymentError> {
     let (private_keys, public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
     display_private_keys(&private_keys);
 
+    let receiver_accounts = load_public_addresses(
+        &env::var("ETH_RECEIVERS").expect("Specify ETH_RECEIVERS env variable"),
+    )?;
+
     let config = config::Config::load("config-payments.toml")?;
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
@@ -45,7 +47,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
     let c = config.chain.get(&cli.chain_name).unwrap().clone();
 
-    let sp = start_payment_engine(&private_keys, config, None).await?;
+    let sp = start_payment_engine(&private_keys, &receiver_accounts, config, None).await?;
     loop {
         if sp.runtime_handle.is_finished() {
             break;
