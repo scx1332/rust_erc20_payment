@@ -1,5 +1,4 @@
-use crate::contracts::get_erc20_approve;
-use crate::contracts::{get_erc20_transfer, get_multi_direct_packed, get_multi_indirect_packed};
+use crate::contracts::*;
 use crate::db::model::*;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
@@ -201,7 +200,7 @@ pub fn create_erc20_transfer(
         nonce: None,
         processing: 1,
         call_data: Some(hex::encode(
-            get_erc20_transfer(erc20_to, erc20_amount).map_err(err_from!())?,
+            encode_erc20_transfer(erc20_to, erc20_amount).map_err(err_from!())?,
         )),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),
@@ -236,12 +235,12 @@ pub fn create_erc20_transfer_multi(
     //todo set method
     let (data, method_str) = if direct {
         (
-            get_multi_direct_packed(packed).map_err(err_from!())?,
+            encode_multi_direct_packed(packed).map_err(err_from!())?,
             "MULTI.golemTransferDirectPacked".to_string(),
         )
     } else {
         (
-            get_multi_indirect_packed(packed, sum).map_err(err_from!())?,
+            encode_multi_indirect_packed(packed, sum).map_err(err_from!())?,
             "MULTI.golemTransferIndirectPacked".to_string(),
         )
     };
@@ -298,7 +297,7 @@ pub fn create_erc20_approve(
         nonce: None,
         processing: 1,
         call_data: Some(hex::encode(
-            get_erc20_approve(contract_to_approve, U256::max_value()).map_err(err_from!())?,
+            encode_erc20_approve(contract_to_approve, U256::max_value()).map_err(err_from!())?,
         )),
         signed_raw_data: None,
         created_date: chrono::Utc::now(),

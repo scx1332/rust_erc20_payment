@@ -50,7 +50,7 @@ where
 }
 
 #[allow(dead_code)]
-pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(
         &ERC20_CONTRACT_TEMPLATE,
         "balance_of",
@@ -58,22 +58,22 @@ pub fn get_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi::E
     )
 }
 
-pub fn get_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "transfer", (address, amount))
 }
 
-pub fn get_erc20_allowance(
+pub fn encode_erc20_allowance(
     owner: Address,
     spender: Address,
 ) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "allowance", (owner, spender))
 }
 
-pub fn get_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "approve", (spender, amount))
 }
 
-pub fn get_multi_direct_packed(packed: Vec<[u8; 32]>) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_multi_direct_packed(packed: Vec<[u8; 32]>) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(
         &ERC20_MULTI_CONTRACT_TEMPLATE,
         "golemTransferDirectPacked",
@@ -81,7 +81,7 @@ pub fn get_multi_direct_packed(packed: Vec<[u8; 32]>) -> Result<Vec<u8>, web3::e
     )
 }
 
-pub fn get_multi_indirect_packed(
+pub fn encode_multi_indirect_packed(
     packed: Vec<[u8; 32]>,
     sum: U256,
 ) -> Result<Vec<u8>, web3::ethabi::Error> {

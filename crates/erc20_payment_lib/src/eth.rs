@@ -2,8 +2,11 @@ use secp256k1::{PublicKey, SecretKey};
 use sha3::Digest;
 use sha3::Keccak256;
 use web3::transports::Http;
-use web3::types::Address;
+use web3::types::{Address, Bytes, CallRequest, U256};
 use web3::Web3;
+use crate::contracts::encode_erc20_allowance;
+use crate::{err_custom_create, err_from};
+use crate::error::*;
 
 pub async fn get_transaction_count(
     address: Address,
@@ -30,6 +33,52 @@ pub fn get_eth_addr_from_secret(secret_key: &SecretKey) -> Address {
         .as_slice()[12..],
     )
 }
+
+pub async fn check_allowance(
+    web3: &Web3<Http>,
+    owner: Address,
+    token: Address,
+    spender: Address,
+) -> Result<U256, PaymentError> {
+    log::debug!("Checking multi payment contract for allowance...");
+    let call_request = CallRequest {
+        from: Some(owner),
+        to: Some(token),
+        gas: None,
+        gas_price: None,
+        value: None,
+        data: Some(Bytes(
+            encode_erc20_allowance(owner, spender).map_err(err_from!())?,
+        )),
+        transaction_type: None,
+        access_list: None,
+        max_fee_per_gas: None,
+        max_priority_fee_per_gas: None,
+    };
+    let res = web3
+        .eth()
+        .call(call_request, None)
+        .await
+        .map_err(err_from!())?;
+    if res.0.len() != 32 {
+        return Err(err_custom_create!(
+            "Invalid response from ERC20 allowance check {:?}",
+            res
+        ));
+    };
+    let allowance = U256::from_big_endian(&res.0);
+    log::debug!(
+        "Check allowance: owner: {:?}, token: {:?}, contract: {:?}, allowance: {:?}",
+        owner,
+        token,
+        spender,
+        allowance
+    );
+
+    Ok(allowance)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

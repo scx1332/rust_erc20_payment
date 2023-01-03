@@ -3,8 +3,6 @@ use std::str::FromStr;
 use crate::db::model::*;
 use crate::db::ops::*;
 use crate::error::{AllowanceRequest, ErrorBag, PaymentError};
-use crate::multi::check_allowance;
-
 use crate::transaction::create_erc20_approve;
 
 use crate::err_from;
@@ -13,6 +11,7 @@ use crate::setup::PaymentSetup;
 use sqlx::{Connection, SqliteConnection};
 
 use web3::types::{Address, U256};
+use crate::eth::check_allowance;
 
 pub async fn process_allowance(
     conn: &mut SqliteConnection,
