@@ -71,7 +71,7 @@ ORDER by requested_date DESC
 LIMIT $1",
     )
     .bind(limit)
-    .bind(&account)
+    .bind(account)
     .fetch_all(conn)
     .await?;
     Ok(rows)
