@@ -5,7 +5,6 @@ pub mod error;
 pub mod eth;
 pub mod misc;
 pub mod multi;
-pub mod process;
 pub mod runtime;
 pub mod service;
 pub mod setup;

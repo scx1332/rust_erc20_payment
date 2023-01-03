@@ -5,7 +5,7 @@ use crate::db::model::*;
 use crate::db::ops::*;
 use crate::error::{ErrorBag, PaymentError};
 
-use crate::process::{process_transaction, ProcessTransactionResult};
+use crate::sender::process::{process_transaction, ProcessTransactionResult};
 
 use crate::utils::ConversionError;
 
@@ -246,6 +246,7 @@ pub async fn process_transactions(
                 log::debug!("Updating token approve result");
                 update_approve_result(conn, tx, &process_t_res).await?;
             } else {
+                log::debug!("Updating plain tx result");
                 update_tx_result(conn, tx, &process_t_res).await?;
             }
             match process_t_res {
