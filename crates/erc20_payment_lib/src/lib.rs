@@ -13,3 +13,4 @@ pub mod transaction;
 pub mod utils;
 //@todo - add feature
 pub mod server;
+mod sender;
