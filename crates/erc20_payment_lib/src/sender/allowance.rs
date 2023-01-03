@@ -10,8 +10,8 @@ use crate::setup::PaymentSetup;
 
 use sqlx::{Connection, SqliteConnection};
 
-use web3::types::{Address, U256};
 use crate::eth::check_allowance;
+use web3::types::{Address, U256};
 
 pub async fn process_allowance(
     conn: &mut SqliteConnection,

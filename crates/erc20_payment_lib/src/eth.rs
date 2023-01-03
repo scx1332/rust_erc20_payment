@@ -1,12 +1,12 @@
+use crate::contracts::encode_erc20_allowance;
+use crate::error::*;
+use crate::{err_custom_create, err_from};
 use secp256k1::{PublicKey, SecretKey};
 use sha3::Digest;
 use sha3::Keccak256;
 use web3::transports::Http;
 use web3::types::{Address, Bytes, CallRequest, U256};
 use web3::Web3;
-use crate::contracts::encode_erc20_allowance;
-use crate::{err_custom_create, err_from};
-use crate::error::*;
 
 pub async fn get_transaction_count(
     address: Address,
@@ -77,7 +77,6 @@ pub async fn check_allowance(
 
     Ok(allowance)
 }
-
 
 #[cfg(test)]
 mod tests {

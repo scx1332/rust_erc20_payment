@@ -58,7 +58,10 @@ pub fn encode_erc20_balance_of(address: Address) -> Result<Vec<u8>, web3::ethabi
     )
 }
 
-pub fn encode_erc20_transfer(address: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_erc20_transfer(
+    address: Address,
+    amount: U256,
+) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "transfer", (address, amount))
 }
 
@@ -69,7 +72,10 @@ pub fn encode_erc20_allowance(
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "allowance", (owner, spender))
 }
 
-pub fn encode_erc20_approve(spender: Address, amount: U256) -> Result<Vec<u8>, web3::ethabi::Error> {
+pub fn encode_erc20_approve(
+    spender: Address,
+    amount: U256,
+) -> Result<Vec<u8>, web3::ethabi::Error> {
     contract_encode(&ERC20_CONTRACT_TEMPLATE, "approve", (spender, amount))
 }
 
