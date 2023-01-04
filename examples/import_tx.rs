@@ -41,7 +41,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     display_private_keys(&private_keys);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    let mut conn = create_sqlite_connection(&db_conn, true).await?;
+    let mut conn = create_sqlite_connection(Some(&db_conn), true).await?;
 
     let payment_setup =
         PaymentSetup::new(&config, vec![], vec![], true, false, false, 1, 1, false)?;

@@ -178,10 +178,10 @@ pub async fn start_payment_engine(
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
-    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    log::info!("connecting to sqlite file db: {}", db_conn);
-    let mut conn = create_sqlite_connection(&db_conn, true).await?;
-    let conn2 = create_sqlite_connection(&db_conn, false).await?;
+    let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
+    log::info!("connecting to sqlite file db: {}", db_filename);
+    let mut conn = create_sqlite_connection(Some(&db_filename), true).await?;
+    let conn2 = create_sqlite_connection(Some(&db_filename), false).await?;
 
     //process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 

@@ -1,5 +1,6 @@
 use crate::db::model::*;
 use sqlx::SqliteConnection;
+use crate::db::create_sqlite_connection;
 
 pub async fn insert_chain_tx(
     conn: &mut SqliteConnection,
@@ -40,9 +41,9 @@ pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<ChainT
     Ok(row)
 }
 
-#[sqlx::test]
-async fn tx_chain_test(pool: sqlx::SqlitePool) -> sqlx::Result<()> {
-    let mut conn = pool.acquire().await?;
+#[tokio::test]
+async fn tx_chain_test() -> sqlx::Result<()> {
+    let mut conn = create_sqlite_connection(None, true).await.unwrap();
 
     println!("Start tx_chain_test...");
 
