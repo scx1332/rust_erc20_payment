@@ -518,7 +518,9 @@ pub async fn find_receipt_extended(
 
     //println!("Receipt: {:#?}", receipt);
     chain_tx_dao.blockchain_date = DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp(block_info.timestamp.as_u64() as i64, 0),
+        NaiveDateTime::from_timestamp_opt(block_info.timestamp.as_u64() as i64, 0).ok_or_else(|| {
+            err_custom_create!("Cannot convert timestamp to NaiveDateTime")
+        })?,
         Utc,
     );
 

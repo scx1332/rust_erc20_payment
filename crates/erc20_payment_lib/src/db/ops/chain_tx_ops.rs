@@ -1,6 +1,5 @@
 use crate::db::model::*;
 use sqlx::SqliteConnection;
-use crate::db::create_sqlite_connection;
 
 pub async fn insert_chain_tx(
     conn: &mut SqliteConnection,
@@ -9,8 +8,7 @@ pub async fn insert_chain_tx(
     let res = sqlx::query_as::<_, ChainTxDao>(
         r"INSERT INTO chain_tx
 (tx_hash, method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, checked_date, blockchain_date, block_number, chain_status, fee_paid, error)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *;
-",
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *",
     )
     .bind(&tx.tx_hash)
     .bind(&tx.method)
@@ -43,9 +41,12 @@ pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<ChainT
 
 #[tokio::test]
 async fn tx_chain_test() -> sqlx::Result<()> {
+    println!("Start tx_chain_test...");
+
+    use crate::db::create_sqlite_connection;
     let mut conn = create_sqlite_connection(None, true).await.unwrap();
 
-    println!("Start tx_chain_test...");
+    println!("DB created...");
 
     let mut tx_to_insert = ChainTxDao {
         id: -1,

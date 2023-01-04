@@ -16,6 +16,7 @@ hex = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 log = { workspace = true }
 rand = { workspace = true }
+sqlx-core = { features = ["runtime-tokio-rustls"], workspace = true }
 sqlx = { workspace = true }
 rustc-hex = { workspace = true }
 structopt = { workspace = true }
