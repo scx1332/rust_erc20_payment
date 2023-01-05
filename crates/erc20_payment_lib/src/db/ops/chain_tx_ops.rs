@@ -46,7 +46,7 @@ async fn tx_chain_test() -> sqlx::Result<()> {
     use crate::db::create_sqlite_connection;
     let mut conn = create_sqlite_connection(None, true).await.unwrap();
 
-    println!("DB created...");
+    println!("In memory DB created");
 
     let mut tx_to_insert = ChainTxDao {
         id: -1,
