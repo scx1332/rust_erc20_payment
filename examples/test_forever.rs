@@ -50,7 +50,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
     let c = config.chain.get(&cli.chain_name).unwrap().clone();
 
-    let sp = start_payment_engine(&private_keys, &receiver_accounts, config, None).await?;
+    let sp = start_payment_engine(&private_keys, &receiver_accounts, &db_conn, config, None).await?;
     loop {
         if sp.runtime_handle.is_finished() {
             break;

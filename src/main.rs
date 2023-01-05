@@ -42,11 +42,11 @@ async fn main_internal() -> Result<(), PaymentError> {
         generate_tx_only: cli.generate_tx_only,
         skip_multi_contract_check: cli.skip_multi_contract_check,
     };
-    let sp = start_payment_engine(&private_keys, &receiver_accounts, config, Some(add_opt)).await?;
+    let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
+    let sp = start_payment_engine(&private_keys, &receiver_accounts, &db_filename, config, Some(add_opt)).await?;
 
-    let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    log::info!("connecting to sqlite file db: {}", db_conn);
-    let conn = create_sqlite_connection(Some(&db_conn), true).await?;
+    log::info!("connecting to sqlite file db: {}", db_filename);
+    let conn = create_sqlite_connection(Some(&db_filename), true).await?;
 
     let server_data = web::Data::new(Box::new(ServerData {
         shared_state: sp.shared_state.clone(),
