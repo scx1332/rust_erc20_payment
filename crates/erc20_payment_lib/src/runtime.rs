@@ -161,6 +161,7 @@ async fn process_cli(
 pub async fn start_payment_engine(
     secret_keys: &[SecretKey],
     receiver_accounts: &[Address],
+    db_filename: &str,
     config: config::Config,
     options: Option<AdditionalOptions>,
 ) -> Result<PaymentRuntime, PaymentError> {
@@ -178,7 +179,6 @@ pub async fn start_payment_engine(
     )?;
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
-    let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
     log::info!("connecting to sqlite file db: {}", db_filename);
     let mut conn = create_sqlite_connection(Some(&db_filename), true).await?;
     let conn2 = create_sqlite_connection(Some(&db_filename), false).await?;

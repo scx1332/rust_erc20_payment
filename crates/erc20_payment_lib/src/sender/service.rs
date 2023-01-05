@@ -279,6 +279,7 @@ pub async fn service_loop(
     let mut process_tx_needed = true;
     let mut process_tx_instantly = true;
     loop {
+        log::debug!("Sender service loop - start loop");
         let current_time = chrono::Utc::now();
         if current_time < last_update_time1 {
             //handle case when system time changed
