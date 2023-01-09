@@ -762,6 +762,7 @@ dependencies = [
 name = "erc20_payment_lib"
 version = "0.1.0"
 dependencies = [
+ "actix-files",
  "actix-web",
  "chrono",
  "dotenv",

@@ -15,6 +15,7 @@ use std::env;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
+use actix_web::{Scope};
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -61,58 +62,14 @@ async fn main_internal() -> Result<(), PaymentError> {
                 .allow_any_method()
                 .allow_any_header()
                 .max_age(3600);
+
+            let scope = Scope::new("api");
+            let scope = api_scope(scope, server_data.clone(), cli.faucet, cli.debug, cli.faucet);
+
             let mut app = App::new()
                 .wrap(cors)
-                .app_data(server_data.clone())
-                .route("/allowances", web::get().to(allowances))
-                .route("/config", web::get().to(config_endpoint))
-                .route("/transactions", web::get().to(transactions))
-                .route("/transactions/count", web::get().to(transactions_count))
-                .route("/transactions/next", web::get().to(transactions_next))
-                .route(
-                    "/transactions/feed/{prev}/{next}",
-                    web::get().to(transactions_feed),
-                )
-                .route(
-                    "/transactions/next/{count}",
-                    web::get().to(transactions_next),
-                )
-                .route("/transactions/current", web::get().to(transactions_current))
-                .route(
-                    "/transactions/last",
-                    web::get().to(transactions_last_processed),
-                )
-                .route(
-                    "/transactions/last/{count}",
-                    web::get().to(transactions_last_processed),
-                )
-                .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
-                .route("/tx/{tx_id}", web::get().to(tx_details))
-                .route("/transfers", web::get().to(transfers))
-                .route("/transfers/{tx_id}", web::get().to(transfers))
-                .route("/accounts", web::get().to(accounts))
-                .route("/account/{account}", web::get().to(account_details))
-                .route("/account/{account}/in", web::get().to(account_payments_in));
+                .service(scope);
 
-            if cli.faucet {
-                log::info!("Faucet endpoints enabled");
-                app = app.route("/faucet", web::get().to(faucet));
-                app = app.route("/faucet/{chain}/{addr}", web::get().to(faucet));
-            }
-            if cli.debug {
-                log::info!("Debug endpoints enabled");
-                app = app.route("/debug", web::get().to(debug_endpoint));
-            }
-            if cli.frontend {
-                log::info!("Frontend endpoint enabled");
-                //This has to be on end, otherwise it catches requests to backend
-                let static_files = actix_files::Files::new("/", "./frontend");
-                let static_files = static_files.index_file("index.html");
-                app = app.service(static_files)
-            } else {
-                log::info!("Frontend endpoint disabled");
-                app = app.route("/", web::get().to(greet))
-            }
             app
         })
         .workers(cli.http_threads as usize)

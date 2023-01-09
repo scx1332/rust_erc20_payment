@@ -4,7 +4,7 @@ use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
 use crate::transaction::create_token_transfer;
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, Responder};
+use actix_web::{web, HttpRequest, Responder, Scope};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
@@ -640,4 +640,60 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     web::Json(json!({
         "status": "faucet enabled"
     }))
+}
+
+pub fn api_scope(mut scope: Scope, server_data: Data<Box<ServerData>>, enable_faucet: bool, debug: bool, frontend: bool) -> Scope {
+
+    let mut scope = scope
+        .app_data(server_data)
+        .route("/allowances", web::get().to(allowances))
+        .route("/config", web::get().to(config_endpoint))
+        .route("/transactions", web::get().to(transactions))
+        .route("/transactions/count", web::get().to(transactions_count))
+        .route("/transactions/next", web::get().to(transactions_next))
+        .route(
+            "/transactions/feed/{prev}/{next}",
+            web::get().to(transactions_feed),
+        )
+        .route(
+            "/transactions/next/{count}",
+            web::get().to(transactions_next),
+        )
+        .route("/transactions/current", web::get().to(transactions_current))
+        .route(
+            "/transactions/last",
+            web::get().to(transactions_last_processed),
+        )
+        .route(
+            "/transactions/last/{count}",
+            web::get().to(transactions_last_processed),
+        )
+        .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
+        .route("/tx/{tx_id}", web::get().to(tx_details))
+        .route("/transfers", web::get().to(transfers))
+        .route("/transfers/{tx_id}", web::get().to(transfers))
+        .route("/accounts", web::get().to(accounts))
+        .route("/account/{account}", web::get().to(account_details))
+        .route("/account/{account}/in", web::get().to(account_payments_in));
+
+    if enable_faucet {
+        log::info!("Faucet endpoints enabled");
+        scope = scope.route("/faucet", web::get().to(faucet));
+        scope = scope.route("/faucet/{chain}/{addr}", web::get().to(faucet));
+    }
+    if debug {
+        log::info!("Debug endpoints enabled");
+        scope = scope.route("/debug", web::get().to(debug_endpoint));
+    }
+    if frontend {
+        log::info!("Frontend endpoint enabled");
+        //This has to be on end, otherwise it catches requests to backend
+        let static_files = actix_files::Files::new("/", "./frontend");
+        let static_files = static_files.index_file("index.html");
+        scope = scope.service(static_files);
+    } else {
+        log::info!("Frontend endpoint disabled");
+        scope = scope.route("/", web::get().to(greet));
+    }
+    scope
 }
