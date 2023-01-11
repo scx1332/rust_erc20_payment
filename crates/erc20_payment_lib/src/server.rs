@@ -533,13 +533,12 @@ pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
         target,
     )).finish()
 }
-
-pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
-    let name = req.match_info().get("name").unwrap_or("World");
-    //let mut my_data = data.shared_state.lock().await;
-    //my_data.inserted += 1;
-
-    format!("Hello {}!", name)
+pub async fn greet(req: HttpRequest) -> impl Responder {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    return     web::Json(json!({
+        "name": "erc20_payment_lib",
+        "version": VERSION,
+    }))
 }
 
 pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
@@ -696,7 +695,10 @@ pub fn runtime_web_scope(
         .route("/transfers/{tx_id}", web::get().to(transfers))
         .route("/accounts", web::get().to(accounts))
         .route("/account/{account}", web::get().to(account_details))
-        .route("/account/{account}/in", web::get().to(account_payments_in));
+        .route("/account/{account}/in", web::get().to(account_payments_in))
+        .route("/", web::get().to(greet))
+        .route("/version", web::get().to(greet));
+
 
     if enable_faucet {
         log::info!("Faucet endpoints enabled");
@@ -707,7 +709,11 @@ pub fn runtime_web_scope(
         log::info!("Debug endpoints enabled");
         api_scope = api_scope.route("/debug", web::get().to(debug_endpoint));
     }
+
+    // Add version endpoint to /api, /api/ and /api/version
+    let mut scope = scope.route("/api", web::get().to(greet));
     let mut scope = scope.service(api_scope);
+
     if frontend {
         log::info!("Frontend endpoint enabled");
         //This has to be on end, otherwise it catches requests to backend
@@ -723,9 +729,6 @@ pub fn runtime_web_scope(
 
         scope = scope.route("/frontend", web::get().to(redirect_to_slash));
         scope = scope.service(static_files);
-    } else {
-        log::info!("Frontend endpoint disabled");
-        scope = scope.route("/", web::get().to(greet));
     }
     scope
 }

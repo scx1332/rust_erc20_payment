@@ -1,4 +1,3 @@
 {
-    "backendUrl": "/erc20/api",
-    "frontendBase": "/erc20/frontend/"
+    "backendUrl": "http://localhost:8080/erc20/api"
 }
