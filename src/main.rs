@@ -1,5 +1,6 @@
 mod options;
 use crate::options::CliOptions;
+use actix_web::Scope;
 use actix_web::{web, App, HttpServer};
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
@@ -15,7 +16,6 @@ use std::env;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use actix_web::{Scope};
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
@@ -44,7 +44,14 @@ async fn main_internal() -> Result<(), PaymentError> {
         skip_multi_contract_check: cli.skip_multi_contract_check,
     };
     let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
-    let sp = start_payment_engine(&private_keys, &receiver_accounts, &db_filename, config, Some(add_opt)).await?;
+    let sp = start_payment_engine(
+        &private_keys,
+        &receiver_accounts,
+        &db_filename,
+        config,
+        Some(add_opt),
+    )
+    .await?;
 
     log::info!("connecting to sqlite file db: {}", db_filename);
     let conn = create_sqlite_connection(Some(&db_filename), true).await?;
@@ -63,19 +70,22 @@ async fn main_internal() -> Result<(), PaymentError> {
                 .allow_any_header()
                 .max_age(3600);
 
-            let scope = Scope::new("api");
-            let scope = api_scope(scope, server_data.clone(), cli.faucet, cli.debug, cli.faucet);
+            let scope = runtime_web_scope(
+                Scope::new("erc20"),
+                server_data.clone(),
+                cli.faucet,
+                cli.debug,
+                cli.faucet,
+            );
 
-            let mut app = App::new()
-                .wrap(cors)
-                .service(scope);
-
-            app
+            App::new().wrap(cors).service(scope)
         })
         .workers(cli.http_threads as usize)
         .bind((cli.http_addr.as_str(), cli.http_port))
         .expect("Cannot run server")
         .run();
+
+        log::info!("http server starting on {}:{}", cli.http_addr, cli.http_port);
 
         server.await.unwrap();
     } else {

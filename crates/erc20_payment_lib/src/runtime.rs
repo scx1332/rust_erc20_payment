@@ -8,7 +8,6 @@ use crate::setup::PaymentSetup;
 use crate::config;
 use secp256k1::SecretKey;
 use sqlx::SqliteConnection;
-use std::env;
 
 use crate::config::AdditionalOptions;
 use crate::sender::service_loop;

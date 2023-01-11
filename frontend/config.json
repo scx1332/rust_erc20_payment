@@ -1,0 +1,4 @@
+{
+    "backendUrl": "/erc20/api",
+    "frontendBase": "/erc20/frontend/"
+}
