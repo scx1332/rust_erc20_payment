@@ -4,13 +4,17 @@ use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
 use crate::transaction::create_token_transfer;
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, Responder};
+use actix_web::{web, HttpRequest, Responder, Scope, HttpResponse};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::Arc;
+use actix_files::NamedFile;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::http::header::HeaderValue;
+use actix_web::http::{header, StatusCode};
 use tokio::sync::Mutex;
 use web3::types::Address;
 
@@ -517,13 +521,24 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         "receivedTransfers": received_transfer_count,
     }))
 }
+pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
+    let mut response = HttpResponse::Ok();
+    let Ok(target) = HeaderValue::from_str(&(req.uri().to_string() + "/")) else {
+        return HttpResponse::InternalServerError().body("Failed to create redirect target");
+    };
 
-pub async fn greet(_data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
-    let name = req.match_info().get("name").unwrap_or("World");
-    //let mut my_data = data.shared_state.lock().await;
-    //my_data.inserted += 1;
-
-    format!("Hello {}!", name)
+    response.status(StatusCode::PERMANENT_REDIRECT)
+        .append_header((
+        header::LOCATION,
+        target,
+    )).finish()
+}
+pub async fn greet(req: HttpRequest) -> impl Responder {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    return     web::Json(json!({
+        "name": "erc20_payment_lib",
+        "version": VERSION,
+    }))
 }
 
 pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
@@ -640,4 +655,80 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
     web::Json(json!({
         "status": "faucet enabled"
     }))
+}
+
+pub fn runtime_web_scope(
+    scope: Scope,
+    server_data: Data<Box<ServerData>>,
+    enable_faucet: bool,
+    debug: bool,
+    frontend: bool,
+) -> Scope {
+    let api_scope = Scope::new("/api");
+    let mut api_scope = api_scope
+        .app_data(server_data)
+        .route("/allowances", web::get().to(allowances))
+        .route("/config", web::get().to(config_endpoint))
+        .route("/transactions", web::get().to(transactions))
+        .route("/transactions/count", web::get().to(transactions_count))
+        .route("/transactions/next", web::get().to(transactions_next))
+        .route(
+            "/transactions/feed/{prev}/{next}",
+            web::get().to(transactions_feed),
+        )
+        .route(
+            "/transactions/next/{count}",
+            web::get().to(transactions_next),
+        )
+        .route("/transactions/current", web::get().to(transactions_current))
+        .route(
+            "/transactions/last",
+            web::get().to(transactions_last_processed),
+        )
+        .route(
+            "/transactions/last/{count}",
+            web::get().to(transactions_last_processed),
+        )
+        .route("/tx/skip/{tx_id}", web::post().to(skip_pending_operation))
+        .route("/tx/{tx_id}", web::get().to(tx_details))
+        .route("/transfers", web::get().to(transfers))
+        .route("/transfers/{tx_id}", web::get().to(transfers))
+        .route("/accounts", web::get().to(accounts))
+        .route("/account/{account}", web::get().to(account_details))
+        .route("/account/{account}/in", web::get().to(account_payments_in))
+        .route("/", web::get().to(greet))
+        .route("/version", web::get().to(greet));
+
+
+    if enable_faucet {
+        log::info!("Faucet endpoints enabled");
+        api_scope = api_scope.route("/faucet", web::get().to(faucet));
+        api_scope = api_scope.route("/faucet/{chain}/{addr}", web::get().to(faucet));
+    }
+    if debug {
+        log::info!("Debug endpoints enabled");
+        api_scope = api_scope.route("/debug", web::get().to(debug_endpoint));
+    }
+
+    // Add version endpoint to /api, /api/ and /api/version
+    let mut scope = scope.route("/api", web::get().to(greet));
+    let mut scope = scope.service(api_scope);
+
+    if frontend {
+        log::info!("Frontend endpoint enabled");
+        //This has to be on end, otherwise it catches requests to backend
+        let static_files = actix_files::Files::new("/frontend/", "./frontend")
+            .index_file("index.html").default_handler(|req: ServiceRequest| {
+                 let (http_req, _payload) = req.into_parts();
+
+            async {
+                let response = NamedFile::open("./frontend/index.html").unwrap().into_response(&http_req);
+                Ok(ServiceResponse::new(http_req, response))
+            }}
+            );
+
+        scope = scope.route("/frontend", web::get().to(redirect_to_slash));
+        scope = scope.service(static_files);
+    }
+    scope
 }

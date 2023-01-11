@@ -25,6 +25,7 @@ serde = { workspace = true }
 rust_decimal = { workspace = true }
 toml = { workspace = true }
 actix-web = { workspace = true }
+actix-files = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 
