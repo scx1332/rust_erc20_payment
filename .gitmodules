@@ -1,4 +1,0 @@
-[submodule "testnet/contracts-web3-create2"]
-	path = testnet/contracts-web3-create2
-	url = https://github.com/scx1332/contracts-web3-create2.git
-	branch = scx1332/deploy_test_contracts
