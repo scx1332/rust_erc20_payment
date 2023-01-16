@@ -9,17 +9,17 @@ RUN apt-get install -y vim
 RUN pip install web3 python-dotenv
 
 WORKDIR /runtime/contracts-web3-create2
-COPY contracts-web3-create2/package.json ./contracts-web3-create2/
-COPY contracts-web3-create2/package-lock.json ./contracts-web3-create2/
+COPY contracts-web3-create2/package.json .
+COPY contracts-web3-create2/package-lock.json .
 RUN npm install
 
 #copy geth from client-go
 COPY --from=builder /usr/local/bin/geth /usr/local/bin/
 
 #copy contracts and compile
-COPY contracts-web3-create2/*.js ./contracts-web3-create2/
-COPY contracts-web3-create2/contracts ./contracts-web3-create2/contracts
-COPY contracts-web3-create2/scripts ./contracts-web3-create2/scripts
+COPY contracts-web3-create2/*.js ./
+COPY contracts-web3-create2/contracts ./contracts
+COPY contracts-web3-create2/scripts ./scripts
 RUN npm run compile
 
 #copy python scripts
