@@ -8,14 +8,16 @@ COPY --from=builder /usr/local/bin/geth /usr/local/bin/
 
 WORKDIR /runtime
 RUN pip install web3 python-dotenv
-COPY *.py .
-COPY contracts-web3-create2/*.json ./contracts-web3-create2/
+
+WORKDIR /runtime/contracts-web3-create2
+COPY contracts-web3-create2/package.json ./contracts-web3-create2/
+COPY contracts-web3-create2/package-lock.json ./contracts-web3-create2/
+RUN npm install
+
 COPY contracts-web3-create2/*.js ./contracts-web3-create2/
 COPY contracts-web3-create2/contracts ./contracts-web3-create2/contracts
 COPY contracts-web3-create2/scripts ./contracts-web3-create2/scripts
-
-WORKDIR /runtime/contracts-web3-create2
-RUN npm install
 RUN npm run compile
 
 WORKDIR /runtime
+COPY *.py .
