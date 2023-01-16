@@ -126,7 +126,7 @@ async def main():
                    f'--http.addr=0.0.0.0 ' \
                    f'--http.vhosts=* ' \
                    f'--http.corsdomain=* ' \
-                   f'--http.api=eth,net,web3,txpool,debug ' \
+                   f'--http.api=eth,net,web3,txpool ' \
                    f'--rpc.txfeecap=1000 ' \
                    f'--networkid={chain_num} {miner_settings}'
     print(geth_command)
