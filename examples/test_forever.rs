@@ -14,7 +14,7 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct TestOptions {
-    #[structopt(long = "chain-name", default_value = "mumbai")]
+    #[structopt(long = "chain-name", default_value = "dev")]
     chain_name: String,
 
     #[structopt(long = "generate-count", default_value = "10")]
