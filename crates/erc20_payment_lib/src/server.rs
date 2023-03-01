@@ -3,18 +3,18 @@ use crate::eth::get_eth_addr_from_secret;
 use crate::runtime::{FaucetData, SharedState};
 use crate::setup::{ChainSetup, PaymentSetup};
 use crate::transaction::create_token_transfer;
+use actix_files::NamedFile;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::http::header::HeaderValue;
+use actix_web::http::{header, StatusCode};
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, Responder, Scope, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse, Responder, Scope};
 use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::Arc;
-use actix_files::NamedFile;
-use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::http::header::HeaderValue;
-use actix_web::http::{header, StatusCode};
 use tokio::sync::Mutex;
 use web3::types::Address;
 
@@ -527,15 +527,14 @@ pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
         return HttpResponse::InternalServerError().body("Failed to create redirect target");
     };
 
-    response.status(StatusCode::PERMANENT_REDIRECT)
-        .append_header((
-        header::LOCATION,
-        target,
-    )).finish()
+    response
+        .status(StatusCode::PERMANENT_REDIRECT)
+        .append_header((header::LOCATION, target))
+        .finish()
 }
-pub async fn greet(req: HttpRequest) -> impl Responder {
+pub async fn greet(_req: HttpRequest) -> impl Responder {
     const VERSION: &str = env!("CARGO_PKG_VERSION");
-    return     web::Json(json!({
+    web::Json(json!({
         "name": "erc20_payment_lib",
         "version": VERSION,
     }))
@@ -699,7 +698,6 @@ pub fn runtime_web_scope(
         .route("/", web::get().to(greet))
         .route("/version", web::get().to(greet));
 
-
     if enable_faucet {
         log::info!("Faucet endpoints enabled");
         api_scope = api_scope.route("/faucet", web::get().to(faucet));
@@ -711,21 +709,24 @@ pub fn runtime_web_scope(
     }
 
     // Add version endpoint to /api, /api/ and /api/version
-    let mut scope = scope.route("/api", web::get().to(greet));
+    let scope = scope.route("/api", web::get().to(greet));
     let mut scope = scope.service(api_scope);
 
     if frontend {
         log::info!("Frontend endpoint enabled");
         //This has to be on end, otherwise it catches requests to backend
         let static_files = actix_files::Files::new("/frontend/", "./frontend")
-            .index_file("index.html").default_handler(|req: ServiceRequest| {
-                 let (http_req, _payload) = req.into_parts();
+            .index_file("index.html")
+            .default_handler(|req: ServiceRequest| {
+                let (http_req, _payload) = req.into_parts();
 
-            async {
-                let response = NamedFile::open("./frontend/index.html").unwrap().into_response(&http_req);
-                Ok(ServiceResponse::new(http_req, response))
-            }}
-            );
+                async {
+                    let response = NamedFile::open("./frontend/index.html")
+                        .unwrap()
+                        .into_response(&http_req);
+                    Ok(ServiceResponse::new(http_req, response))
+                }
+            });
 
         scope = scope.route("/frontend", web::get().to(redirect_to_slash));
         scope = scope.service(static_files);

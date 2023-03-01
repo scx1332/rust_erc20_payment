@@ -66,7 +66,7 @@ block-explorer-url = "https://polygonscan.com"
 [chain.dev]
 chain-name = "Golem testnet"
 chain-id = 987789
-rpc-endpoints = ["http://145.239.69.80:8545"]
+rpc-endpoints = ["http://145.239.69.80:8546/web3/erc20"]
 currency-symbol = "tETH"
 priority-fee = 1.1
 max-fee-per-gas = 500.0

@@ -85,8 +85,13 @@ impl PaymentSetup {
         for chain_config in &config.chain {
             let mut providers = Vec::new();
             for endp in &chain_config.1.rpc_endpoints {
-                let Ok(transport) = web3::transports::Http::new(endp) else {
-                    return Err(err_custom_create!("Failed to create transport for endpoint: {}", endp));
+                let transport = match Http::new(endp) {
+                    Ok(t) => t,
+                    Err(err) => {
+                        return Err(err_custom_create!(
+                            "Failed to create transport for endpoint: {endp} - {err:?}"
+                        ));
+                    }
                 };
                 let provider = Web3::new(transport);
                 providers.push(ProviderSetup {
