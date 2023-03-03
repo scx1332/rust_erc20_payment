@@ -523,8 +523,9 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
 }
 pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
     let mut response = HttpResponse::Ok();
-    let Ok(target) = HeaderValue::from_str(&(req.uri().to_string() + "/")) else {
-        return HttpResponse::InternalServerError().body("Failed to create redirect target");
+    let target = match HeaderValue::from_str(&(req.uri().to_string() + "/")) {
+        Ok(target) => target,
+        Err(_err) => return HttpResponse::InternalServerError().body("Failed to create redirect target")
     };
 
     response
