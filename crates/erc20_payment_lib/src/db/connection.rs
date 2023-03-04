@@ -3,9 +3,7 @@ use crate::error::PaymentError;
 use crate::error::*;
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::ConnectOptions;
-use sqlx::SqliteConnection;
-use sqlx_core::sqlite::{Sqlite, SqlitePool};
+use sqlx_core::sqlite::{SqlitePool};
 use std::str::FromStr;
 
 static MIGRATOR: Migrator = sqlx::migrate!();

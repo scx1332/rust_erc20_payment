@@ -15,8 +15,7 @@ use crate::setup::PaymentSetup;
 use crate::runtime::SharedState;
 use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
 use crate::sender::process_allowance;
-use sqlx::{Connection, SqlitePool};
-use sqlx_core::sqlite::SqlitePoolOptions;
+use sqlx::{SqlitePool};
 
 use web3::types::U256;
 

@@ -51,7 +51,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     let c = config.chain.get(&cli.chain_name).unwrap().clone();
 
     let sp =
-        start_payment_engine(&private_keys, &receiver_accounts, &db_conn, config, None).await?;
+        start_payment_engine(&private_keys, &receiver_accounts, &db_conn, config, Some(conn.clone()), None).await?;
     loop {
         if sp.runtime_handle.is_finished() {
             break;
@@ -60,7 +60,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         let ignore_idling = true;
         if idling || ignore_idling {
             generate_transaction_batch(
-                &mut conn,
+                &conn,
                 c.chain_id,
                 &public_addrs,
                 Some(c.token.clone().unwrap().address),

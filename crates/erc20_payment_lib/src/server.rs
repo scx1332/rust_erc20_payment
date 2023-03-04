@@ -10,7 +10,6 @@ use actix_web::http::{header, StatusCode};
 use actix_web::web::Data;
 use actix_web::{web, HttpRequest, HttpResponse, Responder, Scope};
 use serde_json::json;
-use sqlx::Connection;
 use sqlx::SqlitePool;
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -217,7 +216,7 @@ pub async fn transactions_next(data: Data<Box<ServerData>>, req: HttpRequest) ->
         .unwrap_or(Some(10));
 
     let txs = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
             get_transactions(
                 &*db_conn,
@@ -237,7 +236,7 @@ pub async fn transactions_current(
     _req: HttpRequest,
 ) -> impl Responder {
     let txs = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
             get_transactions(
                 &*db_conn,
@@ -292,7 +291,7 @@ pub async fn transactions_feed(data: Data<Box<ServerData>>, req: HttpRequest) ->
         .map(|tx_id| i64::from_str(tx_id).ok())
         .unwrap_or(Some(10));
     let mut txs = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         let mut db_transaction = return_on_error!(db_conn.begin().await);
         let mut txs = return_on_error!(
             get_transactions(

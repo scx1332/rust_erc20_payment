@@ -11,7 +11,7 @@ use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
 
-use sqlx::{Connection, SqlitePool};
+use sqlx::{SqlitePool};
 
 use web3::types::{Address, U256};
 

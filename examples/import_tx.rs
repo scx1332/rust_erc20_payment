@@ -66,7 +66,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         .unwrap();
     }
 
-    conn.close().await.map_err(err_from!())?; //it is needed to process all the transactions before closing the connection
+    conn.close().await; //it is needed to process all the transactions before closing the connection
     Ok(())
 }
 
