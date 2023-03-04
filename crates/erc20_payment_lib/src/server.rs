@@ -13,6 +13,7 @@ use serde_json::json;
 use sqlx::Connection;
 use sqlx::SqliteConnection;
 use std::collections::BTreeMap;
+use std::ops::DerefMut;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -355,7 +356,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
     let transfers = {
         let mut db_conn = data.db_connection.lock().await;
         if let Some(tx_id) = tx_id {
-            match get_token_transfers_by_tx(&mut db_conn, tx_id).await {
+            match get_token_transfers_by_tx(db_conn.deref_mut(), tx_id).await {
                 Ok(allowances) => allowances,
                 Err(err) => {
                     return web::Json(json!({
@@ -525,7 +526,9 @@ pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
     let mut response = HttpResponse::Ok();
     let target = match HeaderValue::from_str(&(req.uri().to_string() + "/")) {
         Ok(target) => target,
-        Err(_err) => return HttpResponse::InternalServerError().body("Failed to create redirect target")
+        Err(_err) => {
+            return HttpResponse::InternalServerError().body("Failed to create redirect target")
+        }
     };
 
     response

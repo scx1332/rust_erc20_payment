@@ -44,7 +44,7 @@ pub async fn gather_transactions_pre(
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
 
-    let mut token_transfers = get_pending_token_transfers(conn)
+    let mut token_transfers = get_pending_token_transfers(&mut *conn)
         .await
         .map_err(err_from!())?;
 

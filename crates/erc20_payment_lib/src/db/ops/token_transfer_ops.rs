@@ -1,5 +1,7 @@
 use crate::db::model::*;
 use sqlx::SqliteConnection;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
 pub async fn insert_token_transfer(
     conn: &mut SqliteConnection,
@@ -72,28 +74,33 @@ pub async fn get_all_token_transfers(
     Ok(rows)
 }
 
-pub async fn get_pending_token_transfers(
-    conn: &mut SqliteConnection,
-) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+pub async fn get_pending_token_transfers<'c, E>(
+    executor: E,
+) -> Result<Vec<TokenTransferDao>, sqlx::Error>
+where
+    E: Executor<'c, Database = DB>,
+{
     let rows = sqlx::query_as::<_, TokenTransferDao>(
         r"SELECT * FROM token_transfer
 WHERE tx_id is null
 AND error is null
 ",
     )
-    .fetch_all(conn)
+    .fetch_all(executor)
     .await?;
     Ok(rows)
 }
-
-pub async fn get_token_transfers_by_tx(
-    conn: &mut SqliteConnection,
+pub async fn get_token_transfers_by_tx<'e, E>(
+    executor: E,
     tx_id: i64,
-) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+) -> Result<Vec<TokenTransferDao>, sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
     let rows =
         sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
             .bind(tx_id)
-            .fetch_all(conn)
+            .fetch_all(executor)
             .await?;
     Ok(rows)
 }
