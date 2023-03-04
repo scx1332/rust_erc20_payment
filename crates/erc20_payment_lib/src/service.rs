@@ -14,7 +14,7 @@ use crate::setup::{ChainSetup, PaymentSetup};
 use crate::{err_custom_create, err_from};
 
 use crate::runtime::SharedState;
-use sqlx::{Connection, SqlitePool};
+use sqlx::{SqlitePool};
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;

@@ -49,8 +49,8 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
     };
 
     let tx = {
-        let mut db_conn = data.db_connection.lock().await;
-        match get_transaction(&mut db_conn, tx_id).await {
+        let db_conn = data.db_connection.lock().await;
+        match get_transaction(&db_conn, tx_id).await {
             Ok(allowances) => allowances,
             Err(err) => {
                 return web::Json(json!({
@@ -63,8 +63,8 @@ pub async fn tx_details(data: Data<Box<ServerData>>, req: HttpRequest) -> impl R
 
     /*
     let transfers = {
-        let mut db_conn = data.db_connection.lock().await;
-        match get_token_transfers_by_tx(&mut db_conn, tx_id).await {
+        let db_conn = data.db_connection.lock().await;
+        match get_token_transfers_by_tx(&db_conn, tx_id).await {
             Ok(allowances) => allowances,
             Err(err) => {
                 return web::Json(json!({
@@ -99,8 +99,8 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
     my_data.inserted += 1;
 
     let allowances = {
-        let mut db_conn = data.db_connection.lock().await;
-        match get_all_allowances(&mut db_conn).await {
+        let db_conn = data.db_connection.lock().await;
+        match get_all_allowances(&db_conn).await {
             Ok(allowances) => allowances,
             Err(err) => {
                 return web::Json(json!({
@@ -118,30 +118,30 @@ pub async fn allowances(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl 
 
 pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
     let queued_tx_count = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_QUEUED)).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transaction_count(&db_conn, Some(TRANSACTION_FILTER_QUEUED)).await)
     };
     let done_tx_count = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transaction_count(&mut db_conn, Some(TRANSACTION_FILTER_DONE)).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transaction_count(&db_conn, Some(TRANSACTION_FILTER_DONE)).await)
     };
 
     let queued_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
-            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_QUEUED), None, None).await
+            get_transfer_count(&db_conn, Some(TRANSFER_FILTER_QUEUED), None, None).await
         )
     };
     let processed_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
-            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_PROCESSING), None, None).await
+            get_transfer_count(&db_conn, Some(TRANSFER_FILTER_PROCESSING), None, None).await
         )
     };
     let done_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
-            get_transfer_count(&mut db_conn, Some(TRANSFER_FILTER_DONE), None, None).await
+            get_transfer_count(&db_conn, Some(TRANSFER_FILTER_DONE), None, None).await
         )
     };
 
@@ -417,12 +417,12 @@ pub async fn account_payments_in(data: Data<Box<ServerData>>, req: HttpRequest) 
     let account = format!("{web3_account:#x}");
 
     let transfers_in = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_account_transfers_in(&mut db_conn, &account, None).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_account_transfers_in(&db_conn, &account, None).await)
     };
     let chain_transfers = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_account_chain_transfers(&mut db_conn, &account).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_account_chain_transfers(&db_conn, &account).await)
     };
 
     web::Json(json!({
@@ -451,8 +451,8 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         false
     };
     let allowances = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_allowances_by_owner(&mut db_conn, &account).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_allowances_by_owner(&db_conn, &account).await)
     };
 
     let mut queued_transfer_count = 0;
@@ -461,10 +461,10 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
 
     if is_sender {
         queued_transfer_count = {
-            let mut db_conn = data.db_connection.lock().await;
+            let db_conn = data.db_connection.lock().await;
             return_on_error!(
                 get_transfer_count(
-                    &mut db_conn,
+                    &db_conn,
                     Some(TRANSFER_FILTER_QUEUED),
                     Some(&account),
                     None
@@ -473,10 +473,10 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
             )
         };
         processed_transfer_count = {
-            let mut db_conn = data.db_connection.lock().await;
+            let db_conn = data.db_connection.lock().await;
             return_on_error!(
                 get_transfer_count(
-                    &mut db_conn,
+                    &db_conn,
                     Some(TRANSFER_FILTER_PROCESSING),
                     Some(&account),
                     None
@@ -485,10 +485,10 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
             )
         };
         done_transfer_count = {
-            let mut db_conn = data.db_connection.lock().await;
+            let db_conn = data.db_connection.lock().await;
             return_on_error!(
                 get_transfer_count(
-                    &mut db_conn,
+                    &db_conn,
                     Some(TRANSFER_FILTER_DONE),
                     Some(&account),
                     None
@@ -498,11 +498,11 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         };
     }
     let received_transfer_count = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
 
         return_on_error!(
             get_transfer_count(
-                &mut db_conn,
+                &db_conn,
                 Some(TRANSFER_FILTER_ALL),
                 None,
                 Some(&account)
@@ -629,8 +629,8 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
                 None,
                 faucet_eth_amount,
             );
-            let mut db_conn = data.db_connection.lock().await;
-            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+            let db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&db_conn, &tt).await)
         };
         let token_transfer_glm = {
             let tt = create_token_transfer(
@@ -641,8 +641,8 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
                 Some(glm_address),
                 faucet_glm_amount,
             );
-            let mut db_conn = data.db_connection.lock().await;
-            return_on_error!(insert_token_transfer(&mut db_conn, &tt).await)
+            let db_conn = data.db_connection.lock().await;
+            return_on_error!(insert_token_transfer(&db_conn, &tt).await)
         };
 
         return web::Json(json!({

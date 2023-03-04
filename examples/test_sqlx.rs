@@ -10,19 +10,20 @@ use std::env;
 
 use structopt::StructOpt;
 
+
 #[derive(Debug, StructOpt)]
 struct TestOptions {
     #[structopt(long = "chain-name", default_value = "mumbai")]
-    chain_name: String,
+    _chain_name: String,
 
     #[structopt(long = "generate-count", default_value = "10")]
-    generate_count: usize,
+    _generate_count: usize,
 
     #[structopt(long = "address-pool-size", default_value = "10")]
-    address_pool_size: usize,
+    _address_pool_size: usize,
 
     #[structopt(long = "amounts-pool-size", default_value = "10")]
-    amounts_pool_size: usize,
+    _amounts_pool_size: usize,
 }
 
 async fn main_internal() -> Result<(), PaymentError> {
