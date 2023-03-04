@@ -6,29 +6,33 @@ use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::ConnectOptions;
 use sqlx::SqliteConnection;
 use std::str::FromStr;
+use sqlx_core::sqlite::{Sqlite, SqlitePool};
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
 pub async fn create_sqlite_connection(
     file_name: Option<&str>,
     run_migrations: bool,
-) -> Result<SqliteConnection, PaymentError> {
+) -> Result<SqlitePool, PaymentError> {
     let url = if let Some(file_name) = file_name {
         format!("sqlite://{}", file_name)
     } else {
         "sqlite::memory:".to_string()
     };
 
-    let mut conn = SqliteConnectOptions::from_str(&url)
+    let conn_opt = SqliteConnectOptions::from_str(&url)
         .map_err(err_from!())?
-        .create_if_missing(true)
-        .connect()
+        .create_if_missing(true);
+
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(conn_opt)
         .await
         .map_err(err_from!())?;
 
     if run_migrations {
-        MIGRATOR.run(&mut conn).await.map_err(err_from!())?;
+        MIGRATOR.run(&pool).await.map_err(err_from!())?;
     }
 
-    Ok(conn)
+    Ok(pool)
 }

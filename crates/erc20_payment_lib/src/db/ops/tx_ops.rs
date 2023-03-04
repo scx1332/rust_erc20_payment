@@ -1,5 +1,5 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 pub const TRANSACTION_FILTER_QUEUED: &str = "processing > 0 AND first_processed IS NULL";
 pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0 AND first_processed IS NOT NULL";
@@ -10,7 +10,7 @@ pub const TRANSACTION_ORDER_BY_CREATE_DATE: &str = "created_date ASC";
 pub const TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC: &str = "first_processed DESC";
 
 pub async fn get_transactions(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     filter: Option<&str>,
     limit: Option<i64>,
     order: Option<&str>,
@@ -31,7 +31,7 @@ pub async fn get_transactions(
 }
 
 pub async fn get_transaction(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     tx_id: i64,
 ) -> Result<TxDao, sqlx::Error> {
     let row = sqlx::query_as::<_, TxDao>(r"SELECT * FROM tx WHERE id = $1")
@@ -42,7 +42,7 @@ pub async fn get_transaction(
 }
 
 pub async fn get_transaction_count(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     transaction_filter: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
     let transaction_filter = transaction_filter.unwrap_or(TRANSACTION_FILTER_ALL);
@@ -55,7 +55,7 @@ pub async fn get_transaction_count(
 }
 
 pub async fn get_next_transactions_to_process(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     limit: i64,
 ) -> Result<Vec<TxDao>, sqlx::Error> {
     get_transactions(
@@ -67,7 +67,7 @@ pub async fn get_next_transactions_to_process(
     .await
 }
 
-pub async fn force_tx_error(conn: &mut SqliteConnection, tx: &TxDao) -> Result<(), sqlx::Error> {
+pub async fn force_tx_error(conn: &SqlitePool, tx: &TxDao) -> Result<(), sqlx::Error> {
     sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
         .bind(tx.id)
         .execute(conn)
@@ -75,7 +75,7 @@ pub async fn force_tx_error(conn: &mut SqliteConnection, tx: &TxDao) -> Result<(
     Ok(())
 }
 
-pub async fn insert_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
+pub async fn insert_tx(conn: &SqlitePool, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TxDao>(
         r"INSERT INTO tx
 (method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid, error)
@@ -110,7 +110,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
     Ok(res)
 }
 
-pub async fn update_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
+pub async fn update_tx(conn: &SqlitePool, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
     let _res = sqlx::query(
         r"UPDATE tx SET
 method = $2,

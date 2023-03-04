@@ -1,8 +1,8 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 pub async fn insert_chain_transfer(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     chain_transfer: &ChainTransferDao,
 ) -> Result<ChainTransferDao, sqlx::Error> {
     let res = sqlx::query_as::<_, ChainTransferDao>(
@@ -23,7 +23,7 @@ VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 }
 
 pub async fn get_account_chain_transfers(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     account: &str,
 ) -> Result<Vec<ChainTransferDaoExt>, sqlx::Error> {
     let rows = sqlx::query_as::<_, ChainTransferDaoExt>(r"

@@ -1,8 +1,8 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 pub async fn insert_chain_tx(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     tx: &ChainTxDao,
 ) -> Result<ChainTxDao, sqlx::Error> {
     let res = sqlx::query_as::<_, ChainTxDao>(
@@ -31,7 +31,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) R
     Ok(res)
 }
 
-pub async fn get_chain_tx(conn: &mut SqliteConnection, id: i64) -> Result<ChainTxDao, sqlx::Error> {
+pub async fn get_chain_tx(conn: &SqlitePool, id: i64) -> Result<ChainTxDao, sqlx::Error> {
     let row = sqlx::query_as::<_, ChainTxDao>(r"SELECT * FROM chain_tx WHERE id = $1")
         .bind(id)
         .fetch_one(conn)

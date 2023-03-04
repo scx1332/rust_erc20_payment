@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::transaction::create_token_transfer;
 
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 use crate::error::PaymentError;
 use crate::error::*;
@@ -52,7 +52,7 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
 }
 
 pub async fn generate_transaction_batch(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     chain_id: i64,
     from_addr_pool: &[Address],
     token_addr: Option<Address>,

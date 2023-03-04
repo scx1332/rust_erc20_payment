@@ -15,12 +15,13 @@ use crate::setup::PaymentSetup;
 use crate::runtime::SharedState;
 use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
 use crate::sender::process_allowance;
-use sqlx::{Connection, SqliteConnection};
+use sqlx::{Connection, SqlitePool};
+use sqlx_core::sqlite::SqlitePoolOptions;
 
 use web3::types::U256;
 
 pub async fn update_token_transfer_result(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
@@ -103,7 +104,7 @@ pub async fn update_token_transfer_result(
 }
 
 pub async fn update_approve_result(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
@@ -167,7 +168,7 @@ pub async fn update_approve_result(
 }
 
 pub async fn update_tx_result(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     tx: &mut TxDao,
     process_t_res: &ProcessTransactionResult,
 ) -> Result<(), PaymentError> {
@@ -196,7 +197,7 @@ pub async fn update_tx_result(
 
 pub async fn process_transactions(
     shared_state: Arc<Mutex<SharedState>>,
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     payment_setup: &PaymentSetup,
 ) -> Result<(), PaymentError> {
     //remove tx from current processing infos
@@ -266,7 +267,7 @@ pub async fn process_transactions(
 
 pub async fn service_loop(
     shared_state: Arc<Mutex<SharedState>>,
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     payment_setup: &PaymentSetup,
 ) {
     let process_transactions_interval = 5;

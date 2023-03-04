@@ -14,13 +14,13 @@ use crate::setup::{ChainSetup, PaymentSetup};
 use crate::{err_custom_create, err_from};
 
 use crate::runtime::SharedState;
-use sqlx::{Connection, SqliteConnection};
+use sqlx::{Connection, SqlitePool};
 use web3::transports::Http;
 use web3::types::{Address, U256};
 use web3::Web3;
 
 pub async fn add_payment_request_2(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     token_address: Option<Address>,
     token_amount: U256,
     payment_id: &str,
@@ -46,7 +46,7 @@ pub async fn add_payment_request_2(
 }
 
 pub async fn add_glm_request(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     chain_setup: &ChainSetup,
     token_amount: U256,
     payment_id: &str,
@@ -78,7 +78,7 @@ pub async fn add_glm_request(
 
 pub async fn transaction_from_chain(
     web3: &Web3<Http>,
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     chain_id: i64,
     tx_hash: &str,
 ) -> Result<bool, PaymentError> {
@@ -110,7 +110,7 @@ pub async fn transaction_from_chain(
 
 pub async fn confirm_loop(
     _shared_state: Arc<Mutex<SharedState>>,
-    _conn: &mut SqliteConnection,
+    _conn: &mut SqlitePool,
     payment_setup: &PaymentSetup,
 ) {
     loop {

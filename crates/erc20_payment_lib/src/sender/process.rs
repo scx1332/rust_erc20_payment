@@ -2,7 +2,7 @@ use crate::db::ops::update_tx;
 use crate::error::PaymentError;
 use crate::error::*;
 use crate::{err_create, err_custom_create, err_from};
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,7 +38,7 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
 
 pub async fn process_transaction(
     shared_state: Arc<Mutex<SharedState>>,
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     web3_tx_dao: &mut TxDao,
     payment_setup: &PaymentSetup,
     wait_for_confirmation: bool,

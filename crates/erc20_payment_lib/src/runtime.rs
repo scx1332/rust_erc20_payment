@@ -7,7 +7,7 @@ use crate::setup::PaymentSetup;
 
 use crate::config;
 use secp256k1::SecretKey;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 use crate::config::AdditionalOptions;
 use crate::sender::service_loop;
@@ -127,12 +127,12 @@ pub struct PaymentRuntime {
     pub runtime_handle: JoinHandle<()>,
     pub setup: PaymentSetup,
     pub shared_state: Arc<Mutex<SharedState>>,
-    pub conn: Arc<Mutex<SqliteConnection>>,
+    pub conn: Arc<Mutex<SqlitePool>>,
 }
 
 /*
 async fn process_cli(
-    conn: &mut SqliteConnection,
+    conn: &mut SqlitePool,
     cli: &ValidatedOptions,
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {

@@ -1,8 +1,10 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
 pub async fn insert_token_transfer(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     token_transfer: &TokenTransferDao,
 ) -> Result<TokenTransferDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TokenTransferDao>(
@@ -26,7 +28,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 }
 
 pub async fn update_token_transfer(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     token_transfer: &TokenTransferDao,
 ) -> Result<TokenTransferDao, sqlx::Error> {
     let _res = sqlx::query(
@@ -59,7 +61,7 @@ WHERE id = $1
 }
 
 pub async fn get_all_token_transfers(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     limit: Option<i64>,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
@@ -73,7 +75,7 @@ pub async fn get_all_token_transfers(
 }
 
 pub async fn get_pending_token_transfers(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
     let rows = sqlx::query_as::<_, TokenTransferDao>(
         r"SELECT * FROM token_transfer
@@ -86,14 +88,17 @@ AND error is null
     Ok(rows)
 }
 
-pub async fn get_token_transfers_by_tx(
-    conn: &mut SqliteConnection,
+pub async fn get_token_transfers_by_tx<'e, 'c: 'e, E>(
+    executor: E,
     tx_id: i64,
-) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+) -> Result<Vec<TokenTransferDao>, sqlx::Error>
+    where
+        E: 'e + Executor<'c, Database = Sqlite>,
+{
     let rows =
         sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
             .bind(tx_id)
-            .fetch_all(conn)
+            .fetch_all(executor)
             .await?;
     Ok(rows)
 }
@@ -104,7 +109,7 @@ pub const TRANSFER_FILTER_PROCESSING: &str = "(tx_id is not null AND fee_paid is
 pub const TRANSFER_FILTER_DONE: &str = "(fee_paid is not null)";
 
 pub async fn get_transfer_count(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     transfer_filter: Option<&str>,
     sender: Option<&str>,
     receiver: Option<&str>,

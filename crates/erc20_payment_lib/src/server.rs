@@ -11,7 +11,7 @@ use actix_web::web::Data;
 use actix_web::{web, HttpRequest, HttpResponse, Responder, Scope};
 use serde_json::json;
 use sqlx::Connection;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -20,7 +20,7 @@ use web3::types::Address;
 
 pub struct ServerData {
     pub shared_state: Arc<Mutex<SharedState>>,
-    pub db_connection: Arc<Mutex<SqliteConnection>>,
+    pub db_connection: Arc<Mutex<SqlitePool>>,
     pub payment_setup: PaymentSetup,
 }
 
