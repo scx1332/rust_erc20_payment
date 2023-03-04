@@ -46,7 +46,7 @@ async fn tx_chain_test() -> sqlx::Result<()> {
     println!("Start tx_chain_test...");
 
     use crate::db::create_sqlite_connection;
-    let mut conn = create_sqlite_connection(None, true).await.unwrap();
+    let conn = create_sqlite_connection(None, true).await.unwrap();
 
     println!("In memory DB created");
 
@@ -72,9 +72,9 @@ async fn tx_chain_test() -> sqlx::Result<()> {
         engine_error: None,
     };
 
-    let tx_from_insert = insert_chain_tx(&mut conn, &tx_to_insert).await?;
+    let tx_from_insert = insert_chain_tx(&conn, &tx_to_insert).await?;
     tx_to_insert.id = tx_from_insert.id;
-    let tx_from_dao = get_chain_tx(&mut conn, tx_from_insert.id).await?;
+    let tx_from_dao = get_chain_tx(&conn, tx_from_insert.id).await?;
 
     //all three should be equal
     assert_eq!(tx_to_insert, tx_from_dao);

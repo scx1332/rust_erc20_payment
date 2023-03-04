@@ -1,5 +1,5 @@
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::{config, err_custom_create, err_from};
+use erc20_payment_lib::{config, err_custom_create};
 
 use erc20_payment_lib::error::PaymentError;
 

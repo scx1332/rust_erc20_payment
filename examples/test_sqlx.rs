@@ -1,14 +1,13 @@
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::{config, err_custom_create, err_from};
+use erc20_payment_lib::{config, err_custom_create};
 
 use erc20_payment_lib::error::PaymentError;
 
 use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{
-    create_test_amount_pool, display_private_keys, generate_transaction_batch, load_private_keys,
-    ordered_address_pool,
+    display_private_keys, load_private_keys,
 };
-use sqlx::Connection;
+
 use std::env;
 
 use structopt::StructOpt;
@@ -34,16 +33,16 @@ async fn main_internal() -> Result<(), PaymentError> {
     }
     env_logger::init();
 
-    let cli: TestOptions = TestOptions::from_args();
+    let _cli: TestOptions = TestOptions::from_args();
 
-    let config = config::Config::load("config-payments.toml")?;
+    let _config = config::Config::load("config-payments.toml")?;
 
-    let (private_keys, public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
+    let (private_keys, _public_addrs) = load_private_keys(&env::var("ETH_PRIVATE_KEYS").unwrap())?;
     display_private_keys(&private_keys);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
 
-    let mut conn = create_sqlite_connection(Some(&db_conn), true).await?;
+    let _conn = create_sqlite_connection(Some(&db_conn), true).await?;
 
     Ok(())
 }
