@@ -141,10 +141,7 @@ pub async fn get_transfer_count(
         .await?
     } else {
         sqlx::query_scalar::<_, i64>(
-            format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter}"
-            )
-            .as_str(),
+            format!(r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter}").as_str(),
         )
         .fetch_one(conn)
         .await?

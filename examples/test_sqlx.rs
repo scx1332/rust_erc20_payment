@@ -10,7 +10,6 @@ use std::env;
 
 use structopt::StructOpt;
 
-
 #[derive(Debug, StructOpt)]
 struct TestOptions {
     #[structopt(long = "chain-name", default_value = "mumbai")]

@@ -24,10 +24,7 @@ where
     let filter = filter.unwrap_or(TRANSACTION_FILTER_ALL);
     let order = order.unwrap_or("id DESC");
     let rows = sqlx::query_as::<_, TxDao>(
-        format!(
-            r"SELECT * FROM tx WHERE {filter} ORDER BY {order} LIMIT {limit}"
-        )
-        .as_str(),
+        format!(r"SELECT * FROM tx WHERE {filter} ORDER BY {order} LIMIT {limit}").as_str(),
     )
     .fetch_all(executor)
     .await?;

@@ -140,9 +140,7 @@ pub async fn transactions_count(data: Data<Box<ServerData>>, _req: HttpRequest) 
     };
     let done_transfer_count = {
         let db_conn = data.db_connection.lock().await;
-        return_on_error!(
-            get_transfer_count(&db_conn, Some(TRANSFER_FILTER_DONE), None, None).await
-        )
+        return_on_error!(get_transfer_count(&db_conn, Some(TRANSFER_FILTER_DONE), None, None).await)
     };
 
     web::Json(json!({
@@ -463,13 +461,8 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         queued_transfer_count = {
             let db_conn = data.db_connection.lock().await;
             return_on_error!(
-                get_transfer_count(
-                    &db_conn,
-                    Some(TRANSFER_FILTER_QUEUED),
-                    Some(&account),
-                    None
-                )
-                .await
+                get_transfer_count(&db_conn, Some(TRANSFER_FILTER_QUEUED), Some(&account), None)
+                    .await
             )
         };
         processed_transfer_count = {
@@ -487,13 +480,8 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         done_transfer_count = {
             let db_conn = data.db_connection.lock().await;
             return_on_error!(
-                get_transfer_count(
-                    &db_conn,
-                    Some(TRANSFER_FILTER_DONE),
-                    Some(&account),
-                    None
-                )
-                .await
+                get_transfer_count(&db_conn, Some(TRANSFER_FILTER_DONE), Some(&account), None)
+                    .await
             )
         };
     }
@@ -501,13 +489,7 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
         let db_conn = data.db_connection.lock().await;
 
         return_on_error!(
-            get_transfer_count(
-                &db_conn,
-                Some(TRANSFER_FILTER_ALL),
-                None,
-                Some(&account)
-            )
-            .await
+            get_transfer_count(&db_conn, Some(TRANSFER_FILTER_ALL), None, Some(&account)).await
         )
     };
 
