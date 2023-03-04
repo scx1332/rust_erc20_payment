@@ -27,10 +27,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
     Ok(res)
 }
 
-pub async fn update_token_transfer(
-    conn: &SqlitePool,
+pub async fn update_token_transfer<'c, E>(
+    executor: E,
     token_transfer: &TokenTransferDao,
-) -> Result<TokenTransferDao, sqlx::Error> {
+) -> Result<TokenTransferDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let _res = sqlx::query(
         r"UPDATE token_transfer SET
 payment_id = $2,
@@ -55,7 +58,7 @@ WHERE id = $1
     .bind(token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
     .bind(&token_transfer.error)
-    .execute(conn)
+    .execute(executor)
     .await?;
     Ok(token_transfer.clone())
 }
@@ -88,12 +91,12 @@ AND error is null
     Ok(rows)
 }
 
-pub async fn get_token_transfers_by_tx<'e, 'c: 'e, E>(
+pub async fn get_token_transfers_by_tx<'c, E>(
     executor: E,
     tx_id: i64,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error>
-    where
-        E: 'e + Executor<'c, Database = Sqlite>,
+where
+    E: Executor<'c, Database = Sqlite>,
 {
     let rows =
         sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")

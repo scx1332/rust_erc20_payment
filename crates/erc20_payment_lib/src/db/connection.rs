@@ -5,8 +5,8 @@ use sqlx::migrate::Migrator;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::ConnectOptions;
 use sqlx::SqliteConnection;
-use std::str::FromStr;
 use sqlx_core::sqlite::{Sqlite, SqlitePool};
+use std::str::FromStr;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 

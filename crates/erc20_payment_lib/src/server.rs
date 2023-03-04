@@ -175,8 +175,8 @@ pub async fn debug_endpoint(data: Data<Box<ServerData>>) -> impl Responder {
 pub async fn transactions(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Responder {
     //todo: add limits
     let txs = {
-        let mut db_conn = data.db_connection.lock().await;
-        return_on_error!(get_transactions(&mut db_conn, None, None, None).await)
+        let db_conn = data.db_connection.lock().await;
+        return_on_error!(get_transactions(&*db_conn, None, None, None).await)
     };
     web::Json(json!({
         "txs": txs,
@@ -220,7 +220,7 @@ pub async fn transactions_next(data: Data<Box<ServerData>>, req: HttpRequest) ->
         let mut db_conn = data.db_connection.lock().await;
         return_on_error!(
             get_transactions(
-                &mut db_conn,
+                &*db_conn,
                 Some(TRANSACTION_FILTER_QUEUED),
                 limit,
                 Some(TRANSACTION_ORDER_BY_CREATE_DATE)
@@ -240,7 +240,7 @@ pub async fn transactions_current(
         let mut db_conn = data.db_connection.lock().await;
         return_on_error!(
             get_transactions(
-                &mut db_conn,
+                &*db_conn,
                 Some(TRANSACTION_FILTER_PROCESSING),
                 None,
                 Some(TRANSACTION_ORDER_BY_CREATE_DATE)
@@ -264,10 +264,10 @@ pub async fn transactions_last_processed(
         .unwrap_or(Some(10));
 
     let txs = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         return_on_error!(
             get_transactions(
-                &mut db_conn,
+                &*db_conn,
                 Some(TRANSACTION_FILTER_DONE),
                 limit,
                 Some(TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC)
@@ -353,9 +353,9 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
     //let my_data = data.shared_state.lock().await;
 
     let transfers = {
-        let mut db_conn = data.db_connection.lock().await;
+        let db_conn = data.db_connection.lock().await;
         if let Some(tx_id) = tx_id {
-            match get_token_transfers_by_tx(&mut db_conn, tx_id).await {
+            match get_token_transfers_by_tx(&*db_conn, tx_id).await {
                 Ok(allowances) => allowances,
                 Err(err) => {
                     return web::Json(json!({
@@ -364,7 +364,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
                 }
             }
         } else {
-            match get_all_token_transfers(&mut db_conn, None).await {
+            match get_all_token_transfers(&*db_conn, None).await {
                 Ok(allowances) => allowances,
                 Err(err) => {
                     return web::Json(json!({
@@ -525,7 +525,9 @@ pub async fn redirect_to_slash(req: HttpRequest) -> impl Responder {
     let mut response = HttpResponse::Ok();
     let target = match HeaderValue::from_str(&(req.uri().to_string() + "/")) {
         Ok(target) => target,
-        Err(_err) => return HttpResponse::InternalServerError().body("Failed to create redirect target")
+        Err(_err) => {
+            return HttpResponse::InternalServerError().body("Failed to create redirect target")
+        }
     };
 
     response

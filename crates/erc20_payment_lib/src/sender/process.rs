@@ -38,7 +38,7 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
 
 pub async fn process_transaction(
     shared_state: Arc<Mutex<SharedState>>,
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     web3_tx_dao: &mut TxDao,
     payment_setup: &PaymentSetup,
     wait_for_confirmation: bool,

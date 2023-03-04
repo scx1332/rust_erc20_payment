@@ -1,10 +1,12 @@
 use crate::db::model::*;
 use sqlx::SqlitePool;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
-pub async fn insert_chain_tx(
-    conn: &SqlitePool,
-    tx: &ChainTxDao,
-) -> Result<ChainTxDao, sqlx::Error> {
+pub async fn insert_chain_tx<'c, E>(executor: E, tx: &ChainTxDao) -> Result<ChainTxDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let res = sqlx::query_as::<_, ChainTxDao>(
         r"INSERT INTO chain_tx
 (tx_hash, method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, checked_date, blockchain_date, block_number, chain_status, fee_paid, error)
@@ -26,7 +28,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) R
     .bind(tx.chain_status)
     .bind(&tx.fee_paid)
     .bind(&tx.error)
-    .fetch_one(conn)
+    .fetch_one(executor)
     .await?;
     Ok(res)
 }

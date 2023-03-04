@@ -52,7 +52,7 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
 }
 
 pub async fn generate_transaction_batch(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     chain_id: i64,
     from_addr_pool: &[Address],
     token_addr: Option<Address>,

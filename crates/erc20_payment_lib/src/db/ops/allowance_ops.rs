@@ -1,10 +1,15 @@
 use crate::db::model::*;
 use sqlx::SqlitePool;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
-pub async fn insert_allowance(
-    conn: &SqlitePool,
+pub async fn insert_allowance<'c, E>(
+    executor: E,
     allowance: &AllowanceDao,
-) -> Result<AllowanceDao, sqlx::Error> {
+) -> Result<AllowanceDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let res = sqlx::query_as::<_, AllowanceDao>(
         r"INSERT INTO allowance
 (
@@ -30,15 +35,18 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
     .bind(&allowance.fee_paid)
     .bind(allowance.confirm_date)
     .bind(&allowance.error)
-    .fetch_one(conn)
+    .fetch_one(executor)
     .await?;
     Ok(res)
 }
 
-pub async fn update_allowance(
-    conn: &SqlitePool,
+pub async fn update_allowance<'c, E>(
+    executor: E,
     allowance: &AllowanceDao,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let _res = sqlx::query(
         r"UPDATE allowance SET
 owner = $2,
@@ -63,27 +71,28 @@ WHERE id = $1
     .bind(&allowance.fee_paid)
     .bind(allowance.confirm_date)
     .bind(&allowance.error)
-    .execute(conn)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
-pub async fn get_all_allowances(
-    conn: &SqlitePool,
-) -> Result<Vec<AllowanceDao>, sqlx::Error> {
+pub async fn get_all_allowances(conn: &SqlitePool) -> Result<Vec<AllowanceDao>, sqlx::Error> {
     let rows = sqlx::query_as::<_, AllowanceDao>(r"SELECT * FROM allowance")
         .fetch_all(conn)
         .await?;
     Ok(rows)
 }
 
-pub async fn get_allowance_by_tx(
-    conn: &SqlitePool,
+pub async fn get_allowance_by_tx<'c, E>(
+    executor: E,
     tx_id: i64,
-) -> Result<AllowanceDao, sqlx::Error> {
+) -> Result<AllowanceDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let row = sqlx::query_as::<_, AllowanceDao>(r"SELECT * FROM allowance WHERE tx_id=$1")
         .bind(tx_id)
-        .fetch_one(conn)
+        .fetch_one(executor)
         .await?;
     Ok(row)
 }

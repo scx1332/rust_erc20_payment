@@ -39,7 +39,7 @@ pub struct TokenTransferMultiOrder {
 }
 
 pub async fn gather_transactions_pre(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     _payment_setup: &PaymentSetup,
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
@@ -105,7 +105,7 @@ pub async fn gather_transactions_pre(
 }
 
 pub async fn gather_transactions_batch_multi(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     multi_order_vector: &mut [TokenTransferMultiOrder],
     token_transfer: &TokenTransferMultiKey,
@@ -246,7 +246,7 @@ pub async fn gather_transactions_batch_multi(
 }
 
 pub async fn gather_transactions_batch(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     token_transfers: &mut [TokenTransferDao],
     token_transfer: &TokenTransferKey,
@@ -299,7 +299,7 @@ pub async fn gather_transactions_batch(
 }
 
 pub async fn gather_transactions_post(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     token_transfer_map: &mut TokenTransferMap,
 ) -> Result<u32, PaymentError> {

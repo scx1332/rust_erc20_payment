@@ -14,7 +14,7 @@ use crate::eth::check_allowance;
 use web3::types::{Address, U256};
 
 pub async fn process_allowance(
-    conn: &mut SqlitePool,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     allowance_request: &AllowanceRequest,
 ) -> Result<u32, PaymentError> {
