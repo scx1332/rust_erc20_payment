@@ -56,7 +56,6 @@ async fn main_internal() -> Result<(), PaymentError> {
     )
     .await?;
 
-
     let server_data = web::Data::new(Box::new(ServerData {
         shared_state: sp.shared_state.clone(),
         db_connection: Arc::new(Mutex::new(conn)),
@@ -86,7 +85,11 @@ async fn main_internal() -> Result<(), PaymentError> {
         .expect("Cannot run server")
         .run();
 
-        log::info!("http server starting on {}:{}", cli.http_addr, cli.http_port);
+        log::info!(
+            "http server starting on {}:{}",
+            cli.http_addr,
+            cli.http_port
+        );
 
         server.await.unwrap();
     } else {
