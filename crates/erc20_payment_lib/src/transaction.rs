@@ -85,10 +85,10 @@ pub fn create_token_transfer(
     TokenTransferDao {
         id: 0,
         payment_id: payment_id.map(|s| s.to_string()),
-        from_addr: format!("{:#x}", from),
-        receiver_addr: format!("{:#x}", receiver),
+        from_addr: format!("{from:#x}"),
+        receiver_addr: format!("{receiver:#x}"),
         chain_id,
-        token_addr: token_addr.map(|addr| format!("{:#x}", addr)),
+        token_addr: token_addr.map(|addr| format!("{addr:#x}")),
         token_amount: token_amount.to_string(),
         tx_id: None,
         fee_paid: None,
@@ -109,8 +109,8 @@ pub fn create_eth_transfer(
     TxDao {
         id: 0,
         method: "transfer".to_string(),
-        from_addr: format!("{:#x}", from),
-        to_addr: format!("{:#x}", to),
+        from_addr: format!("{from:#x}"),
+        to_addr: format!("{to:#x}"),
         chain_id: chain_id as i64,
         gas_limit: gas_limit.map(|gas_limit| gas_limit as i64),
         max_fee_per_gas: max_fee_per_gas.to_string(),
@@ -190,8 +190,8 @@ pub fn create_erc20_transfer(
     Ok(TxDao {
         id: 0,
         method: "ERC20.transfer".to_string(),
-        from_addr: format!("{:#x}", from),
-        to_addr: format!("{:#x}", token),
+        from_addr: format!("{from:#x}"),
+        to_addr: format!("{token:#x}"),
         chain_id: chain_id as i64,
         gas_limit: gas_limit.map(|gas_limit| gas_limit as i64),
         max_fee_per_gas: max_fee_per_gas.to_string(),
@@ -248,8 +248,8 @@ pub fn create_erc20_transfer_multi(
     Ok(TxDao {
         id: 0,
         method: method_str,
-        from_addr: format!("{:#x}", from),
-        to_addr: format!("{:#x}", contract),
+        from_addr: format!("{from:#x}"),
+        to_addr: format!("{contract:#x}"),
         chain_id: chain_id as i64,
         gas_limit: gas_limit.map(|gas_limit| gas_limit as i64),
         max_fee_per_gas: max_fee_per_gas.to_string(),
@@ -287,8 +287,8 @@ pub fn create_erc20_approve(
     Ok(TxDao {
         id: 0,
         method: "ERC20.approve".to_string(),
-        from_addr: format!("{:#x}", from),
-        to_addr: format!("{:#x}", token),
+        from_addr: format!("{from:#x}"),
+        to_addr: format!("{token:#x}"),
         chain_id: chain_id as i64,
         gas_limit: gas_limit.map(|gas_limit| gas_limit as i64),
         max_fee_per_gas: max_fee_per_gas.to_string(),
@@ -357,7 +357,7 @@ pub async fn sign_transaction(
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
     let public_addr = get_eth_addr_from_secret(secret_key);
-    if web3_tx_dao.from_addr.to_lowercase() != format!("{:#x}", public_addr) {
+    if web3_tx_dao.from_addr.to_lowercase() != format!("{public_addr:#x}") {
         return Err(err_custom_create!(
             "From addr not match with secret key {} != {:#x}",
             web3_tx_dao.from_addr.to_lowercase(),
@@ -549,7 +549,7 @@ pub async fn find_receipt_extended(
         ));
     }
 
-    chain_tx_dao.to_addr = format!("{:#x}", receipt_to);
+    chain_tx_dao.to_addr = format!("{receipt_to:#x}");
 
     chain_tx_dao.chain_status = receipt
         .status
@@ -574,8 +574,8 @@ pub async fn find_receipt_extended(
     if tx.value != U256::zero() {
         transfers.push(ChainTransferDao {
             id: 0,
-            from_addr: format!("{:#x}", tx_from),
-            receiver_addr: format!("{:#x}", tx_to),
+            from_addr: format!("{tx_from:#x}"),
+            receiver_addr: format!("{tx_to:#x}"),
             chain_id,
             token_addr: None,
             token_amount: tx.value.to_string(),
@@ -641,8 +641,8 @@ pub async fn find_receipt_extended(
                 ))?;
                 transfers.push(ChainTransferDao {
                     id: 0,
-                    from_addr: format!("{:#x}", contract_from_addr),
-                    receiver_addr: format!("{:#x}", to),
+                    from_addr: format!("{contract_from_addr:#x}"),
+                    receiver_addr: format!("{to:#x}"),
                     chain_id,
                     token_addr: Some(format!("{:#x}", log.address)),
                     token_amount: amount.to_string(),
@@ -654,8 +654,8 @@ pub async fn find_receipt_extended(
             } else {
                 transfers.push(ChainTransferDao {
                     id: 0,
-                    from_addr: format!("{:#x}", from),
-                    receiver_addr: format!("{:#x}", to),
+                    from_addr: format!("{from:#x}"),
+                    receiver_addr: format!("{to:#x}"),
                     chain_id,
                     token_addr: Some(format!("{:#x}", log.address)),
                     token_amount: amount.to_string(),
@@ -726,7 +726,7 @@ pub async fn import_erc20_txs(
 
     let mut txs = HashMap::<H256, u64>::new();
     loop {
-        println!("start block: {}", start_block);
+        println!("start block: {start_block}");
         let end_block = std::cmp::min(start_block + 1000, current_block);
         if start_block > end_block {
             break;

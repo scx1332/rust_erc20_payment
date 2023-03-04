@@ -25,8 +25,7 @@ where
     let order = order.unwrap_or("id DESC");
     let rows = sqlx::query_as::<_, TxDao>(
         format!(
-            r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
-            filter, order, limit
+            r"SELECT * FROM tx WHERE {filter} ORDER BY {order} LIMIT {limit}"
         )
         .as_str(),
     )
@@ -49,7 +48,7 @@ pub async fn get_transaction_count(
 ) -> Result<usize, sqlx::Error> {
     let transaction_filter = transaction_filter.unwrap_or(TRANSACTION_FILTER_ALL);
     let count = sqlx::query_scalar::<_, i64>(
-        format!(r"SELECT COUNT(*) FROM tx WHERE {}", transaction_filter).as_str(),
+        format!(r"SELECT COUNT(*) FROM tx WHERE {transaction_filter}").as_str(),
     )
     .fetch_one(conn)
     .await?;

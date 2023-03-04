@@ -50,15 +50,13 @@ pub async fn process_transaction(
     let chain_id = web3_tx_dao.chain_id;
     let chain_setup = payment_setup.get_chain_setup(chain_id).map_err(|_e| {
         err_create!(TransactionFailedError::new(&format!(
-            "Failed to get chain setup for chain id: {}",
-            chain_id
+            "Failed to get chain setup for chain id: {chain_id}"
         )))
     })?;
 
     let web3 = payment_setup.get_provider(chain_id).map_err(|_e| {
         err_create!(TransactionFailedError::new(&format!(
-            "Failed to get provider for chain id: {}",
-            chain_id
+            "Failed to get provider for chain id: {chain_id}"
         )))
     })?;
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
@@ -69,8 +67,7 @@ pub async fn process_transaction(
         .iter()
         .find(|sk| get_eth_addr_from_secret(sk) == from_addr)
         .ok_or(err_create!(TransactionFailedError::new(&format!(
-            "Failed to find private key for address: {}",
-            from_addr
+            "Failed to find private key for address: {from_addr}"
         ))))?;
 
     let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
@@ -148,7 +145,7 @@ pub async fn process_transaction(
         match check_transaction(web3, web3_tx_dao).await {
             Ok(_) => {}
             Err(err) => {
-                let err_msg = format!("{}", err);
+                let err_msg = format!("{err}");
                 if err_msg
                     .to_lowercase()
                     .contains("insufficient funds for transfer")

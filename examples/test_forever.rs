@@ -90,7 +90,7 @@ async fn main() -> Result<(), PaymentError> {
     match main_internal().await {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             Err(e)
         }
     }

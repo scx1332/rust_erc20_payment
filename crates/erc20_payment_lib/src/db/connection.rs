@@ -13,7 +13,7 @@ pub async fn create_sqlite_connection(
     run_migrations: bool,
 ) -> Result<SqlitePool, PaymentError> {
     let url = if let Some(file_name) = file_name {
-        format!("sqlite://{}", file_name)
+        format!("sqlite://{file_name}")
     } else {
         "sqlite::memory:".to_string()
     };

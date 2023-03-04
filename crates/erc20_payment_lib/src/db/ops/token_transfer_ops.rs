@@ -122,8 +122,7 @@ pub async fn get_transfer_count(
     let count = if let Some(sender) = sender {
         sqlx::query_scalar::<_, i64>(
             format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND from_addr = $1",
-                transfer_filter
+                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter} AND from_addr = $1"
             )
             .as_str(),
         )
@@ -133,8 +132,7 @@ pub async fn get_transfer_count(
     } else if let Some(receiver) = receiver {
         sqlx::query_scalar::<_, i64>(
             format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND receiver_addr = $1",
-                transfer_filter
+                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter} AND receiver_addr = $1"
             )
             .as_str(),
         )
@@ -144,8 +142,7 @@ pub async fn get_transfer_count(
     } else {
         sqlx::query_scalar::<_, i64>(
             format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {}",
-                transfer_filter
+                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter}"
             )
             .as_str(),
         )

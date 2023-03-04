@@ -31,10 +31,10 @@ pub async fn add_payment_request_2(
     let transfer_in = TransferInDao {
         id: 0,
         payment_id: payment_id.to_string(),
-        from_addr: format!("{:#x}", payer_addr),
-        receiver_addr: format!("{:#x}", receiver_addr),
+        from_addr: format!("{payer_addr:#x}"),
+        receiver_addr: format!("{receiver_addr:#x}"),
         chain_id,
-        token_addr: token_address.map(|a| format!("{:#x}", a)),
+        token_addr: token_address.map(|a| format!("{a:#x}")),
         token_amount: token_amount.to_string(),
         tx_hash: None,
         requested_date: chrono::Utc::now(),
@@ -56,8 +56,8 @@ pub async fn add_glm_request(
     let transfer_in = TransferInDao {
         id: 0,
         payment_id: payment_id.to_string(),
-        from_addr: format!("{:#x}", payer_addr),
-        receiver_addr: format!("{:#x}", receiver_addr),
+        from_addr: format!("{payer_addr:#x}"),
+        receiver_addr: format!("{receiver_addr:#x}"),
         chain_id: chain_setup.chain_id,
         token_addr: Some(format!(
             "{:#x}",
@@ -82,7 +82,7 @@ pub async fn transaction_from_chain(
     chain_id: i64,
     tx_hash: &str,
 ) -> Result<bool, PaymentError> {
-    println!("tx_hash: {}", tx_hash);
+    println!("tx_hash: {tx_hash}");
     let tx_hash = web3::types::H256::from_str(tx_hash)
         .map_err(|_err| ConversionError::from("Cannot parse tx_hash".to_string()))
         .map_err(err_from!())?;

@@ -127,7 +127,7 @@ pub async fn gather_transactions_batch_multi(
                     conn,
                     &token_transfer.from_addr,
                     token_addr,
-                    &format!("{:#x}", multi_contract_address),
+                    &format!("{multi_contract_address:#x}"),
                     token_transfer.chain_id,
                 )
                 .await
@@ -162,7 +162,7 @@ pub async fn gather_transactions_batch_multi(
                     return Err(err_create!(AllowanceRequest {
                         owner: token_transfer.from_addr.clone(),
                         token_addr: token_addr.clone(),
-                        spender_addr: format!("{:#x}", multi_contract_address),
+                        spender_addr: format!("{multi_contract_address:#x}"),
                         chain_id: token_transfer.chain_id,
                         amount: U256::max_value(),
                     }));

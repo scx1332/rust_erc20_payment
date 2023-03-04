@@ -363,7 +363,7 @@ pub async fn transfers(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Re
                 }
             }
         } else {
-            match get_all_token_transfers(&*db_conn, None).await {
+            match get_all_token_transfers(&db_conn, None).await {
                 Ok(allowances) => allowances,
                 Err(err) => {
                     return web::Json(json!({
@@ -414,7 +414,7 @@ pub async fn accounts(data: Data<Box<ServerData>>, _req: HttpRequest) -> impl Re
 pub async fn account_payments_in(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Responder {
     let account = return_on_error!(req.match_info().get("account").ok_or("No account provided"));
     let web3_account = return_on_error!(Address::from_str(account));
-    let account = format!("{:#x}", web3_account);
+    let account = format!("{web3_account:#x}");
 
     let transfers_in = {
         let mut db_conn = data.db_connection.lock().await;
@@ -436,7 +436,7 @@ pub async fn account_details(data: Data<Box<ServerData>>, req: HttpRequest) -> i
 
     let web3_account = return_on_error!(Address::from_str(account));
 
-    let account = format!("{:#x}", web3_account);
+    let account = format!("{web3_account:#x}");
 
     let mut public_addr = data
         .payment_setup
@@ -555,7 +555,7 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
             .chain_setup
             .get(&(chain_id))
             .ok_or("No config for given chain id"));
-        let faucet_event_idx = format!("{:#x}_{}", receiver_addr, chain_id);
+        let faucet_event_idx = format!("{receiver_addr:#x}_{chain_id}");
 
         {
             let mut shared_state = data.shared_state.lock().await;
@@ -578,7 +578,7 @@ pub async fn faucet(data: Data<Box<ServerData>>, req: HttpRequest) -> impl Respo
                 let ago = (chrono::Utc::now().time() - el.time()).num_seconds();
                 if ago < MIN_SECONDS {
                     return web::Json(json!({
-                        "error": format!("Already sent to this address {} seconds ago. Try again after {} seconds", ago, MIN_SECONDS)
+                        "error": format!("Already sent to this address {ago} seconds ago. Try again after {MIN_SECONDS} seconds")
                     }));
                 } else {
                     faucet_data

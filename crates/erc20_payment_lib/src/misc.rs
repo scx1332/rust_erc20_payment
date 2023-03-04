@@ -35,7 +35,7 @@ pub fn ordered_address_pool(
     for i in range {
         //if i equals to 0 then null address is generated
         addr_pool.push(
-            Address::from_str(&format!("0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}", i))
+            Address::from_str(&format!("0x{i:0>8}{i:0>8}{i:0>8}{i:0>8}{i:0>8}"))
                 .map_err(err_from!())?,
         );
     }

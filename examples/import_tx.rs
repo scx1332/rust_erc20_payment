@@ -60,7 +60,7 @@ async fn main_internal() -> Result<(), PaymentError> {
             &ps.providers[0].provider,
             &mut conn,
             cli.chain_id,
-            &format!("{:#x}", tx),
+            &format!("{tx:#x}"),
         )
         .await
         .unwrap();
@@ -75,7 +75,7 @@ async fn main() -> Result<(), PaymentError> {
     match main_internal().await {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             Err(e)
         }
     }
