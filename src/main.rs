@@ -2,25 +2,35 @@ mod options;
 use crate::options::{CliOptions, PaymentCommands, PaymentOptions};
 use actix_web::Scope;
 use actix_web::{web, App, HttpServer};
+use csv::ReaderBuilder;
 use erc20_payment_lib::config::AdditionalOptions;
 use erc20_payment_lib::db::create_sqlite_connection;
+use erc20_payment_lib::db::ops::insert_token_transfer;
 use erc20_payment_lib::misc::load_public_addresses;
 use erc20_payment_lib::server::*;
-use erc20_payment_lib::{config, err_custom_create, err_from, error::{CustomError, ErrorBag, PaymentError}, misc::{display_private_keys, load_private_keys}, runtime::start_payment_engine};
+use erc20_payment_lib::transaction::create_token_transfer;
+use erc20_payment_lib::{
+    config, err_custom_create, err_from,
+    error::{CustomError, ErrorBag, PaymentError},
+    misc::{display_private_keys, load_private_keys},
+    runtime::start_payment_engine,
+};
+use sqlx_core::sqlite::SqlitePool;
 use std::env;
 use std::sync::Arc;
-use csv::ReaderBuilder;
-use sqlx_core::sqlite::SqlitePool;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
 use web3::types::{Address, U256};
-use erc20_payment_lib::db::ops::insert_token_transfer;
-use erc20_payment_lib::transaction::create_token_transfer;
 
 async fn main_internal() -> Result<(), PaymentError> {
     if let Err(err) = dotenv::dotenv() {
         return Err(err_custom_create!("No .env file found: {}", err));
     }
+    env::set_var(
+        "RUST_LOG",
+        env::var("RUST_LOG").unwrap_or("info,sqlx::query=warn,web3=warn".to_string()),
+    );
+
     env_logger::init();
     let cli: PaymentOptions = PaymentOptions::from_args();
 
@@ -45,10 +55,10 @@ async fn main_internal() -> Result<(), PaymentError> {
                 generate_tx_only: run_options.generate_tx_only,
                 skip_multi_contract_check: run_options.skip_multi_contract_check,
             };
-            let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
+            let db_filename =
+                env::var("DB_SQLITE_FILENAME").expect("Specify DB_SQLITE_FILENAME env variable");
             log::info!("connecting to sqlite file db: {}", db_filename);
             let conn = create_sqlite_connection(Some(&db_filename), true).await?;
-
 
             let sp = start_payment_engine(
                 &private_keys,
@@ -58,7 +68,7 @@ async fn main_internal() -> Result<(), PaymentError> {
                 Some(conn.clone()),
                 Some(add_opt),
             )
-                .await?;
+            .await?;
 
             let server_data = web::Data::new(Box::new(ServerData {
                 shared_state: sp.shared_state.clone(),
@@ -79,52 +89,72 @@ async fn main_internal() -> Result<(), PaymentError> {
                         server_data.clone(),
                         run_options.faucet,
                         run_options.debug,
-                        run_options.faucet,
+                        run_options.frontend,
                     );
 
                     App::new().wrap(cors).service(scope)
                 })
-                    .workers(run_options.http_threads as usize)
-                    .bind((run_options.http_addr.as_str(), run_options.http_port))
-                    .expect("Cannot run server")
-                    .run();
+                .workers(run_options.http_threads as usize)
+                .bind((run_options.http_addr.as_str(), run_options.http_port))
+                .expect("Cannot run server")
+                .run();
 
                 log::info!(
-            "http server starting on {}:{}",
-            run_options.http_addr,
-            run_options.http_port
-        );
+                    "http server starting on {}:{}",
+                    run_options.http_addr,
+                    run_options.http_port
+                );
 
                 server.await.unwrap();
             } else {
                 sp.runtime_handle.await.unwrap();
             }
-        },
-        PaymentCommands::ImportPayments { import_options }=> {
+        }
+        PaymentCommands::ImportPayments { import_options } => {
             log::info!("importing payments from file: {}", import_options.file);
             //import_options.file;
-            let mut rdr =
-                ReaderBuilder::new().has_headers(false).delimiter(import_options.separator as u8).
-                    from_reader(std::fs::File::open(&import_options.file).map_err(err_from!())?);
+            let mut rdr = ReaderBuilder::new()
+                .has_headers(false)
+                .delimiter(import_options.separator as u8)
+                .from_reader(std::fs::File::open(&import_options.file).map_err(err_from!())?);
 
-            let db_filename = env::var("DB_SQLITE_FILENAME").unwrap();
+            let db_filename =
+                env::var("DB_SQLITE_FILENAME").expect("Specify DB_SQLITE_FILENAME env variable");
             log::info!("connecting to sqlite file db: {}", db_filename);
             let conn = create_sqlite_connection(Some(&db_filename), true).await?;
 
-
             let mut token_transfer_list = vec![];
-            let chain_cfg = config.chain.get(&import_options.chain_name).ok_or(err_custom_create!("Chain {} not found in config file", import_options.chain_name))?;
+            let chain_cfg =
+                config
+                    .chain
+                    .get(&import_options.chain_name)
+                    .ok_or(err_custom_create!(
+                        "Chain {} not found in config file",
+                        import_options.chain_name
+                    ))?;
             for (line_no, result) in rdr.records().enumerate() {
                 match result {
                     Ok(r) => {
                         if r.len() != 4 {
-                            return Err(err_custom_create!("Invalid CSV format, expected 4 elements, line {}", line_no));
+                            return Err(err_custom_create!(
+                                "Invalid CSV format, expected 4 elements, line {}",
+                                line_no
+                            ));
                         }
-                        let amount = U256::from_dec_str(&r[0]).map_err(|_err|err_custom_create!("Cannot parse amount, line {}", line_no))?;
-                        let sender = r[1].parse::<Address>().map_err(|_err|err_custom_create!("Cannot parse sender, line {}", line_no))?;
-                        let receiver = r[2].parse::<Address>().map_err(|_err|err_custom_create!("Cannot parse sender, line {}", line_no))?;
+                        let amount = U256::from_dec_str(&r[0]).map_err(|_err| {
+                            err_custom_create!("Cannot parse amount, line {}", line_no)
+                        })?;
+                        let sender = r[1].parse::<Address>().map_err(|_err| {
+                            err_custom_create!("Cannot parse sender, line {}", line_no)
+                        })?;
+                        let receiver = r[2].parse::<Address>().map_err(|_err| {
+                            err_custom_create!("Cannot parse sender, line {}", line_no)
+                        })?;
 
-                        let token = chain_cfg.token.clone().ok_or(err_custom_create!("Default token not found in config file"))?;
+                        let token = chain_cfg
+                            .token
+                            .clone()
+                            .ok_or(err_custom_create!("Default token not found in config file"))?;
                         let token_transfer = create_token_transfer(
                             sender,
                             receiver,
@@ -135,22 +165,25 @@ async fn main_internal() -> Result<(), PaymentError> {
                         );
 
                         token_transfer_list.push(token_transfer);
-                    },
+                    }
                     Err(e) => {
                         log::error!("Error reading data from CSV {:?}", e);
                         break;
-                    },
+                    }
                 }
             }
-            log::info!("Found {} transfers in {}, inserting to db...", token_transfer_list.len(), import_options.file);
+            log::info!(
+                "Found {} transfers in {}, inserting to db...",
+                token_transfer_list.len(),
+                import_options.file
+            );
             for token_transfer in token_transfer_list {
-                insert_token_transfer(&conn, &token_transfer).await.map_err(err_from!())?;
-
+                insert_token_transfer(&conn, &token_transfer)
+                    .await
+                    .map_err(err_from!())?;
             }
         }
     }
-
-
 
     Ok(())
 }
