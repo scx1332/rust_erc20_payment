@@ -127,7 +127,7 @@ pub struct PaymentRuntime {
     pub runtime_handle: JoinHandle<()>,
     pub setup: PaymentSetup,
     pub shared_state: Arc<Mutex<SharedState>>,
-    pub conn: Arc<Mutex<SqlitePool>>,
+    pub conn: SqlitePool,
 }
 
 /*
@@ -204,6 +204,6 @@ pub async fn start_payment_engine(
         runtime_handle: jh,
         setup: payment_setup,
         shared_state,
-        conn: Arc::new(Mutex::new(conn)),
+        conn,
     })
 }
