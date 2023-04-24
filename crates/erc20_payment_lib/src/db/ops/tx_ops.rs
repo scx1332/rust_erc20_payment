@@ -1,5 +1,7 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
 pub const TRANSACTION_FILTER_QUEUED: &str = "processing > 0 AND first_processed IS NULL";
 pub const TRANSACTION_FILTER_PROCESSING: &str = "processing > 0 AND first_processed IS NOT NULL";
@@ -9,31 +11,27 @@ pub const TRANSACTION_FILTER_DONE: &str = "processing = 0";
 pub const TRANSACTION_ORDER_BY_CREATE_DATE: &str = "created_date ASC";
 pub const TRANSACTION_ORDER_BY_FIRST_PROCESSED_DATE_DESC: &str = "first_processed DESC";
 
-pub async fn get_transactions(
-    conn: &mut SqliteConnection,
+pub async fn get_transactions<'c, E>(
+    executor: E,
     filter: Option<&str>,
     limit: Option<i64>,
     order: Option<&str>,
-) -> Result<Vec<TxDao>, sqlx::Error> {
+) -> Result<Vec<TxDao>, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let limit = limit.unwrap_or(i64::MAX);
     let filter = filter.unwrap_or(TRANSACTION_FILTER_ALL);
     let order = order.unwrap_or("id DESC");
     let rows = sqlx::query_as::<_, TxDao>(
-        format!(
-            r"SELECT * FROM tx WHERE {} ORDER BY {} LIMIT {}",
-            filter, order, limit
-        )
-        .as_str(),
+        format!(r"SELECT * FROM tx WHERE {filter} ORDER BY {order} LIMIT {limit}").as_str(),
     )
-    .fetch_all(conn)
+    .fetch_all(executor)
     .await?;
     Ok(rows)
 }
 
-pub async fn get_transaction(
-    conn: &mut SqliteConnection,
-    tx_id: i64,
-) -> Result<TxDao, sqlx::Error> {
+pub async fn get_transaction(conn: &SqlitePool, tx_id: i64) -> Result<TxDao, sqlx::Error> {
     let row = sqlx::query_as::<_, TxDao>(r"SELECT * FROM tx WHERE id = $1")
         .bind(tx_id)
         .fetch_one(conn)
@@ -42,12 +40,12 @@ pub async fn get_transaction(
 }
 
 pub async fn get_transaction_count(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     transaction_filter: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
     let transaction_filter = transaction_filter.unwrap_or(TRANSACTION_FILTER_ALL);
     let count = sqlx::query_scalar::<_, i64>(
-        format!(r"SELECT COUNT(*) FROM tx WHERE {}", transaction_filter).as_str(),
+        format!(r"SELECT COUNT(*) FROM tx WHERE {transaction_filter}").as_str(),
     )
     .fetch_one(conn)
     .await?;
@@ -55,7 +53,7 @@ pub async fn get_transaction_count(
 }
 
 pub async fn get_next_transactions_to_process(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     limit: i64,
 ) -> Result<Vec<TxDao>, sqlx::Error> {
     get_transactions(
@@ -67,7 +65,7 @@ pub async fn get_next_transactions_to_process(
     .await
 }
 
-pub async fn force_tx_error(conn: &mut SqliteConnection, tx: &TxDao) -> Result<(), sqlx::Error> {
+pub async fn force_tx_error(conn: &SqlitePool, tx: &TxDao) -> Result<(), sqlx::Error> {
     sqlx::query(r"UPDATE tx SET error = 'forced error' WHERE id = $1")
         .bind(tx.id)
         .execute(conn)
@@ -75,7 +73,10 @@ pub async fn force_tx_error(conn: &mut SqliteConnection, tx: &TxDao) -> Result<(
     Ok(())
 }
 
-pub async fn insert_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
+pub async fn insert_tx<'c, E>(executor: E, tx: &TxDao) -> Result<TxDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let res = sqlx::query_as::<_, TxDao>(
         r"INSERT INTO tx
 (method, from_addr, to_addr, chain_id, gas_limit, max_fee_per_gas, priority_fee, val, nonce, processing, call_data, created_date, first_processed, tx_hash, signed_raw_data, signed_date, broadcast_date, broadcast_count, confirm_date, block_number, chain_status, fee_paid, error)
@@ -105,12 +106,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
         .bind( tx.chain_status)
         .bind( &tx.fee_paid)
         .bind(&tx.error)
-        .fetch_one(conn)
+        .fetch_one(executor)
         .await?;
     Ok(res)
 }
 
-pub async fn update_tx(conn: &mut SqliteConnection, tx: &TxDao) -> Result<TxDao, sqlx::Error> {
+pub async fn update_tx<'c, E>(executor: E, tx: &TxDao) -> Result<TxDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let _res = sqlx::query(
         r"UPDATE tx SET
 method = $2,
@@ -163,7 +167,7 @@ WHERE id = $1
     .bind(tx.chain_status)
     .bind(&tx.fee_paid)
     .bind(&tx.error)
-    .execute(conn)
+    .execute(executor)
     .await?;
     Ok(tx.clone())
 }

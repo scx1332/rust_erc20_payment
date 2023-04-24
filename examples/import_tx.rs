@@ -1,11 +1,10 @@
 use erc20_payment_lib::db::create_sqlite_connection;
-use erc20_payment_lib::{config, err_custom_create, err_from};
+use erc20_payment_lib::{config, err_custom_create};
 
 use erc20_payment_lib::error::PaymentError;
 
 use erc20_payment_lib::error::{CustomError, ErrorBag};
 use erc20_payment_lib::misc::{display_private_keys, load_private_keys};
-use sqlx::Connection;
 use std::env;
 use std::str::FromStr;
 
@@ -41,7 +40,7 @@ async fn main_internal() -> Result<(), PaymentError> {
     display_private_keys(&private_keys);
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    let mut conn = create_sqlite_connection(Some(&db_conn), true).await?;
+    let conn = create_sqlite_connection(Some(&db_conn), true).await?;
 
     let payment_setup =
         PaymentSetup::new(&config, vec![], vec![], true, false, false, 1, 1, false)?;
@@ -58,15 +57,15 @@ async fn main_internal() -> Result<(), PaymentError> {
     for tx in &txs {
         transaction_from_chain(
             &ps.providers[0].provider,
-            &mut conn,
+            &conn,
             cli.chain_id,
-            &format!("{:#x}", tx),
+            &format!("{tx:#x}"),
         )
         .await
         .unwrap();
     }
 
-    conn.close().await.map_err(err_from!())?; //it is needed to process all the transactions before closing the connection
+    conn.close().await; //it is needed to process all the transactions before closing the connection
     Ok(())
 }
 
@@ -75,7 +74,7 @@ async fn main() -> Result<(), PaymentError> {
     match main_internal().await {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             Err(e)
         }
     }

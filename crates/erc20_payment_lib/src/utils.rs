@@ -83,12 +83,11 @@ pub fn rust_dec_to_u256(
 
     if dec_mul.fract() != Decimal::from(0) {
         return Err(ConversionError::from(format!(
-            "Number cannot have a fractional part {}",
-            dec_mul
+            "Number cannot have a fractional part {dec_mul}"
         )));
     }
     let u128 = dec_mul.to_u128().ok_or_else(|| {
-        ConversionError::from(format!("Number cannot be converted to u128 {}", dec_mul))
+        ConversionError::from(format!("Number cannot be converted to u128 {dec_mul}"))
     })?;
     Ok(U256::from(u128))
 }
@@ -121,43 +120,43 @@ mod tests {
         assert_eq!(res, U256::from(1));
 
         let res = rust_dec_to_u256(dec_gwei / Decimal::from(2), None);
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert!(res.err().unwrap().msg.contains("fractional"));
 
         let res = rust_dec_to_u256(dec_gwei / Decimal::from(2), Some(19));
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert!(res.err().unwrap().msg.contains("greater than 18"));
 
         let res = rust_dec_to_u256(Decimal::from(8777666555_u64), None).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(
             res,
             U256::from(8777666555_u64) * U256::from(1000000000000000000_u64)
         );
 
         let res = rust_dec_to_u256(Decimal::from(8777666555_u64) + dec_gwei, None).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(8777666555000000000000000001_u128));
 
         let res = rust_dec_to_u256(Decimal::from(0), None).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(0));
 
         let res = rust_dec_to_u256(Decimal::from(1), Some(0)).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(1));
 
         let res = rust_dec_to_u256(Decimal::from(1), Some(6)).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(1000000));
 
         let res = rust_dec_to_u256(Decimal::from(1), Some(9)).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(1000000000));
 
         let res =
             rust_dec_to_u256(Decimal::from_str("123456789.123456789").unwrap(), Some(18)).unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(
             res,
             U256::from_dec_str("123456789123456789000000000").unwrap()
@@ -168,7 +167,7 @@ mod tests {
             Decimal::from_str("79228162514.264337593543950336").unwrap(),
             Some(18),
         );
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert!(res.err().unwrap().msg.to_lowercase().contains("overflow"));
 
         //this is the max value that can be represented by rust decimal
@@ -177,7 +176,7 @@ mod tests {
             Some(18),
         )
         .unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
         //this is the max value that can be represented by rust decimal
@@ -186,7 +185,7 @@ mod tests {
             Some(0),
         )
         .unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
         //this is the max value that can be represented by rust decimal
@@ -195,7 +194,7 @@ mod tests {
             Some(6),
         )
         .unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
 
         //this is the max value that can be represented by rust decimal
@@ -204,7 +203,7 @@ mod tests {
             Some(14),
         )
         .unwrap();
-        println!("res: {:?}", res);
+        println!("res: {res:?}");
         assert_eq!(res, U256::from(79228162514264337593543950335_u128));
         //assert_eq!(res, U256::zero());
     }

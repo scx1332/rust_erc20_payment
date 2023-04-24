@@ -7,7 +7,7 @@ use crate::setup::PaymentSetup;
 
 use crate::config;
 use secp256k1::SecretKey;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 use crate::config::AdditionalOptions;
 use crate::sender::service_loop;
@@ -127,12 +127,12 @@ pub struct PaymentRuntime {
     pub runtime_handle: JoinHandle<()>,
     pub setup: PaymentSetup,
     pub shared_state: Arc<Mutex<SharedState>>,
-    pub conn: Arc<Mutex<SqliteConnection>>,
+    pub conn: Arc<Mutex<SqlitePool>>,
 }
 
 /*
 async fn process_cli(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     cli: &ValidatedOptions,
     secret_key: &SecretKey,
 ) -> Result<(), PaymentError> {
@@ -162,6 +162,7 @@ pub async fn start_payment_engine(
     receiver_accounts: &[Address],
     db_filename: &str,
     config: config::Config,
+    conn: Option<SqlitePool>,
     options: Option<AdditionalOptions>,
 ) -> Result<PaymentRuntime, PaymentError> {
     let options = options.unwrap_or_default();
@@ -179,8 +180,11 @@ pub async fn start_payment_engine(
     log::debug!("Starting payment engine: {:#?}", payment_setup);
 
     log::info!("connecting to sqlite file db: {}", db_filename);
-    let mut conn = create_sqlite_connection(Some(&db_filename), true).await?;
-    let conn2 = create_sqlite_connection(Some(&db_filename), false).await?;
+    let conn = if let Some(conn) = conn {
+        conn
+    } else {
+        create_sqlite_connection(Some(db_filename), true).await?
+    };
 
     //process_cli(&mut conn, &cli, &payment_setup.secret_key).await?;
 
@@ -193,12 +197,13 @@ pub async fn start_payment_engine(
         faucet: None,
     }));
     let shared_state_clone = shared_state.clone();
-    let jh = tokio::spawn(async move { service_loop(shared_state_clone, &mut conn, &ps).await });
+    let conn_ = conn.clone();
+    let jh = tokio::spawn(async move { service_loop(shared_state_clone, &conn_, &ps).await });
 
     Ok(PaymentRuntime {
         runtime_handle: jh,
         setup: payment_setup,
         shared_state,
-        conn: Arc::new(Mutex::new(conn2)),
+        conn: Arc::new(Mutex::new(conn)),
     })
 }

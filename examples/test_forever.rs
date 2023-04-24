@@ -44,14 +44,21 @@ async fn main_internal() -> Result<(), PaymentError> {
     let config = config::Config::load("config-payments.toml")?;
 
     let db_conn = env::var("DB_SQLITE_FILENAME").unwrap();
-    let mut conn = create_sqlite_connection(Some(&db_conn), true).await?;
+    let conn = create_sqlite_connection(Some(&db_conn), true).await?;
 
     let addr_pool = ordered_address_pool(cli.address_pool_size, false)?;
     let amount_pool = create_test_amount_pool(cli.amounts_pool_size)?;
     let c = config.chain.get(&cli.chain_name).unwrap().clone();
 
-    let sp =
-        start_payment_engine(&private_keys, &receiver_accounts, &db_conn, config, None).await?;
+    let sp = start_payment_engine(
+        &private_keys,
+        &receiver_accounts,
+        &db_conn,
+        config,
+        Some(conn.clone()),
+        None,
+    )
+    .await?;
     loop {
         if sp.runtime_handle.is_finished() {
             break;
@@ -60,7 +67,7 @@ async fn main_internal() -> Result<(), PaymentError> {
         let ignore_idling = true;
         if idling || ignore_idling {
             generate_transaction_batch(
-                &mut conn,
+                &conn,
                 c.chain_id,
                 &public_addrs,
                 Some(c.token.clone().unwrap().address),
@@ -83,7 +90,7 @@ async fn main() -> Result<(), PaymentError> {
     match main_internal().await {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             Err(e)
         }
     }

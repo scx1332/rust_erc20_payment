@@ -2,8 +2,9 @@ use std::fmt::Debug;
 
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-pub struct CliOptions {
+#[derive(StructOpt)]
+#[structopt(about = "Payment admin tool - run options")]
+pub struct RunOptions {
     #[structopt(
         long = "keep-running",
         help = "Set to keep running when finished processing transactions"
@@ -69,3 +70,39 @@ pub struct CliOptions {
     #[structopt(long = "frontend", help = "Enabled frontend serving for the server")]
     pub frontend: bool,
 }
+
+#[derive(StructOpt)]
+#[structopt(about = "Import payment list")]
+pub struct ImportOptions {
+    #[structopt(long = "file", help = "File to import", default_value = "payments.csv")]
+    pub file: String,
+    #[structopt(long = "separator", help = "Separator", default_value = "|")]
+    pub separator: char,
+
+    //default is Mumbai for safety
+    #[structopt(long = "chain-name", default_value = "mumbai")]
+    pub chain_name: String,
+}
+
+#[derive(StructOpt)]
+#[structopt(about = "Payment admin tool")]
+pub enum PaymentCommands {
+    Run {
+        #[structopt(flatten)]
+        run_options: RunOptions,
+    },
+    ImportPayments {
+        #[structopt(flatten)]
+        import_options: ImportOptions,
+    },
+}
+
+#[derive(StructOpt)]
+#[structopt(about = "Payment admin tool")]
+pub struct PaymentOptions {
+    #[structopt(subcommand)]
+    pub commands: PaymentCommands,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct CliOptions {}

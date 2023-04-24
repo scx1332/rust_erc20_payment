@@ -11,7 +11,7 @@ use crate::error::CustomError;
 use crate::setup::PaymentSetup;
 use crate::{err_create, err_custom_create, err_from};
 
-use sqlx::{Connection, SqliteConnection};
+use sqlx::SqlitePool;
 
 use web3::types::{Address, U256};
 
@@ -39,7 +39,7 @@ pub struct TokenTransferMultiOrder {
 }
 
 pub async fn gather_transactions_pre(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     _payment_setup: &PaymentSetup,
 ) -> Result<TokenTransferMap, PaymentError> {
     let mut transfer_map = TokenTransferMap::new();
@@ -105,7 +105,7 @@ pub async fn gather_transactions_pre(
 }
 
 pub async fn gather_transactions_batch_multi(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     multi_order_vector: &mut [TokenTransferMultiOrder],
     token_transfer: &TokenTransferMultiKey,
@@ -127,7 +127,7 @@ pub async fn gather_transactions_batch_multi(
                     conn,
                     &token_transfer.from_addr,
                     token_addr,
-                    &format!("{:#x}", multi_contract_address),
+                    &format!("{multi_contract_address:#x}"),
                     token_transfer.chain_id,
                 )
                 .await
@@ -162,7 +162,7 @@ pub async fn gather_transactions_batch_multi(
                     return Err(err_create!(AllowanceRequest {
                         owner: token_transfer.from_addr.clone(),
                         token_addr: token_addr.clone(),
-                        spender_addr: format!("{:#x}", multi_contract_address),
+                        spender_addr: format!("{multi_contract_address:#x}"),
                         chain_id: token_transfer.chain_id,
                         amount: U256::max_value(),
                     }));
@@ -246,7 +246,7 @@ pub async fn gather_transactions_batch_multi(
 }
 
 pub async fn gather_transactions_batch(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     token_transfers: &mut [TokenTransferDao],
     token_transfer: &TokenTransferKey,
@@ -299,7 +299,7 @@ pub async fn gather_transactions_batch(
 }
 
 pub async fn gather_transactions_post(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     payment_setup: &PaymentSetup,
     token_transfer_map: &mut TokenTransferMap,
 ) -> Result<u32, PaymentError> {

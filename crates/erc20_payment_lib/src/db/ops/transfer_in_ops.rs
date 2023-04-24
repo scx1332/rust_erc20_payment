@@ -1,8 +1,8 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 pub async fn insert_transfer_in(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     token_transfer: &TransferInDao,
 ) -> Result<TransferInDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TransferInDao>(
@@ -26,7 +26,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
 }
 
 pub async fn update_transfer_in(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     token_transfer: &TransferInDao,
 ) -> Result<TransferInDao, sqlx::Error> {
     let _res = sqlx::query(
@@ -59,7 +59,7 @@ WHERE id = $1
 }
 
 pub async fn get_account_transfers_in(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     account: &str,
     limit: Option<i64>,
 ) -> Result<Vec<TransferInDao>, sqlx::Error> {
@@ -78,7 +78,7 @@ LIMIT $1",
 }
 
 pub async fn get_all_transfers_in(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     limit: Option<i64>,
 ) -> Result<Vec<TransferInDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);

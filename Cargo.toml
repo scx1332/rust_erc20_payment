@@ -5,7 +5,7 @@ members = [
 
 [workspace.package]
 authors = ["Sieciech Czajka <sieciech.czajka@golem.network>"]
-version = "0.1.0"
+version = "0.1.6"
 edition = "2021"
 license = "MIT"
 
@@ -28,8 +28,9 @@ chrono = "0.4.22"
 log = "0.4.17"
 env_logger = "0.9.1"
 rand = "0.8.5"
-sqlx-core = { version = ">=0.5.9", features = ["runtime-tokio-rustls"] }
-sqlx = { version = ">=0.5.9", features = ["sqlite", "runtime-tokio-rustls", "chrono"] }
+sqlx-core = { version = "=0.5.9", features = ["runtime-tokio-rustls"] }
+sqlx = { version = "=0.5.9", features = ["sqlite", "runtime-tokio-rustls", "chrono"] }
+libsqlite3-sys = { version = "=0.22.2", features = ["bundled"] }
 thiserror = "1.0.37"
 rustc-hex = "2.1.0"
 structopt = "0.3.26"
@@ -42,7 +43,7 @@ actix-cors = "0.6.4"
 actix-files = "0.6.2"
 serde_json = { version = "^1.0.85" }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
-
+csv = "1.2.1"
 
 [dependencies]
 web3 = { workspace = true }
@@ -68,5 +69,6 @@ actix-files = { workspace = true }
 uuid = { workspace = true }
 sqlx-core = { workspace = true }
 sqlx = { workspace = true }
+csv = { workspace = true }
 
 erc20_payment_lib = { path = "crates/erc20_payment_lib" }

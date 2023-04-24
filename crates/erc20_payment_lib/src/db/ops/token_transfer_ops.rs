@@ -1,8 +1,10 @@
 use crate::db::model::*;
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
+use sqlx_core::executor::Executor;
+use sqlx_core::sqlite::Sqlite;
 
 pub async fn insert_token_transfer(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     token_transfer: &TokenTransferDao,
 ) -> Result<TokenTransferDao, sqlx::Error> {
     let res = sqlx::query_as::<_, TokenTransferDao>(
@@ -25,10 +27,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
     Ok(res)
 }
 
-pub async fn update_token_transfer(
-    conn: &mut SqliteConnection,
+pub async fn update_token_transfer<'c, E>(
+    executor: E,
     token_transfer: &TokenTransferDao,
-) -> Result<TokenTransferDao, sqlx::Error> {
+) -> Result<TokenTransferDao, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let _res = sqlx::query(
         r"UPDATE token_transfer SET
 payment_id = $2,
@@ -53,13 +58,13 @@ WHERE id = $1
     .bind(token_transfer.tx_id)
     .bind(&token_transfer.fee_paid)
     .bind(&token_transfer.error)
-    .execute(conn)
+    .execute(executor)
     .await?;
     Ok(token_transfer.clone())
 }
 
 pub async fn get_all_token_transfers(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     limit: Option<i64>,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
     let limit = limit.unwrap_or(i64::MAX);
@@ -73,7 +78,7 @@ pub async fn get_all_token_transfers(
 }
 
 pub async fn get_pending_token_transfers(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
 ) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
     let rows = sqlx::query_as::<_, TokenTransferDao>(
         r"SELECT * FROM token_transfer
@@ -86,14 +91,17 @@ AND error is null
     Ok(rows)
 }
 
-pub async fn get_token_transfers_by_tx(
-    conn: &mut SqliteConnection,
+pub async fn get_token_transfers_by_tx<'c, E>(
+    executor: E,
     tx_id: i64,
-) -> Result<Vec<TokenTransferDao>, sqlx::Error> {
+) -> Result<Vec<TokenTransferDao>, sqlx::Error>
+where
+    E: Executor<'c, Database = Sqlite>,
+{
     let rows =
         sqlx::query_as::<_, TokenTransferDao>(r"SELECT * FROM token_transfer WHERE tx_id=$1")
             .bind(tx_id)
-            .fetch_all(conn)
+            .fetch_all(executor)
             .await?;
     Ok(rows)
 }
@@ -104,7 +112,7 @@ pub const TRANSFER_FILTER_PROCESSING: &str = "(tx_id is not null AND fee_paid is
 pub const TRANSFER_FILTER_DONE: &str = "(fee_paid is not null)";
 
 pub async fn get_transfer_count(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     transfer_filter: Option<&str>,
     sender: Option<&str>,
     receiver: Option<&str>,
@@ -114,8 +122,7 @@ pub async fn get_transfer_count(
     let count = if let Some(sender) = sender {
         sqlx::query_scalar::<_, i64>(
             format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND from_addr = $1",
-                transfer_filter
+                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter} AND from_addr = $1"
             )
             .as_str(),
         )
@@ -125,8 +132,7 @@ pub async fn get_transfer_count(
     } else if let Some(receiver) = receiver {
         sqlx::query_scalar::<_, i64>(
             format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {} AND receiver_addr = $1",
-                transfer_filter
+                r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter} AND receiver_addr = $1"
             )
             .as_str(),
         )
@@ -135,11 +141,7 @@ pub async fn get_transfer_count(
         .await?
     } else {
         sqlx::query_scalar::<_, i64>(
-            format!(
-                r"SELECT COUNT(*) FROM token_transfer WHERE {}",
-                transfer_filter
-            )
-            .as_str(),
+            format!(r"SELECT COUNT(*) FROM token_transfer WHERE {transfer_filter}").as_str(),
         )
         .fetch_one(conn)
         .await?

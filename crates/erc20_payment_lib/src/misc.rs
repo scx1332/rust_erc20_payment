@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::transaction::create_token_transfer;
 
-use sqlx::SqliteConnection;
+use sqlx::SqlitePool;
 
 use crate::error::PaymentError;
 use crate::error::*;
@@ -35,7 +35,7 @@ pub fn ordered_address_pool(
     for i in range {
         //if i equals to 0 then null address is generated
         addr_pool.push(
-            Address::from_str(&format!("0x{0:0>8}{0:0>8}{0:0>8}{0:0>8}{0:0>8}", i))
+            Address::from_str(&format!("0x{i:0>8}{i:0>8}{i:0>8}{i:0>8}{i:0>8}"))
                 .map_err(err_from!())?,
         );
     }
@@ -52,7 +52,7 @@ pub fn create_test_amount_pool(size: usize) -> Result<Vec<U256>, PaymentError> {
 }
 
 pub async fn generate_transaction_batch(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     chain_id: i64,
     from_addr_pool: &[Address],
     token_addr: Option<Address>,
