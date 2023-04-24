@@ -183,6 +183,14 @@ async fn main_internal() -> Result<(), PaymentError> {
                     .map_err(err_from!())?;
             }
         }
+        PaymentCommands::DecryptKeyStore { decrypt_options } => {
+            let pkey = eth_keystore::decrypt_key(
+                decrypt_options.file,
+                decrypt_options.password.unwrap_or_default(),
+            )
+            .unwrap();
+            println!("Private key: {}", hex::encode(pkey));
+        }
     }
 
     Ok(())

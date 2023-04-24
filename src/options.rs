@@ -85,6 +85,20 @@ pub struct ImportOptions {
 }
 
 #[derive(StructOpt)]
+#[structopt(about = "Import payment list")]
+pub struct DecryptKeyStoreOptions {
+    #[structopt(
+        short = "f",
+        long = "file",
+        help = "File to import",
+        default_value = "payments.csv"
+    )]
+    pub file: String,
+    #[structopt(short = "p", long = "password", help = "Password")]
+    pub password: Option<String>,
+}
+
+#[derive(StructOpt)]
 #[structopt(about = "Payment admin tool")]
 pub enum PaymentCommands {
     Run {
@@ -94,6 +108,10 @@ pub enum PaymentCommands {
     ImportPayments {
         #[structopt(flatten)]
         import_options: ImportOptions,
+    },
+    DecryptKeyStore {
+        #[structopt(flatten)]
+        decrypt_options: DecryptKeyStoreOptions,
     },
 }
 

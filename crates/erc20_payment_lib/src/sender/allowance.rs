@@ -103,7 +103,7 @@ pub async fn process_allowance(
         log::info!("Allowance too low, create new approval tx");
 
         let from_addr = Address::from_str(&allowance_request.owner).map_err(err_from!())?;
-        let private_key = payment_setup
+        let _private_key = payment_setup
             .secret_keys
             .iter()
             .find(|sk| get_eth_addr_from_secret(sk) == from_addr)
