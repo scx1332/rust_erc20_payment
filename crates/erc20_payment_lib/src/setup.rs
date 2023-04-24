@@ -142,7 +142,7 @@ impl PaymentSetup {
                     faucet_eth_amount,
                     faucet_glm_amount,
                     block_explorer_url: chain_config.1.block_explorer_url.clone(),
-                    chain_id: 0,
+                    chain_id: chain_config.1.chain_id,
                 },
             );
         }

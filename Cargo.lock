@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "erc20_payment_lib"
-version = "0.1.7"
+version = "0.1.9"
 dependencies = [
  "actix-files",
  "actix-web",
@@ -832,7 +832,7 @@ dependencies = [
 
 [[package]]
 name = "erc20_processor"
-version = "0.1.7"
+version = "0.1.9"
 dependencies = [
  "actix-cors",
  "actix-files",
