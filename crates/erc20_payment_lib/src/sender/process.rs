@@ -15,10 +15,10 @@ use crate::db::model::TxDao;
 use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
-use crate::transaction::check_transaction;
+use crate::transaction::{check_transaction, Signer};
 use crate::transaction::find_receipt;
 use crate::transaction::send_transaction;
-use crate::transaction::sign_transaction;
+use crate::transaction::sign_transaction_with_callback;
 use crate::utils::u256_to_rust_dec;
 
 #[derive(Debug)]
@@ -36,11 +36,14 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
     Ok(web3)
 }
 
+
+
 pub async fn process_transaction(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &SqlitePool,
     web3_tx_dao: &mut TxDao,
     payment_setup: &PaymentSetup,
+    signer: &impl Signer,
     wait_for_confirmation: bool,
 ) -> Result<ProcessTransactionResult, PaymentError> {
     const CHECKS_UNTIL_NOT_FOUND: u64 = 5;
@@ -166,7 +169,7 @@ pub async fn process_transaction(
             .lock()
             .await
             .set_tx_message(web3_tx_dao.id, "Signing transaction".to_string());
-        sign_transaction(web3, web3_tx_dao, private_key).await?;
+        sign_transaction_with_callback(web3, web3_tx_dao, from_addr, signer).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
 

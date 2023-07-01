@@ -18,6 +18,7 @@ license.workspace = true
 authors.workspace = true
 
 [workspace.dependencies]
+async-trait = "0.1.68"
 web3 = { version = "0.18.0" }
 tokio = { version = "^1.21", features = ["full"] }
 secp256k1 = "0.21.0" # version has to match web3
@@ -47,6 +48,7 @@ csv = "1.2.1"
 eth-keystore = "=0.5.0"
 
 [dependencies]
+async-trait = { workspace = true }
 web3 = { workspace = true }
 tokio = { workspace = true }
 secp256k1 = { workspace = true }

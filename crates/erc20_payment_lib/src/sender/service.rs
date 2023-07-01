@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
+use async_trait::async_trait;
+use secp256k1::SecretKey;
 use crate::db::model::*;
 use crate::db::ops::*;
 use crate::error::{ErrorBag, PaymentError};
@@ -9,15 +10,20 @@ use crate::sender::process::{process_transaction, ProcessTransactionResult};
 
 use crate::utils::ConversionError;
 
-use crate::err_from;
+use crate::{err_create, err_from};
 use crate::setup::PaymentSetup;
 
 use crate::runtime::SharedState;
 use crate::sender::batching::{gather_transactions_post, gather_transactions_pre};
 use crate::sender::process_allowance;
 use sqlx::SqlitePool;
+use web3::transports::Http;
 
-use web3::types::U256;
+use web3::types::{Address, H160, H256, SignedTransaction, TransactionParameters, U256};
+use web3::Web3;
+use crate::contracts::DUMMY_RPC_PROVIDER;
+use crate::eth::get_eth_addr_from_secret;
+use crate::transaction::{Signer, SignerError};
 
 pub async fn update_token_transfer_result(
     conn: &SqlitePool,
@@ -198,6 +204,7 @@ pub async fn process_transactions(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &SqlitePool,
     payment_setup: &PaymentSetup,
+    signer: &impl Signer,
 ) -> Result<(), PaymentError> {
     //remove tx from current processing infos
 
@@ -214,7 +221,7 @@ pub async fn process_transactions(
                     .lock()
                     .await
                     .set_tx_message(tx.id, "Processing".to_string());
-                match process_transaction(shared_state.clone(), conn, tx, payment_setup, false)
+                match process_transaction(shared_state.clone(), conn, tx, payment_setup, signer, false)
                     .await
                 {
                     Ok(process_result) => process_result,
@@ -264,6 +271,41 @@ pub async fn process_transactions(
     Ok(())
 }
 
+struct PrivateKeySigner {
+    secret_keys: Vec<SecretKey>,
+}
+impl PrivateKeySigner {
+    fn get_private_key(&self, pub_address: H160) -> Result<&SecretKey, SignerError> {
+        self.secret_keys
+            .iter()
+            .find(|sk| get_eth_addr_from_secret(sk) == pub_address)
+            .ok_or(SignerError{
+                message: "Failed to find private key for address: {from_addr}".to_string()
+            })
+    }
+
+}
+#[async_trait]
+impl Signer for PrivateKeySigner {
+
+    async fn check_if_sign_possible(&self, pub_address: H160) -> Result<(), SignerError> {
+        self.get_private_key(pub_address)?;
+        Ok(())
+    }
+
+    async fn sign(&self, pub_address: H160, tp: TransactionParameters) -> Result<SignedTransaction, SignerError> {
+        let secret_key = self.get_private_key(pub_address)?;
+        let signed = DUMMY_RPC_PROVIDER
+            .accounts()
+            .sign_transaction(tp, secret_key)
+            .await
+            .map_err(|err|SignerError{
+                message: format!("Error when signing transaction in PrivateKeySigner {err}")
+            })?;
+        Ok(signed)
+    }
+}
+
 pub async fn service_loop(
     shared_state: Arc<Mutex<SharedState>>,
     conn: &SqlitePool,
@@ -278,6 +320,9 @@ pub async fn service_loop(
 
     let mut process_tx_needed = true;
     let mut process_tx_instantly = true;
+    let signer = PrivateKeySigner {
+        secret_keys: payment_setup.secret_keys.clone(),
+    };
     loop {
         log::debug!("Sender service loop - start loop");
         let current_time = chrono::Utc::now();
@@ -296,7 +341,7 @@ pub async fn service_loop(
                 log::warn!("Skipping processing transactions...");
                 process_tx_needed = false;
             } else {
-                match process_transactions(shared_state.clone(), conn, payment_setup).await {
+                match process_transactions(shared_state.clone(), conn, payment_setup, &signer).await {
                     Ok(_) => {
                         //all pending transactions processed
                         process_tx_needed = false;
