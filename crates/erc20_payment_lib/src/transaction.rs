@@ -3,15 +3,18 @@ use crate::db::model::*;
 use crate::error::*;
 use crate::eth::get_eth_addr_from_secret;
 use crate::multi::pack_transfers_for_multi_contract;
+use crate::signer::Signer;
 use crate::utils::ConversionError;
 use crate::{err_custom_create, err_from};
-use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use secp256k1::SecretKey;
 use std::collections::HashMap;
 use std::str::FromStr;
 use web3::transports::Http;
-use web3::types::{Address, BlockId, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters, H256, U256, U64, SignedTransaction, H160};
+use web3::types::{
+    Address, BlockId, BlockNumber, Bytes, CallRequest, TransactionId, TransactionParameters, H160,
+    H256, U256, U64,
+};
 use web3::Web3;
 
 fn decode_data_to_bytes(web3_tx_dao: &TxDao) -> Result<Option<Bytes>, PaymentError> {
@@ -334,17 +337,19 @@ pub async fn check_transaction(
         Ok(())
     } else {
         log::debug!("Check transaction with gas estimation: {:?}", call_request);
-        let gas_est = match web3
-            .eth()
-            .estimate_gas(call_request.clone(), None)
-            .await {
+        let gas_est = match web3.eth().estimate_gas(call_request.clone(), None).await {
             Ok(gas_est) => gas_est,
             Err(e) => {
                 if e.to_string().contains("gas required exceeds allowance") {
                     log::error!("Gas estimation failed - probably insufficient funds: {}", e);
-                    return Err(err_custom_create!("Gas estimation failed - probably insufficient funds"));
+                    return Err(err_custom_create!(
+                        "Gas estimation failed - probably insufficient funds"
+                    ));
                 }
-                return Err(err_custom_create!("Gas estimation failed due to unknown error {}", e));
+                return Err(err_custom_create!(
+                    "Gas estimation failed due to unknown error {}",
+                    e
+                ));
             }
         };
 
@@ -388,21 +393,7 @@ pub async fn sign_transaction_deprecated(
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct SignerError {
-    pub message: String,
-}
-
-#[async_trait]
-pub trait Signer {
-    async fn check_if_sign_possible(&self, pub_address: H160) -> Result<(), SignerError>;
-    async fn sign(&self, pub_address: H160, tp: TransactionParameters) -> Result<SignedTransaction, SignerError>;
-}
-
-
-
 pub async fn sign_transaction_with_callback(
-    web3: &Web3<Http>,
     web3_tx_dao: &mut TxDao,
     signer_pub_address: H160,
     signer: &impl Signer,
@@ -410,10 +401,12 @@ pub async fn sign_transaction_with_callback(
     let tx_object = dao_to_transaction(web3_tx_dao)?;
     log::debug!("Signing transaction: {:#?}", tx_object);
     // Sign the tx (can be done offline)
-    let signed = signer.sign(signer_pub_address, tx_object).await.map_err(|err|
-        err_custom_create!("Signing transaction failed due to unknown error: {err:?}"),
-    )?;
-
+    let signed = signer
+        .sign(signer_pub_address, tx_object)
+        .await
+        .map_err(|err| {
+            err_custom_create!("Signing transaction failed due to unknown error: {err:?}")
+        })?;
 
     let slice: Vec<u8> = signed.raw_transaction.0;
     web3_tx_dao.signed_raw_data = Some(hex::encode(slice));

@@ -12,10 +12,11 @@ use web3::types::{Address, U256};
 use web3::Web3;
 
 use crate::db::model::TxDao;
-use crate::eth::{get_eth_addr_from_secret, get_transaction_count};
+use crate::eth::get_transaction_count;
 use crate::runtime::SharedState;
 use crate::setup::PaymentSetup;
-use crate::transaction::{check_transaction, Signer};
+use crate::signer::Signer;
+use crate::transaction::check_transaction;
 use crate::transaction::find_receipt;
 use crate::transaction::send_transaction;
 use crate::transaction::sign_transaction_with_callback;
@@ -35,8 +36,6 @@ pub async fn get_provider(url: &str) -> Result<Web3<Http>, PaymentError> {
     let web3 = web3::Web3::new(transport);
     Ok(web3)
 }
-
-
 
 pub async fn process_transaction(
     shared_state: Arc<Mutex<SharedState>>,
@@ -65,13 +64,14 @@ pub async fn process_transaction(
     let from_addr = Address::from_str(&web3_tx_dao.from_addr)
         .map_err(|_e| err_create!(TransactionFailedError::new("Failed to parse from_addr")))?;
 
-    let private_key = payment_setup
-        .secret_keys
-        .iter()
-        .find(|sk| get_eth_addr_from_secret(sk) == from_addr)
-        .ok_or(err_create!(TransactionFailedError::new(&format!(
-            "Failed to find private key for address: {from_addr}"
-        ))))?;
+    signer
+        .check_if_sign_possible(from_addr)
+        .await
+        .map_err(|err| {
+            err_create!(TransactionFailedError::new(&format!(
+                "Sign won't be possible for given address: {from_addr}, error: {err:?}"
+            )))
+        })?;
 
     let transaction_nonce = if let Some(nonce) = web3_tx_dao.nonce {
         nonce
@@ -169,7 +169,7 @@ pub async fn process_transaction(
             .lock()
             .await
             .set_tx_message(web3_tx_dao.id, "Signing transaction".to_string());
-        sign_transaction_with_callback(web3, web3_tx_dao, from_addr, signer).await?;
+        sign_transaction_with_callback(web3_tx_dao, from_addr, signer).await?;
         update_tx(conn, web3_tx_dao).await.map_err(err_from!())?;
     }
 
