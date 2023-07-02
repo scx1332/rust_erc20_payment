@@ -83,7 +83,7 @@ pub async fn process_transaction(
 
         let nonce = get_transaction_count(from_addr, web3, false)
             .await
-            .map_err(err_from!())? as i64;
+            .map_err(|err|err_custom_create!("Cannot obtain data from web3 endpoint for network id {chain_id}, check RPC endpoints configuration, err: {err}"))? as i64;
         web3_tx_dao.nonce = Some(nonce);
         nonce
     };
