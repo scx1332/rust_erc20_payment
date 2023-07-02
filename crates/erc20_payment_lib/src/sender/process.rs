@@ -83,9 +83,14 @@ pub async fn process_transaction(
 
         let nonce = get_transaction_count(from_addr, web3, false)
             .await
-            .map_err(|err|err_custom_create!("Web3 RPC endpoint failing for network {}(chainId: {}): {}",
-            chain_setup.chain_name, chain_setup.chain_id, err)
-            )? as i64;
+            .map_err(|err| {
+                err_custom_create!(
+                    "Web3 RPC endpoint failing for network {}(chainId: {}): {}",
+                    chain_setup.chain_name,
+                    chain_setup.chain_id,
+                    err
+                )
+            })? as i64;
         web3_tx_dao.nonce = Some(nonce);
         nonce
     };
@@ -214,13 +219,29 @@ pub async fn process_transaction(
         );
         let latest_nonce = get_transaction_count(from_addr, web3, false)
             .await
-            .map_err(err_from!())?;
+            .map_err(|err| {
+                err_custom_create!(
+                    "Web3 RPC endpoint failing for network {}(chainId: {}): {}",
+                    chain_setup.chain_name,
+                    chain_setup.chain_id,
+                    err
+                )
+            })?;
+
         let current_block_number = web3
             .eth()
             .block_number()
             .await
-            .map_err(err_from!())?
+            .map_err(|err| {
+                err_custom_create!(
+                    "Web3 RPC endpoint failing for network {}(chainId: {}): {}",
+                    chain_setup.chain_name,
+                    chain_setup.chain_id,
+                    err
+                )
+            })?
             .as_u64();
+
         if latest_nonce
             > web3_tx_dao
                 .nonce

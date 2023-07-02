@@ -37,7 +37,7 @@ block-explorer-url = "https://goerli.etherscan.io"
 [chain.mumbai]
 chain-name = "Mumbai testnet"
 chain-id = 80001
-rpc-endpoints = ["https://rpc-mumbai.maticvigil.com/v1/fd04db1066cae0f44d3461ae6d6a7cbbdd46e4a5"]
+rpc-endpoints = ["https://matic-mumbai.chainstacklabs.com"]
 # rpc-endpoints = ["http://127.0.0.1:8545"]
 currency-symbol = "tMATIC"
 priority-fee = 1.5111
